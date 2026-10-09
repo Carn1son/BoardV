@@ -1,0 +1,128 @@
+/* BoardV interface language. The page is written in Russian; for English every visible text node and
+   the title / placeholder / aria-label attributes are translated in place, phrase by phrase, and restored
+   when switching back. Longer phrases win over the words inside them. */
+var I18N = (function () {
+  'use strict';
+  var EN = {
+    // ---- toolbar, panels
+    'Открыть файлы': 'Open files', 'Открыть файл': 'Open file', 'Открыть': 'Open', 'Сторона платы': 'Board side',
+    'Верх': 'Top', 'Низ': 'Bottom', 'Обе': 'Both', 'Повернуть на 90° (R)': 'Rotate 90° (R)', 'Вписать плату': 'Fit board',
+    'Показать или скрыть BOM справа': 'Show or hide the BOM on the right', 'Настройки': 'Settings', 'Закрыть настройки': 'Close settings',
+    'Закрыть (Esc)': 'Close (Esc)', 'Закрыть BOM': 'Close BOM', 'Закрыть': 'Close', 'Оформление': 'Appearance',
+    'Сейчас Ночь. Нажмите, чтобы включить День': 'Night mode. Click for Day', 'Сейчас День. Нажмите, чтобы включить Ночь': 'Day mode. Click for Night',
+    'Панели: поиск, BOM, настройки': 'Panels: search, BOM, settings', 'Панели': 'Panels', 'Скрыть панель': 'Hide panel', 'Инспектор': 'Inspector', 'Плата': 'Board',
+    'Ширина левой панели': 'Left panel width', 'Ширина правой панели': 'Right panel width', 'Потяните, чтобы изменить ширину. Двойной клик — по умолчанию': 'Drag to resize. Double-click to reset',
+    'BOM и настройки': 'BOM and settings', 'Поиск по деталям, цепям и номиналам': 'Search parts, nets and values', 'Результаты': 'Results',
+    'Детали': 'Parts', 'Цепи': 'Nets', 'Поиск': 'Search', 'Копировать CSV': 'Copy CSV', 'Фильтр: 100n, 0402, LM…': 'Filter: 100n, 0402, LM…', 'Фильтр BOM': 'BOM filter',
+    'Номинал': 'Value', 'Корпус': 'Package', 'Шт': 'Qty', 'Обозначения': 'Designators', 'Описание': 'Description',
+    'поз.': 'items', 'шт.': 'pcs', 'позиций': 'items', 'Файл не открыт': 'No file open',
+    // ---- empty field, drop, errors
+    'Закинь поддерживаемый файл': 'Drop a supported file', 'Перетащи файл в окно или нажми, чтобы выбрать': 'Drag a file into the window or click to choose',
+    'Нажми, чтобы выбрать файл': 'Tap to choose a file', 'Открыть файл платы': 'Open a board file', 'Отпустите файл, чтобы открыть': 'Release to open the file',
+    'Файл не поддерживается': 'File not supported', 'Отправьте файл в одном из форматов:': 'Use a file in one of these formats:', 'Не удалось открыть файл': 'Could not open the file',
+    'Файл пустой': 'The file is empty', 'Сначала откройте плату': 'Open a board first', 'это только номиналы. Добавьте их после файла платы.': 'these are only values. Add them after the board file.',
+    'Не удалось загрузить настройки': 'Could not load the settings', 'нужен файл, выгруженный из BoardV': 'use a file exported from BoardV',
+    // ---- board card
+    'Деталей': 'Parts', 'Пинов': 'Pins', 'Цепей': 'Nets', 'Размер': 'Size', 'Номиналы': 'Values', 'мм': 'mm', 'снизу': 'bottom', 'сверху': 'top', 'из': 'of',
+    'Номиналов нет: у деталей в файле платы не задан текст Comment.': 'No values: parts in the board file have no Comment text.',
+    'сигнал': 'signal', 'выбранная цепь': 'selected net', 'питание': 'power', 'земля': 'ground', 'N/C — не подключён': 'N/C — not connected',
+    'ЛКМ': 'LMB', 'выбор пин/компонент': 'select pin / part', 'Пробел': 'Space',
+    'Деталь': 'Part', 'Цепь': 'Net', 'Позиция BOM': 'BOM line', 'Позиция': 'Line', 'верх': 'top', 'низ': 'bottom', 'выводной': 'through-hole', 'пин.': 'pins',
+    'В формате .brd нет номеров пинов, они пронумерованы по порядку в файле.': 'The .brd format has no pin numbers; pins are numbered in file order.',
+    'Цвет этой цепи на плате': 'Colour of this net on the board', 'Убрать': 'Remove', 'пинов на': 'pins on', 'деталях': 'parts',
+    'без номинала': 'no value', '— без номинала': '— no value', 'корпус не указан': 'no package', 'Ничего не найдено': 'Nothing found', 'Ещё': 'More:', 'Уточните поиск.': 'Refine the search.',
+    'Номиналов нет, позиции сгруппированы только по корпусу.': 'No values; lines are grouped by package only.',
+    'Сторона': 'Side', 'низ (зеркально)': 'bottom (mirrored)', 'обе': 'both', 'Поворот': 'Rotation',
+    'BOM скопирован. Вставьте в Excel или Google Таблицы.': 'BOM copied. Paste it into Excel or Google Sheets.', 'Браузер не дал скопировать': 'The browser blocked copying',
+    'Номиналы добавлены для': 'Values added for', 'деталей': 'parts', 'не нашлось совпадающих позиционных обозначений': 'has no matching designators',
+    'Номиналы показаны': 'Values shown', 'Номиналы скрыты': 'Values hidden', 'Номера пинов показаны': 'Pin numbers shown', 'Номера пинов скрыты': 'Pin numbers hidden',
+    // ---- settings
+    'Тема': 'Theme', 'Язык': 'Language', 'Свои настройки': 'Custom', 'По умолчанию': 'Default', 'Гранд': 'Grand', 'Классика': 'Classic', 'Ночь': 'Night', 'Темная': 'Dark',
+    'Синяя': 'Blue', 'Красная': 'Red', 'Светлая': 'Light', 'Неон': 'Neon', 'День': 'Day',
+    'Область: фон и подложка': 'Area: background and board', 'Фон окна': 'Window background', 'Подложка платы': 'Board fill', 'Градиент подложки': 'Board gradient',
+    'Второй цвет градиента': 'Second gradient colour', 'Контур платы': 'Board outline', 'Толщина контура': 'Outline width', 'Свечение контура': 'Outline glow',
+    'Видимость обратной стороны': 'Opposite side visibility', 'Контакты': 'Pads', 'Форма контактов': 'Pad shape', 'Круг': 'Circle', 'Скруглённый квадрат': 'Rounded square', 'Квадрат': 'Square',
+    'Сигнальные': 'Signal', 'Питание': 'Power', 'Земля': 'Ground', 'Не подключённые (обводка)': 'Not connected (outline)', 'Свечение сигнальных': 'Signal glow',
+    'Свечение питания': 'Power glow', 'Свечение земли': 'Ground glow', 'Компоненты': 'Parts', 'Обводка компонента': 'Part outline', 'Обводка нижних (режим «Обе»)': 'Bottom part outline (Both mode)',
+    'Толщина обводки компонента': 'Part outline width', 'Скругление углов': 'Corner radius', 'Яркость обводки': 'Outline brightness', 'Заливка корпуса': 'Body fill',
+    'Плотность заливки': 'Fill density', 'Обозначения (R1, U2…)': 'Designators (R1, U2…)', 'Размер подписей': 'Label size', 'Обводка подписей': 'Label outline',
+    'Мягкая': 'Soft', 'Контур': 'Outline', 'Тень': 'Shadow', 'Без обводки': 'None', 'Плотность обводки подписей': 'Label outline density', 'Толщина обводки подписей': 'Label outline width',
+    'Показывать номиналы': 'Show values', 'Номера пинов при приближении': 'Pin numbers when zoomed in',
+    'Выделение компонентов (ЛКМ и BOM)': 'Part highlight (LMB and BOM)', 'Затемнять остальные компоненты': 'Dim other parts', 'На текущем слое': 'On the current side',
+    'На противоположном слое (пунктир)': 'On the opposite side (dashed)', 'Свечение': 'Glow', '«Дыхание» свечения': 'Breathing glow', 'Бегущий пунктир': 'Marching dashes',
+    'Скорость пунктира': 'Dash speed', 'Выбранная цепь': 'Selected net', 'Цвет цепи': 'Net colour', 'Затемнять остальное': 'Dim the rest', 'Цвет затемнения': 'Dim colour',
+    'Свечение цепи': 'Net glow', 'Пульсация': 'Pulse', 'Скорость пульсации': 'Pulse speed', 'Расходящиеся кольца': 'Ripples',
+    'Управление': 'Controls', 'Скорость масштаба колесом': 'Wheel zoom speed', 'Обратное направление колеса': 'Reverse wheel direction',
+    'Вписывать плату при изменении размеров панелей': 'Fit the board when panels are resized', 'Свои цвета цепей': 'Custom net colours',
+    'Имя цепи или маска:': 'Net name or mask:', 'любые символы': 'any characters', 'один. Например': 'one. For example', 'Нижнее правило главнее.': 'Lower rules win.',
+    '+ Добавить правило': '+ Add rule', 'Маска цепи': 'Net mask', 'Цвет': 'Colour', 'Удалить правило': 'Delete rule', 'Сбросить группу': 'Reset group',
+    'Вернуть значения этой группы из темы': 'Restore this group from the theme',
+    'Горячие клавиши': 'Hotkeys', 'Клавиши работают в любой раскладке. Нажмите «+», затем нужную клавишу (можно с Ctrl, Alt, Shift). Esc — отмена.': 'Keys work in any keyboard layout. Press «+», then the key (Ctrl, Alt, Shift allowed). Esc cancels.',
+    'Нажмите клавишу…': 'Press a key…', 'Клавиши по умолчанию': 'Default keys', 'Убрать': 'Remove', 'снято с': 'removed from',
+    'Перевернуть плату (верх ↔ низ)': 'Flip board (top ↔ bottom)', 'Сторона: верх': 'Side: top', 'Сторона: низ': 'Side: bottom', 'Сторона: обе': 'Side: both',
+    'Следующий слой (верх → низ → обе)': 'Next side (top → bottom → both)', 'Поворот на 90°': 'Rotate 90°', 'Сбросить выбор / закрыть настройки': 'Clear selection / close settings',
+    'Приблизить': 'Zoom in', 'Отдалить': 'Zoom out', 'Показать / скрыть BOM': 'Show / hide BOM', 'Открыть / закрыть настройки': 'Open / close settings',
+    'Оформление: День / Ночь': 'Appearance: Day / Night', 'Номиналы на плате вкл/выкл': 'Values on the board on/off', 'Номера пинов вкл/выкл': 'Pin numbers on/off',
+    'Выгрузить настройки': 'Export settings', 'Загрузить настройки': 'Import settings', 'Сбросить всё': 'Reset all',
+    'Сохранить все настройки в файл, чтобы перенести на другое устройство': 'Save all settings to a file to move them to another device',
+    'Загрузить настройки из ранее выгруженного файла': 'Load settings from an exported file', 'Вернуть все настройки по умолчанию': 'Restore all default settings',
+    'Настройки выгружены': 'Settings exported', 'Настройки не сохранены': 'Settings not saved', 'Настройки загружены': 'Settings imported', 'Все настройки сброшены': 'All settings reset',
+    'Настройки скопированы': 'Settings copied',
+    // ---- updates and version
+    'Обновления': 'Updates', 'Проверять обновления при запуске': 'Check for updates at start', 'Установлена версия': 'Installed version', 'Версия': 'Version',
+    'Проверяю…': 'Checking…', 'У вас последняя версия.': 'You have the latest version.', 'Есть обновление:': 'Update available:',
+    'Скачать новую версию': 'Download the new version', 'Обновить': 'Update', 'Разрешите BoardV устанавливать приложения, вернитесь и нажмите «Обновить».': 'Allow BoardV to install apps, come back and tap «Update».',
+    'Открыть разрешение': 'Open permission', 'Загрузка обновления…': 'Downloading update…', 'Открываю установщик…': 'Opening the installer…',
+    'Подтвердите установку в окне Android.': 'Confirm the installation in the Android window.', 'Обновление загружено.': 'Update downloaded.',
+    'Перезапустить и обновить': 'Restart and update', 'Не получилось:': 'Failed:', 'Проверить обновления': 'Check for updates', 'Обновление BoardV': 'BoardV update',
+    'Позже': 'Later', 'нет связи с GitHub': 'no connection to GitHub', 'GitHub ответил': 'GitHub replied', 'Не удалось открыть настройки': 'Could not open settings',
+    'Не удалось открыть установщик': 'Could not open the installer', 'установка не удалась': 'installation failed', 'сервер ответил': 'server replied',
+    // ---- file parsing messages (core.js / pcbdoc.js)
+    'компонентов': 'parts', 'падов': 'pads', 'цепей': 'nets', 'номиналы у': 'values for', 'пинов': 'pins', 'точек': 'points', 'отрезков, контур': 'segments, outline',
+    'В .PcbDoc не найдены потоки компонентов и падов. Это точно файл платы Altium (а не библиотека .PcbLib)?': 'No parts or pads found in the .PcbDoc. Is it an Altium board file (not a .PcbLib library)?',
+    'В .brd не нашлось деталей или пинов': 'No parts or pins found in the .brd', 'В .bvr не нашлось деталей': 'No parts found in the .bvr',
+    'Это не файл конвертера': 'Not a converter file', 'Повреждённый .zip': 'Damaged .zip', 'счётчики не совпадают': 'counters do not match', 'строка': 'line',
+    'Нет ни одной детали с координатами. Нужен файл платы: .PcbDoc (или PCB ASCII / IPC-D-356A).': 'No parts with coordinates. A board file is needed: .PcbDoc (or PCB ASCII / IPC-D-356A).'
+  };
+  var keys = Object.keys(EN).sort(function (a, b) { return b.length - a.length; });
+  var CYR = /[А-Яа-яЁё]/;
+  var RX = new RegExp('(?<![А-Яа-яЁё])(' + keys.map(function (k) { return k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')(?![А-Яа-яЁё])', 'g');
+  function tr(s) { return s && CYR.test(s) ? s.replace(RX, function (m) { return EN[m]; }) : s; }
+  var lang = 'ru', busy = false, ATTRS = ['title', 'placeholder', 'aria-label'];
+  function doText(n) {
+    if (lang === 'en') { var src = n.__ru != null ? n.__ru : n.nodeValue; if (!CYR.test(src)) return; var t = tr(src); if (t !== n.nodeValue) { n.__ru = src; n.nodeValue = t; } }
+    else if (n.__ru != null) { n.nodeValue = n.__ru; n.__ru = null; }
+  }
+  function doAttrs(el) {
+    ATTRS.forEach(function (a) {
+      if (!el.hasAttribute || !el.hasAttribute(a)) return;
+      var store = '__ru_' + a, v = el.getAttribute(a);
+      if (lang === 'en') { var src = el[store] != null ? el[store] : v; if (!CYR.test(src)) return; var t = tr(src); if (t !== v) { el[store] = src; el.setAttribute(a, t); } }
+      else if (el[store] != null) { el.setAttribute(a, el[store]); el[store] = null; }
+    });
+  }
+  function walk(root) {
+    if (root.nodeType === 3) { doText(root); return; }
+    if (root.nodeType !== 1 || /^(SCRIPT|STYLE|CANVAS)$/.test(root.nodeName)) return;
+    doAttrs(root);
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT), n;
+    while ((n = w.nextNode())) { if (n.nodeType === 3) doText(n); else doAttrs(n); }
+  }
+  var obs = new MutationObserver(function (list) {
+    if (busy || lang !== 'en') return; busy = true;
+    list.forEach(function (m) {
+      if (m.type === 'childList') m.addedNodes.forEach(walk);
+      else if (m.type === 'characterData') { if (m.target.__ru != null && m.target.nodeValue !== tr(m.target.__ru)) m.target.__ru = null; doText(m.target); }
+      else if (m.type === 'attributes') { var s = '__ru_' + m.attributeName; if (m.target[s] != null && m.target.getAttribute(m.attributeName) !== tr(m.target[s])) m.target[s] = null; doAttrs(m.target); }
+    });
+    obs.takeRecords(); busy = false;
+  });
+  function set(l) {
+    lang = l === 'en' ? 'en' : 'ru';
+    document.documentElement.lang = lang;
+    busy = true; walk(document.body); obs.takeRecords(); busy = false;
+    obs.disconnect();
+    if (lang === 'en') obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  }
+  return { set: set, get: function () { return lang; }, tr: function (s) { return lang === 'en' ? tr(s) : s; } };
+})();

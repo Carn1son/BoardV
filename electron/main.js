@@ -32,7 +32,7 @@ ipcMain.handle('upd-check', async () => {
 ipcMain.handle('upd-download', async () => {
   try { await updater.downloadUpdate(); return true; } catch (e) { upd('error', String((e && e.message) || e)); return false; }
 });
-ipcMain.on('upd-install', () => { if (updater) updater.quitAndInstall(false, true); });
+ipcMain.on('upd-install', () => { if (updater) updater.quitAndInstall(true, true); }); // silent: files are replaced in place, no installer wizard, then BoardV starts again
 
 const BOARD = /\.(pcbdoc|brd|bvr|zip|json)$/i;
 function boardFiles(argv) { return argv.filter((a) => BOARD.test(a) && fs.existsSync(a)); }

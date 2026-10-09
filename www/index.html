@@ -202,10 +202,10 @@ canvas.drag { cursor: grabbing; }
 .status { height: 26px; box-sizing: border-box; overflow: hidden; white-space: nowrap; align-items: center; display: flex; flex-wrap: nowrap; gap: 4px 18px; padding-block: 5px; padding-inline: 16px; border-top: 1px solid var(--line); background: var(--panel); font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .status b { color: var(--fg); font-weight: 500; }
 .dropmask { position: fixed; inset: 0; background: rgb(0 0 0 / .74); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 10; pointer-events: none; }
-.dropmask::before { content: ""; position: absolute; inset: 16px; border: 2px dashed #ffffff; border-radius: 16px; }
-.dropmask .dm { text-align: center; padding: 16px; color: #ffffff; display: grid; gap: 14px; justify-items: center; }
+.dropmask .dm { display: grid; gap: 14px; justify-items: center; text-align: center; width: min(540px, calc(100% - 32px)); box-sizing: border-box; padding: 34px 28px; border: 2px dashed #ffffff; border-radius: 16px; background: rgb(20 22 21 / .92); color: #ffffff; }
+.dropmask .dm .logo { width: 64px; height: 64px; }
+.dropmask .dm b { font-family: var(--f-display); font-size: 22px; letter-spacing: .02em; font-weight: 600; }
 .dropmask .fmts span { color: #ffd60a; border-color: rgb(255 214 10 / .6); }
-.dropmask .dm-t { font-family: var(--f-display); font-size: 44px; letter-spacing: .08em; text-transform: uppercase; line-height: 1; }
 .fmts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; font-family: var(--f-mono); font-size: 13px; }
 .fmts span { border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); color: var(--accent); border-radius: 5px; padding: 2px 8px; }
 .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; cursor: pointer; background: var(--panel2); }
@@ -280,7 +280,7 @@ html.mobile.sheet-open #msheet { display: flex; }
 html.mobile .status { font-size: 11px; padding-inline: 10px; gap: 4px 12px; }
 html.mobile .status .mlogo { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-display); font-size: 12px; letter-spacing: .06em; color: var(--fg); }
 html.mobile .status .mlogo .logo { width: 16px; height: 16px; }
-html.mobile .dropmask .dm-t { font-size: 32px; }
+
 /* phone toolbar: everything fits one row on a 360px screen */
 html.mobile .top { gap: 4px; padding-inline: 8px; }
 html.mobile .top > * { flex: none; }
@@ -354,7 +354,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="note" id="verLine">Сборка от 09.10.2026</div>
+          <div class="note" id="verLine">Версия 0V1.0 · 10.10.2026</div>
         </div>
       </section>
     </aside>
@@ -368,7 +368,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
   </div>
   <div class="status" id="status"><span>Файл не открыт</span></div>
 </div>
-<div class="dropmask" id="mask" hidden><div class="dm"><div class="dm-t">Drop file</div><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div></div></div>
+<div class="dropmask" id="mask" hidden><div class="dm"><i class="logo" aria-hidden="true"></i><b>Отпустите файл, чтобы открыть</b><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div></div></div>
 
 <script src="build-info.js"></script>
 <script src="BoardV-config.js"></script>
@@ -1187,6 +1187,135 @@ var BV = (function () {
 })();
 
 
+/* BoardV interface language. The page is written in Russian; for English every visible text node and
+   the title / placeholder / aria-label attributes are translated in place, phrase by phrase, and restored
+   when switching back. Longer phrases win over the words inside them. */
+var I18N = (function () {
+  'use strict';
+  var EN = {
+    // ---- toolbar, panels
+    'Открыть файлы': 'Open files', 'Открыть файл': 'Open file', 'Открыть': 'Open', 'Сторона платы': 'Board side',
+    'Верх': 'Top', 'Низ': 'Bottom', 'Обе': 'Both', 'Повернуть на 90° (R)': 'Rotate 90° (R)', 'Вписать плату': 'Fit board',
+    'Показать или скрыть BOM справа': 'Show or hide the BOM on the right', 'Настройки': 'Settings', 'Закрыть настройки': 'Close settings',
+    'Закрыть (Esc)': 'Close (Esc)', 'Закрыть BOM': 'Close BOM', 'Закрыть': 'Close', 'Оформление': 'Appearance',
+    'Сейчас Ночь. Нажмите, чтобы включить День': 'Night mode. Click for Day', 'Сейчас День. Нажмите, чтобы включить Ночь': 'Day mode. Click for Night',
+    'Панели: поиск, BOM, настройки': 'Panels: search, BOM, settings', 'Панели': 'Panels', 'Скрыть панель': 'Hide panel', 'Инспектор': 'Inspector', 'Плата': 'Board',
+    'Ширина левой панели': 'Left panel width', 'Ширина правой панели': 'Right panel width', 'Потяните, чтобы изменить ширину. Двойной клик — по умолчанию': 'Drag to resize. Double-click to reset',
+    'BOM и настройки': 'BOM and settings', 'Поиск по деталям, цепям и номиналам': 'Search parts, nets and values', 'Результаты': 'Results',
+    'Детали': 'Parts', 'Цепи': 'Nets', 'Поиск': 'Search', 'Копировать CSV': 'Copy CSV', 'Фильтр: 100n, 0402, LM…': 'Filter: 100n, 0402, LM…', 'Фильтр BOM': 'BOM filter',
+    'Номинал': 'Value', 'Корпус': 'Package', 'Шт': 'Qty', 'Обозначения': 'Designators', 'Описание': 'Description',
+    'поз.': 'items', 'шт.': 'pcs', 'позиций': 'items', 'Файл не открыт': 'No file open',
+    // ---- empty field, drop, errors
+    'Закинь поддерживаемый файл': 'Drop a supported file', 'Перетащи файл в окно или нажми, чтобы выбрать': 'Drag a file into the window or click to choose',
+    'Нажми, чтобы выбрать файл': 'Tap to choose a file', 'Открыть файл платы': 'Open a board file', 'Отпустите файл, чтобы открыть': 'Release to open the file',
+    'Файл не поддерживается': 'File not supported', 'Отправьте файл в одном из форматов:': 'Use a file in one of these formats:', 'Не удалось открыть файл': 'Could not open the file',
+    'Файл пустой': 'The file is empty', 'Сначала откройте плату': 'Open a board first', 'это только номиналы. Добавьте их после файла платы.': 'these are only values. Add them after the board file.',
+    'Не удалось загрузить настройки': 'Could not load the settings', 'нужен файл, выгруженный из BoardV': 'use a file exported from BoardV',
+    // ---- board card
+    'Деталей': 'Parts', 'Пинов': 'Pins', 'Цепей': 'Nets', 'Размер': 'Size', 'Номиналы': 'Values', 'мм': 'mm', 'снизу': 'bottom', 'сверху': 'top', 'из': 'of',
+    'Номиналов нет: у деталей в файле платы не задан текст Comment.': 'No values: parts in the board file have no Comment text.',
+    'сигнал': 'signal', 'выбранная цепь': 'selected net', 'питание': 'power', 'земля': 'ground', 'N/C — не подключён': 'N/C — not connected',
+    'ЛКМ': 'LMB', 'выбор пин/компонент': 'select pin / part', 'Пробел': 'Space',
+    'Деталь': 'Part', 'Цепь': 'Net', 'Позиция BOM': 'BOM line', 'Позиция': 'Line', 'верх': 'top', 'низ': 'bottom', 'выводной': 'through-hole', 'пин.': 'pins',
+    'В формате .brd нет номеров пинов, они пронумерованы по порядку в файле.': 'The .brd format has no pin numbers; pins are numbered in file order.',
+    'Цвет этой цепи на плате': 'Colour of this net on the board', 'Убрать': 'Remove', 'пинов на': 'pins on', 'деталях': 'parts',
+    'без номинала': 'no value', '— без номинала': '— no value', 'корпус не указан': 'no package', 'Ничего не найдено': 'Nothing found', 'Ещё': 'More:', 'Уточните поиск.': 'Refine the search.',
+    'Номиналов нет, позиции сгруппированы только по корпусу.': 'No values; lines are grouped by package only.',
+    'Сторона': 'Side', 'низ (зеркально)': 'bottom (mirrored)', 'обе': 'both', 'Поворот': 'Rotation',
+    'BOM скопирован. Вставьте в Excel или Google Таблицы.': 'BOM copied. Paste it into Excel or Google Sheets.', 'Браузер не дал скопировать': 'The browser blocked copying',
+    'Номиналы добавлены для': 'Values added for', 'деталей': 'parts', 'не нашлось совпадающих позиционных обозначений': 'has no matching designators',
+    'Номиналы показаны': 'Values shown', 'Номиналы скрыты': 'Values hidden', 'Номера пинов показаны': 'Pin numbers shown', 'Номера пинов скрыты': 'Pin numbers hidden',
+    // ---- settings
+    'Тема': 'Theme', 'Язык': 'Language', 'Свои настройки': 'Custom', 'По умолчанию': 'Default', 'Гранд': 'Grand', 'Классика': 'Classic', 'Ночь': 'Night', 'Темная': 'Dark',
+    'Синяя': 'Blue', 'Красная': 'Red', 'Светлая': 'Light', 'Неон': 'Neon', 'День': 'Day',
+    'Область: фон и подложка': 'Area: background and board', 'Фон окна': 'Window background', 'Подложка платы': 'Board fill', 'Градиент подложки': 'Board gradient',
+    'Второй цвет градиента': 'Second gradient colour', 'Контур платы': 'Board outline', 'Толщина контура': 'Outline width', 'Свечение контура': 'Outline glow',
+    'Видимость обратной стороны': 'Opposite side visibility', 'Контакты': 'Pads', 'Форма контактов': 'Pad shape', 'Круг': 'Circle', 'Скруглённый квадрат': 'Rounded square', 'Квадрат': 'Square',
+    'Сигнальные': 'Signal', 'Питание': 'Power', 'Земля': 'Ground', 'Не подключённые (обводка)': 'Not connected (outline)', 'Свечение сигнальных': 'Signal glow',
+    'Свечение питания': 'Power glow', 'Свечение земли': 'Ground glow', 'Компоненты': 'Parts', 'Обводка компонента': 'Part outline', 'Обводка нижних (режим «Обе»)': 'Bottom part outline (Both mode)',
+    'Толщина обводки компонента': 'Part outline width', 'Скругление углов': 'Corner radius', 'Яркость обводки': 'Outline brightness', 'Заливка корпуса': 'Body fill',
+    'Плотность заливки': 'Fill density', 'Обозначения (R1, U2…)': 'Designators (R1, U2…)', 'Размер подписей': 'Label size', 'Обводка подписей': 'Label outline',
+    'Мягкая': 'Soft', 'Контур': 'Outline', 'Тень': 'Shadow', 'Без обводки': 'None', 'Плотность обводки подписей': 'Label outline density', 'Толщина обводки подписей': 'Label outline width',
+    'Показывать номиналы': 'Show values', 'Номера пинов при приближении': 'Pin numbers when zoomed in',
+    'Выделение компонентов (ЛКМ и BOM)': 'Part highlight (LMB and BOM)', 'Затемнять остальные компоненты': 'Dim other parts', 'На текущем слое': 'On the current side',
+    'На противоположном слое (пунктир)': 'On the opposite side (dashed)', 'Свечение': 'Glow', '«Дыхание» свечения': 'Breathing glow', 'Бегущий пунктир': 'Marching dashes',
+    'Скорость пунктира': 'Dash speed', 'Выбранная цепь': 'Selected net', 'Цвет цепи': 'Net colour', 'Затемнять остальное': 'Dim the rest', 'Цвет затемнения': 'Dim colour',
+    'Свечение цепи': 'Net glow', 'Пульсация': 'Pulse', 'Скорость пульсации': 'Pulse speed', 'Расходящиеся кольца': 'Ripples',
+    'Управление': 'Controls', 'Скорость масштаба колесом': 'Wheel zoom speed', 'Обратное направление колеса': 'Reverse wheel direction',
+    'Вписывать плату при изменении размеров панелей': 'Fit the board when panels are resized', 'Свои цвета цепей': 'Custom net colours',
+    'Имя цепи или маска:': 'Net name or mask:', 'любые символы': 'any characters', 'один. Например': 'one. For example', 'Нижнее правило главнее.': 'Lower rules win.',
+    '+ Добавить правило': '+ Add rule', 'Маска цепи': 'Net mask', 'Цвет': 'Colour', 'Удалить правило': 'Delete rule', 'Сбросить группу': 'Reset group',
+    'Вернуть значения этой группы из темы': 'Restore this group from the theme',
+    'Горячие клавиши': 'Hotkeys', 'Клавиши работают в любой раскладке. Нажмите «+», затем нужную клавишу (можно с Ctrl, Alt, Shift). Esc — отмена.': 'Keys work in any keyboard layout. Press «+», then the key (Ctrl, Alt, Shift allowed). Esc cancels.',
+    'Нажмите клавишу…': 'Press a key…', 'Клавиши по умолчанию': 'Default keys', 'Убрать': 'Remove', 'снято с': 'removed from',
+    'Перевернуть плату (верх ↔ низ)': 'Flip board (top ↔ bottom)', 'Сторона: верх': 'Side: top', 'Сторона: низ': 'Side: bottom', 'Сторона: обе': 'Side: both',
+    'Следующий слой (верх → низ → обе)': 'Next side (top → bottom → both)', 'Поворот на 90°': 'Rotate 90°', 'Сбросить выбор / закрыть настройки': 'Clear selection / close settings',
+    'Приблизить': 'Zoom in', 'Отдалить': 'Zoom out', 'Показать / скрыть BOM': 'Show / hide BOM', 'Открыть / закрыть настройки': 'Open / close settings',
+    'Оформление: День / Ночь': 'Appearance: Day / Night', 'Номиналы на плате вкл/выкл': 'Values on the board on/off', 'Номера пинов вкл/выкл': 'Pin numbers on/off',
+    'Выгрузить настройки': 'Export settings', 'Загрузить настройки': 'Import settings', 'Сбросить всё': 'Reset all',
+    'Сохранить все настройки в файл, чтобы перенести на другое устройство': 'Save all settings to a file to move them to another device',
+    'Загрузить настройки из ранее выгруженного файла': 'Load settings from an exported file', 'Вернуть все настройки по умолчанию': 'Restore all default settings',
+    'Настройки выгружены': 'Settings exported', 'Настройки не сохранены': 'Settings not saved', 'Настройки загружены': 'Settings imported', 'Все настройки сброшены': 'All settings reset',
+    'Настройки скопированы': 'Settings copied',
+    // ---- updates and version
+    'Обновления': 'Updates', 'Проверять обновления при запуске': 'Check for updates at start', 'Установлена версия': 'Installed version', 'Версия': 'Version',
+    'Проверяю…': 'Checking…', 'У вас последняя версия.': 'You have the latest version.', 'Есть обновление:': 'Update available:',
+    'Скачать новую версию': 'Download the new version', 'Обновить': 'Update', 'Разрешите BoardV устанавливать приложения, вернитесь и нажмите «Обновить».': 'Allow BoardV to install apps, come back and tap «Update».',
+    'Открыть разрешение': 'Open permission', 'Загрузка обновления…': 'Downloading update…', 'Открываю установщик…': 'Opening the installer…',
+    'Подтвердите установку в окне Android.': 'Confirm the installation in the Android window.', 'Обновление загружено.': 'Update downloaded.',
+    'Перезапустить и обновить': 'Restart and update', 'Не получилось:': 'Failed:', 'Проверить обновления': 'Check for updates', 'Обновление BoardV': 'BoardV update',
+    'Позже': 'Later', 'нет связи с GitHub': 'no connection to GitHub', 'GitHub ответил': 'GitHub replied', 'Не удалось открыть настройки': 'Could not open settings',
+    'Не удалось открыть установщик': 'Could not open the installer', 'установка не удалась': 'installation failed', 'сервер ответил': 'server replied',
+    // ---- file parsing messages (core.js / pcbdoc.js)
+    'компонентов': 'parts', 'падов': 'pads', 'цепей': 'nets', 'номиналы у': 'values for', 'пинов': 'pins', 'точек': 'points', 'отрезков, контур': 'segments, outline',
+    'В .PcbDoc не найдены потоки компонентов и падов. Это точно файл платы Altium (а не библиотека .PcbLib)?': 'No parts or pads found in the .PcbDoc. Is it an Altium board file (not a .PcbLib library)?',
+    'В .brd не нашлось деталей или пинов': 'No parts or pins found in the .brd', 'В .bvr не нашлось деталей': 'No parts found in the .bvr',
+    'Это не файл конвертера': 'Not a converter file', 'Повреждённый .zip': 'Damaged .zip', 'счётчики не совпадают': 'counters do not match', 'строка': 'line',
+    'Нет ни одной детали с координатами. Нужен файл платы: .PcbDoc (или PCB ASCII / IPC-D-356A).': 'No parts with coordinates. A board file is needed: .PcbDoc (or PCB ASCII / IPC-D-356A).'
+  };
+  var keys = Object.keys(EN).sort(function (a, b) { return b.length - a.length; });
+  var CYR = /[А-Яа-яЁё]/;
+  var RX = new RegExp('(?<![А-Яа-яЁё])(' + keys.map(function (k) { return k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')(?![А-Яа-яЁё])', 'g');
+  function tr(s) { return s && CYR.test(s) ? s.replace(RX, function (m) { return EN[m]; }) : s; }
+  var lang = 'ru', busy = false, ATTRS = ['title', 'placeholder', 'aria-label'];
+  function doText(n) {
+    if (lang === 'en') { var src = n.__ru != null ? n.__ru : n.nodeValue; if (!CYR.test(src)) return; var t = tr(src); if (t !== n.nodeValue) { n.__ru = src; n.nodeValue = t; } }
+    else if (n.__ru != null) { n.nodeValue = n.__ru; n.__ru = null; }
+  }
+  function doAttrs(el) {
+    ATTRS.forEach(function (a) {
+      if (!el.hasAttribute || !el.hasAttribute(a)) return;
+      var store = '__ru_' + a, v = el.getAttribute(a);
+      if (lang === 'en') { var src = el[store] != null ? el[store] : v; if (!CYR.test(src)) return; var t = tr(src); if (t !== v) { el[store] = src; el.setAttribute(a, t); } }
+      else if (el[store] != null) { el.setAttribute(a, el[store]); el[store] = null; }
+    });
+  }
+  function walk(root) {
+    if (root.nodeType === 3) { doText(root); return; }
+    if (root.nodeType !== 1 || /^(SCRIPT|STYLE|CANVAS)$/.test(root.nodeName)) return;
+    doAttrs(root);
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT), n;
+    while ((n = w.nextNode())) { if (n.nodeType === 3) doText(n); else doAttrs(n); }
+  }
+  var obs = new MutationObserver(function (list) {
+    if (busy || lang !== 'en') return; busy = true;
+    list.forEach(function (m) {
+      if (m.type === 'childList') m.addedNodes.forEach(walk);
+      else if (m.type === 'characterData') { if (m.target.__ru != null && m.target.nodeValue !== tr(m.target.__ru)) m.target.__ru = null; doText(m.target); }
+      else if (m.type === 'attributes') { var s = '__ru_' + m.attributeName; if (m.target[s] != null && m.target.getAttribute(m.attributeName) !== tr(m.target[s])) m.target[s] = null; doAttrs(m.target); }
+    });
+    obs.takeRecords(); busy = false;
+  });
+  function set(l) {
+    lang = l === 'en' ? 'en' : 'ru';
+    document.documentElement.lang = lang;
+    busy = true; walk(document.body); obs.takeRecords(); busy = false;
+    obs.disconnect();
+    if (lang === 'en') obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  }
+  return { set: set, get: function () { return lang; }, tr: function (s) { return lang === 'en' ? tr(s) : s; } };
+})();
+
 </script>
 <script>
 (function () {
@@ -1199,6 +1328,9 @@ var BV = (function () {
     var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches;
     return !!coarse && Math.min(screen.width, screen.height) <= 540;
   })();
+  var LANG = 'ru'; // interface language: saved choice, else the device language
+  try { LANG = localStorage.getItem('bvr-lang') || (/^ru|^uk|^be|^kk/i.test(navigator.language || '') ? 'ru' : 'en'); } catch (e) {}
+  function setLang(l) { LANG = l === 'en' ? 'en' : 'ru'; try { localStorage.setItem('bvr-lang', LANG); } catch (e) {} I18N.set(LANG); }
   var UI = 'dark'; try { UI = localStorage.getItem('bvr-ui') === 'light' ? 'light' : 'dark'; } catch (e) {}
   var ICON_MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a.6.6 0 0 0-.8-.7A9.6 9.6 0 1 0 21.2 15.4a.6.6 0 0 0-.7-.8z"/></svg>';
   var ICON_SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 1.8v2.4M12 19.8v2.4M1.8 12h2.4M19.8 12h2.4M4.8 4.8l1.7 1.7M17.5 17.5l1.7 1.7M4.8 19.2l1.7-1.7M17.5 6.5l1.7-1.7"/></g></svg>';
@@ -1909,6 +2041,7 @@ var BV = (function () {
     var cur = CFG.preset && PRESETS[CFG.preset] ? CFG.preset : '';
     var h = '<label class="presetrow" for="presetSel"><span>Тема</span><select id="presetSel">' + (cur ? '' : '<option value="" selected>Свои настройки</option>') +
       Object.keys(PRESETS).map(function (n) { return '<option value="' + esc(n) + '"' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></label>';
+    h += '<label class="presetrow" for="langSel"><span>Язык</span><select id="langSel"><option value="ru"' + (LANG === 'ru' ? ' selected' : '') + '>Русский</option><option value="en"' + (LANG === 'en' ? ' selected' : '') + '>English</option></select></label>';
     function group(id, title, inner, count) {
       return '<details class="grp" data-g="' + id + '"' + (GROUPS_OPEN[id] ? ' open' : '') + '><summary>' + esc(title) + (count ? '<small>' + count + '</small>' : '') + '</summary><div class="gbody">' + inner + '</div></details>';
     }
@@ -1948,6 +2081,7 @@ var BV = (function () {
     GROUPS_OPEN[d.dataset.g] = d.open;
   }, true);
   $('setBody').addEventListener('change', function (e) {
+    if (e.target.id === 'langSel') { setLang(e.target.value); return; }
     if (e.target.id !== 'presetSel' || !e.target.value) return;
     var n = e.target.value, pr = PRESETS[n]; CFG = mergeCfg({ colors: keepBg(pr.colors, CFG.colors), fx: themeFx(pr.fx, CFG.fx), nets: CFG.nets, keys: CFG.keys }); CFG.preset = n; CFG.base = n;
     changed('тема «' + n + '» (не сохранено в файл)', true); buildSettings();
@@ -2026,17 +2160,17 @@ var BV = (function () {
     for (var i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
     return false;
   }
-  function verDay(v) { var m = /^(\d{4})\.(\d{1,2})(\d{2})\./.exec(v || ''); return m ? m[3] + '.' + ('0' + m[2]).slice(-2) + '.' + m[1] : ''; } // 2026.1009.7 -> 09.10.2026
+  function verDay(v) { if (/^2100\./.test(v || '')) return ''; var m = /^(\d{4})\.(\d{1,2})(\d{2})\./.exec(v || ''); return m ? m[3] + '.' + ('0' + m[2]).slice(-2) + '.' + m[1] : ''; } // 2026.1009.7 -> 09.10.2026
   function updHtml() {
-    var h = '<div class="ln ok">Установлена сборка от ' + esc(BUILD && BUILD.day ? BUILD.day : '—') + '</div>', b = [], d = UPD.day || verDay(UPD.latest);
+    var h = '<div class="ln ok">Установлена версия ' + esc(BUILD && BUILD.label ? BUILD.label + ' · ' + BUILD.day : (BUILD && BUILD.day) || '—') + '</div>', b = [], d = (UPD.label ? UPD.label + ' · ' : '') + (UPD.day || verDay(UPD.latest));
     if (UPD.st === 'checking') h += '<div class="ln">Проверяю…</div>';
     else if (UPD.st === 'none') h += '<div class="ln ok">У вас последняя версия.</div>';
-    else if (UPD.st === 'available') { h += '<div class="ln">Есть обновление: сборка от ' + esc(d) + '.</div>'; b.push(['go', UPD.mode === 'portable' ? 'Скачать новую версию' : 'Обновить', 1]); }
+    else if (UPD.st === 'available') { h += '<div class="ln">Есть обновление: ' + esc(d) + '</div>'; b.push(['go', UPD.mode === 'portable' ? 'Скачать новую версию' : 'Обновить', 1]); }
     else if (UPD.st === 'perm') { h += '<div class="ln">Разрешите BoardV устанавливать приложения, вернитесь и нажмите «Обновить».</div>'; b.push(['perm', 'Открыть разрешение', 1], ['go', 'Обновить']); }
     else if (UPD.st === 'downloading') h += '<div class="ln">Загрузка обновления… ' + (UPD.pct || 0) + '%</div><div class="bar"><i style="width:' + (UPD.pct || 0) + '%"></i></div>';
     else if (UPD.st === 'installing') h += '<div class="ln">Открываю установщик…</div>';
     else if (UPD.st === 'confirm') h += '<div class="ln">Подтвердите установку в окне Android.</div>';
-    else if (UPD.st === 'ready') { h += '<div class="ln">Обновление загружено.</div>'; b.push(['install', 'Перезапустить и установить', 1]); }
+    else if (UPD.st === 'ready') { h += '<div class="ln">Обновление загружено.</div>'; b.push(['install', 'Перезапустить и обновить', 1]); }
     else if (UPD.st === 'error') { h += '<div class="ln bad">Не получилось: ' + esc(UPD.msg) + '</div>'; }
     if (UPD.st !== 'downloading' && UPD.st !== 'installing' && UPD.st !== 'checking') b.push(['check', 'Проверить обновления']);
     return h + '<div class="btnrow">' + b.map(function (x) { return '<button type="button" class="btn sm' + (x[2] ? ' primary' : '') + '" data-upd="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
@@ -2050,6 +2184,7 @@ var BV = (function () {
   function apiCheck(cur, auto) {
     fetch(UPD_API, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('GitHub ответил ' + r.status); return r.json(); }).then(function (j) {
       var v = String(j.tag_name || '').replace(/^v/, ''), day = (String(j.name || '').match(/(\d\d\.\d\d\.\d{4})/) || [])[1] || '';
+      UPD.label = (String(j.name || '').match(/0V\d+\.\d+/) || [''])[0];
       if (/^\d+(\.\d+)+$/.test(v) && verNewer(v, cur)) { updSet('available', { latest: v, day: day }); if (auto) showUpdBar(); }
       else updSet('none', { latest: v, day: day });
     }).catch(function (e) { updSet(auto ? 'idle' : 'error', { msg: e.message || 'нет связи с GitHub' }); });
@@ -2079,7 +2214,7 @@ var BV = (function () {
     else if (type === 'error') updSet('error', { msg: arg });
   };
   if (HAS_DESK_UPD) window.bvDesktop.update.on(function (m) {
-    if (m.type === 'available') { updSet('available', { latest: m.data && m.data.version, day: '' }); if (updAuto) showUpdBar(); }
+    if (m.type === 'available') { var vv = String(m.data && m.data.version || '').split('.'); updSet('available', { latest: m.data && m.data.version, day: '', label: vv[0] === '2100' ? '0V' + vv[1] + '.' + vv[2] : '' }); if (updAuto) showUpdBar(); }
     else if (m.type === 'none') updSet('none');
     else if (m.type === 'progress') updSet('downloading', { pct: m.data || 0 });
     else if (m.type === 'downloaded') updSet('ready');
@@ -2099,6 +2234,7 @@ var BV = (function () {
     UPD.auto = e.target.checked; try { localStorage.setItem('bvr-autoupd', UPD.auto ? '1' : '0'); } catch (x) {}
   });
   if (CAN_UPDATE && UPD.auto) setTimeout(function () { checkUpdates(true); }, 4000);
+  if (BUILD && BUILD.label) $('verLine').textContent = 'Версия ' + BUILD.label + ' · ' + BUILD.day;
 
   /* ---------- files opened from the system (double-click, "Open with") ---------- */
   if ('launchQueue' in window && window.launchQueue.setConsumer) {
@@ -2287,6 +2423,7 @@ var BV = (function () {
   /* ---------- start ---------- */
   applyCfg(false);
   status(); req(); // empty field until a file is dropped or picked
+  I18N.set(LANG);
 })();
 </script>
 

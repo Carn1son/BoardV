@@ -4,16 +4,21 @@ import os, re, shutil, json, subprocess
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, 'out')
 # the viewer carries only a build date (no version numbers); app version codes are derived from it
-VDATE = re.search(r'Сборка от (\d\d\.\d\d\.\d{4})', open(os.path.join(ROOT, 'viewer-ui.html')).read()).group(1)
-_d, _m, _y = VDATE.split('.')
-VCODE = int(_y + _m + _d)                      # Android versionCode, e.g. 20261009
-VSEM = '%d.%d.%d' % (int(_y), int(_m), int(_d))  # Electron version, e.g. 2026.10.9
+# Version shown to people: 0V<major>.<minor> from src/VERSION (bumped with every release), plus the build date.
+# Apps compare an internal number derived from it: 2100.<major>.<minor> (Windows / tags), 2100<major:02><minor:04> (Android).
+import datetime
+VDATE = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime('%d.%m.%Y')  # Moscow date
+_VM, _Vm = (int(x) for x in open(os.path.join(ROOT, 'VERSION')).read().strip().split('.'))
+VLABEL = '0V%d.%d' % (_VM, _Vm)
+VSEM = '2100.%d.%d' % (_VM, _Vm)
+VCODE = 2100000000 + _VM * 10000 + _Vm
 
 
 def lib():
     pcb = open(os.path.join(ROOT, 'pcbdoc.js')).read().replace("if (typeof module !== 'undefined') module.exports = PCBDOC;", "")
     core = open(os.path.join(ROOT, 'core.js')).read().replace("if (typeof module !== 'undefined') module.exports = BV;", "")
-    return pcb + '\n' + core
+    i18n = open(os.path.join(ROOT, 'i18n.js')).read()
+    return pcb + '\n' + core + '\n' + i18n
 
 
 def logo_uri(px=96):
@@ -25,7 +30,7 @@ def logo_uri(px=96):
 
 
 def fragment():
-    return open(os.path.join(ROOT, 'viewer-ui.html')).read().replace('/*CORE*/', lib()).replace('__LOGO__', logo_uri())
+    return open(os.path.join(ROOT, 'viewer-ui.html')).read().replace('/*CORE*/', lib()).replace('__VLABEL__', VLABEL).replace('__VDATE__', VDATE).replace('__LOGO__', logo_uri())
 
 
 def full_doc(extra_head='', extra_body=''):
@@ -421,7 +426,7 @@ public class MainActivity extends Activity {
                 pick.setType("*/*"); // .PcbDoc / .brd have no registered MIME type
                 pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 try {
-                    startActivityForResult(Intent.createChooser(pick, "Файл платы"), FILE_REQUEST);
+                    startActivityForResult(Intent.createChooser(pick, "BoardV"), FILE_REQUEST);
                 } catch (Exception e) {
                     pendingFiles = null;
                     return false;
@@ -491,15 +496,48 @@ ELECTRON_PKG = {
         "directories": {"buildResources": "build", "output": "dist"},
         "publish": [{"provider": "generic", "url": "https://github.com/Carn1son/BoardV/releases/latest/download"}],  # makes electron-builder write latest.yml for the updater
         "win": {"target": ["nsis", "portable"], "icon": "build/icon.ico"},
-        "nsis": {"artifactName": "BoardV-Setup.exe", "oneClick": False, "allowToChangeInstallationDirectory": True, "createDesktopShortcut": True},
-        "portable": {"artifactName": "BoardV-portable.exe"},
-        "fileAssociations": [
-            {"ext": "PcbDoc", "name": "Altium PCB", "role": "Viewer"},
-            {"ext": "brd", "name": "Boardview", "role": "Viewer"},
-            {"ext": "bvr", "name": "Boardview BVR", "role": "Viewer"}
-        ]
+        "nsis": {"artifactName": "BoardV-Setup.exe", "include": "build/installer.nsh", "oneClick": False, "allowToChangeInstallationDirectory": True, "createDesktopShortcut": True},
+        "portable": {"artifactName": "BoardV-portable.exe"}
     }
 }
+NSIS_INCLUDE = r'''; BoardV file types: listed in "Open with" for .PcbDoc / .brd / .bvr, but never taking a type away
+; from a program that already opens it (Altium, Eagle...). BoardV becomes the default only for types nobody handles.
+!macro BV_EXT EXT
+  WriteRegStr HKCU "Software\Classes\${EXT}\OpenWithProgids" "BoardV.Board" ""
+  WriteRegStr HKCU "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\SupportedTypes" "${EXT}" ""
+  ReadRegStr $0 HKCR "${EXT}" ""
+  StrCmp $0 "" 0 +2
+    WriteRegStr HKCU "Software\Classes\${EXT}" "" "BoardV.Board"
+!macroend
+
+!macro BV_UNEXT EXT
+  DeleteRegValue HKCU "Software\Classes\${EXT}\OpenWithProgids" "BoardV.Board"
+  ReadRegStr $0 HKCU "Software\Classes\${EXT}" ""
+  StrCmp $0 "BoardV.Board" 0 +2
+    DeleteRegValue HKCU "Software\Classes\${EXT}" ""
+!macroend
+
+!macro customInstall
+  WriteRegStr HKCU "Software\Classes\BoardV.Board" "" "BoardV board"
+  WriteRegStr HKCU "Software\Classes\BoardV.Board\DefaultIcon" "" "$INSTDIR\${APP_EXECUTABLE_FILENAME},0"
+  WriteRegStr HKCU "Software\Classes\BoardV.Board\shell\open\command" "" '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" "%1"'
+  WriteRegStr HKCU "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\shell\open\command" "" '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" "%1"'
+  !insertmacro BV_EXT ".PcbDoc"
+  !insertmacro BV_EXT ".brd"
+  !insertmacro BV_EXT ".bvr"
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+!macroend
+
+!macro customUnInstall
+  !insertmacro BV_UNEXT ".PcbDoc"
+  !insertmacro BV_UNEXT ".brd"
+  !insertmacro BV_UNEXT ".bvr"
+  DeleteRegKey HKCU "Software\Classes\BoardV.Board"
+  DeleteRegKey HKCU "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}"
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+!macroend
+'''
+
 ELECTRON_MAIN = '''// BoardV for Windows: the same web app in its own window.
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
@@ -534,7 +572,7 @@ ipcMain.handle('upd-check', async () => {
 ipcMain.handle('upd-download', async () => {
   try { await updater.downloadUpdate(); return true; } catch (e) { upd('error', String((e && e.message) || e)); return false; }
 });
-ipcMain.on('upd-install', () => { if (updater) updater.quitAndInstall(false, true); });
+ipcMain.on('upd-install', () => { if (updater) updater.quitAndInstall(true, true); }); // silent: files are replaced in place, no installer wizard, then BoardV starts again
 
 const BOARD = /\\.(pcbdoc|brd|bvr|zip|json)$/i;
 function boardFiles(argv) { return argv.filter((a) => BOARD.test(a) && fs.existsSync(a)); }
@@ -611,15 +649,18 @@ jobs:
     outputs:
       ver: ${{ steps.v.outputs.ver }}
       vcode: ${{ steps.v.outputs.vcode }}
+      label: ${{ steps.v.outputs.label }}
       day: ${{ steps.v.outputs.day }}
     steps:
+      - uses: actions/checkout@v4
       - id: v
         run: |
-          export TZ=Europe/Moscow
-          RUN=${{ github.run_number }}
-          echo "ver=$(date +%Y).$((10#$(date +%m%d))).$RUN" >> "$GITHUB_OUTPUT"
-          echo "vcode=$(date +%Y%m%d)$(printf %02d $((RUN % 100)))" >> "$GITHUB_OUTPUT"
-          echo "day=$(date +%d.%m.%Y)" >> "$GITHUB_OUTPUT"
+          # src/VERSION holds major.minor; people see 0V<major>.<minor>, the apps compare 2100.<major>.<minor>
+          IFS=. read -r MA MI < src/VERSION
+          echo "ver=2100.$MA.$MI" >> "$GITHUB_OUTPUT"
+          echo "vcode=$((2100000000 + MA * 10000 + MI))" >> "$GITHUB_OUTPUT"
+          echo "label=0V$MA.$MI" >> "$GITHUB_OUTPUT"
+          echo "day=$(TZ=Europe/Moscow date +%d.%m.%Y)" >> "$GITHUB_OUTPUT"
 
   android:
     name: Android APK
@@ -651,7 +692,7 @@ jobs:
           fi
       - name: Put the web app into the APK
         run: |
-          echo "window.BV_BUILD = { version: '$BV_VER', day: '${{ needs.meta.outputs.day }}', app: 'android' };" > www/build-info.js
+          echo "window.BV_BUILD = { version: '$BV_VER', label: '${{ needs.meta.outputs.label }}', day: '${{ needs.meta.outputs.day }}', app: 'android' };" > www/build-info.js
           rm -rf android/app/src/main/assets/www
           mkdir -p android/app/src/main/assets
           cp -r www android/app/src/main/assets/www
@@ -676,7 +717,7 @@ jobs:
       - name: Copy the web app
         shell: bash
         run: |
-          echo "window.BV_BUILD = { version: '${{ needs.meta.outputs.ver }}', day: '${{ needs.meta.outputs.day }}', app: 'windows' };" > www/build-info.js
+          echo "window.BV_BUILD = { version: '${{ needs.meta.outputs.ver }}', label: '${{ needs.meta.outputs.label }}', day: '${{ needs.meta.outputs.day }}', app: 'windows' };" > www/build-info.js
           rm -rf electron/www
           cp -r www electron/www
           mkdir -p electron/build
@@ -715,13 +756,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VER: ${{ needs.meta.outputs.ver }}
+          LABEL: ${{ needs.meta.outputs.label }}
           DAY: ${{ needs.meta.outputs.day }}
         run: |
           set -e
           ls -R dl
           BASE="https://github.com/$GITHUB_REPOSITORY/releases/latest/download"
-          printf '%s\n' "Сборка от $DAY (версия $VER)." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "- Windows, без установки: $BASE/BoardV-portable.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
-          gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV — сборка от $DAY" --notes-file notes.md --latest
+          printf '%s\n' "BoardV $LABEL от $DAY." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "- Windows, без установки: $BASE/BoardV-portable.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
+          gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV $LABEL — $DAY" --notes-file notes.md --latest
       - name: Keep only the newest release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -795,7 +837,7 @@ def main():
     write(os.path.join(pwa, 'manifest.webmanifest'), json.dumps(MANIFEST, ensure_ascii=False, indent=2))
     write(os.path.join(pwa, 'sw.js'), SW)
     shutil.copy(cfg, os.path.join(pwa, 'BoardV-config.js'))
-    write(os.path.join(pwa, 'build-info.js'), "// replaced by the app build with its version\nwindow.BV_BUILD = { version: '0', day: '%s', app: 'web' };\n" % VDATE)
+    write(os.path.join(pwa, 'build-info.js'), "// replaced by the app build with its version\nwindow.BV_BUILD = { version: '%s', label: '%s', day: '%s', app: 'web' };\n" % (VSEM, VLABEL, VDATE))
     for f in ('icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-256.png'):
         shutil.copy(os.path.join(icons, f), os.path.join(pwa, f))
     write(os.path.join(pwa, 'nginx.conf.example'), NGINX)
@@ -823,6 +865,7 @@ def main():
     write(os.path.join(e, 'preload.js'), ELECTRON_PRELOAD)
     os.makedirs(os.path.join(e, 'build'), exist_ok=True)
     shutil.copy(os.path.join(icons, 'icon.ico'), os.path.join(e, 'build', 'icon.ico'))
+    write(os.path.join(e, 'build', 'installer.nsh'), NSIS_INCLUDE)
     write(os.path.join(prj, '.github', 'workflows', 'build.yml'), WORKFLOW)
     write(os.path.join(prj, '.gitignore'), 'android/.gradle/\nandroid/build/\nandroid/app/build/\nandroid/app/src/main/assets/www/\nelectron/node_modules/\nelectron/dist/\nelectron/www/\nsrc/out/\nsrc/build/\nsrc/BoardV.html\nsrc/dist/BoardV.html\n')
     write(os.path.join(prj, 'README.md'), PROJECT_README)

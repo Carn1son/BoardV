@@ -171,7 +171,7 @@ public class MainActivity extends Activity {
                 pick.setType("*/*"); // .PcbDoc / .brd have no registered MIME type
                 pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 try {
-                    startActivityForResult(Intent.createChooser(pick, "Файл платы"), FILE_REQUEST);
+                    startActivityForResult(Intent.createChooser(pick, "BoardV"), FILE_REQUEST);
                 } catch (Exception e) {
                     pendingFiles = null;
                     return false;

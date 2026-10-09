@@ -15,15 +15,18 @@ jobs:
     outputs:
       ver: ${{ steps.v.outputs.ver }}
       vcode: ${{ steps.v.outputs.vcode }}
+      label: ${{ steps.v.outputs.label }}
       day: ${{ steps.v.outputs.day }}
     steps:
+      - uses: actions/checkout@v4
       - id: v
         run: |
-          export TZ=Europe/Moscow
-          RUN=${{ github.run_number }}
-          echo "ver=$(date +%Y).$((10#$(date +%m%d))).$RUN" >> "$GITHUB_OUTPUT"
-          echo "vcode=$(date +%Y%m%d)$(printf %02d $((RUN % 100)))" >> "$GITHUB_OUTPUT"
-          echo "day=$(date +%d.%m.%Y)" >> "$GITHUB_OUTPUT"
+          # src/VERSION holds major.minor; people see 0V<major>.<minor>, the apps compare 2100.<major>.<minor>
+          IFS=. read -r MA MI < src/VERSION
+          echo "ver=2100.$MA.$MI" >> "$GITHUB_OUTPUT"
+          echo "vcode=$((2100000000 + MA * 10000 + MI))" >> "$GITHUB_OUTPUT"
+          echo "label=0V$MA.$MI" >> "$GITHUB_OUTPUT"
+          echo "day=$(TZ=Europe/Moscow date +%d.%m.%Y)" >> "$GITHUB_OUTPUT"
 
   android:
     name: Android APK
@@ -55,7 +58,7 @@ jobs:
           fi
       - name: Put the web app into the APK
         run: |
-          echo "window.BV_BUILD = { version: '$BV_VER', day: '${{ needs.meta.outputs.day }}', app: 'android' };" > www/build-info.js
+          echo "window.BV_BUILD = { version: '$BV_VER', label: '${{ needs.meta.outputs.label }}', day: '${{ needs.meta.outputs.day }}', app: 'android' };" > www/build-info.js
           rm -rf android/app/src/main/assets/www
           mkdir -p android/app/src/main/assets
           cp -r www android/app/src/main/assets/www
@@ -80,7 +83,7 @@ jobs:
       - name: Copy the web app
         shell: bash
         run: |
-          echo "window.BV_BUILD = { version: '${{ needs.meta.outputs.ver }}', day: '${{ needs.meta.outputs.day }}', app: 'windows' };" > www/build-info.js
+          echo "window.BV_BUILD = { version: '${{ needs.meta.outputs.ver }}', label: '${{ needs.meta.outputs.label }}', day: '${{ needs.meta.outputs.day }}', app: 'windows' };" > www/build-info.js
           rm -rf electron/www
           cp -r www electron/www
           mkdir -p electron/build
@@ -119,13 +122,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VER: ${{ needs.meta.outputs.ver }}
+          LABEL: ${{ needs.meta.outputs.label }}
           DAY: ${{ needs.meta.outputs.day }}
         run: |
           set -e
           ls -R dl
           BASE="https://github.com/$GITHUB_REPOSITORY/releases/latest/download"
-          printf '%s\n' "Сборка от $DAY (версия $VER)." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "- Windows, без установки: $BASE/BoardV-portable.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
-          gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV — сборка от $DAY" --notes-file notes.md --latest
+          printf '%s\n' "BoardV $LABEL от $DAY." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "- Windows, без установки: $BASE/BoardV-portable.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
+          gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV $LABEL — $DAY" --notes-file notes.md --latest
       - name: Keep only the newest release
         env:
           GH_TOKEN: ${{ github.token }}

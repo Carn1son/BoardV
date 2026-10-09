@@ -700,19 +700,10 @@ jobs:
         run: gradle -p android assembleRelease
       - name: Rename
         run: cp android/app/build/outputs/apk/release/app-release.apk BoardV.apk
-      - name: RuStore build (updates come from the store, so no self-update and no install permission)
-        run: |
-          sed -i '/REQUEST_INSTALL_PACKAGES/d' android/app/src/main/AndroidManifest.xml
-          sed -i '/new Updater(), "BoardVUpdater"/d' android/app/src/main/java/com/carnison/boardview/MainActivity.java
-          sed -i "s/app: 'android'/app: 'android', store: 'rustore'/" android/app/src/main/assets/www/build-info.js
-          gradle -p android assembleRelease
-          cp android/app/build/outputs/apk/release/app-release.apk BoardV-rustore.apk
       - uses: actions/upload-artifact@v4
         with:
           name: BoardV-android
-          path: |
-            BoardV.apk
-            BoardV-rustore.apk
+          path: BoardV.apk
 
   windows:
     name: Windows EXE
@@ -772,7 +763,7 @@ jobs:
           ls -R dl
           BASE="https://github.com/$GITHUB_REPOSITORY/releases/latest/download"
           printf '%s\n' "BoardV $LABEL от $DAY." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "- Windows, без установки: $BASE/BoardV-portable.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
-          gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-android/BoardV-rustore.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV $LABEL — $DAY" --notes-file notes.md --latest
+          gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV $LABEL — $DAY" --notes-file notes.md --latest
       - name: Keep only the newest release
         env:
           GH_TOKEN: ${{ github.token }}

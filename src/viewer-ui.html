@@ -219,7 +219,8 @@ canvas.drag { cursor: grabbing; }
 .qrbox { width: 240px; height: 240px; background: #fff; border-radius: 10px; padding: 8px; box-sizing: border-box; display: grid; place-items: center; }
 .qrbox svg { width: 100%; height: 100%; display: block; }
 .scanner { position: fixed; inset: 0; z-index: 30; background: #050606; color: #fff; overflow: hidden; }
-.scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #050606; }
+.scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #050606; opacity: 0; transition: opacity .25s; }
+.scanner video.live { opacity: 1; }
 .scanner.busy video, .scanner.busy .sc-frame, .scanner.busy .sc-top span { display: none; }
 .sc-top { position: absolute; z-index: 2; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 22px) 24px 40px; display: grid; gap: 6px; text-align: center; background: linear-gradient(rgb(0 0 0 / .75), transparent); }
 .sc-top b { font-family: var(--f-display); font-size: 20px; letter-spacing: .02em; }
@@ -241,6 +242,16 @@ canvas.drag { cursor: grabbing; }
 .sc-ico .logo { width: 64px; height: 64px; }
 .sc-ico svg { width: 60px; height: 60px; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.sc-result { position: absolute; z-index: 3; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); max-width: 480px; margin: 0 auto; box-sizing: border-box; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 12px 14px; border-radius: 14px; background: rgb(20 22 21 / .94); border: 1px solid rgb(255 255 255 / .14); box-shadow: 0 10px 30px rgb(0 0 0 / .5); cursor: pointer; }
+.sc-result .mk { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; font-weight: 700; }
+.sc-result.ok .mk { background: #1f9d55; color: #fff; }
+.sc-result.no .mk { background: rgb(255 255 255 / .12); color: #ddd; }
+.sc-result b { font-size: 15px; overflow-wrap: anywhere; }
+.sc-result span { font-size: 12.5px; color: rgb(255 255 255 / .75); overflow-wrap: anywhere; }
+.bomt td.c-v .chk { color: #22b35e; font-weight: 700; margin-right: 6px; }
+.bomt tbody tr.got td.c-v { color: #22b35e; }
+#partScan { display: inline-grid; place-items: center; width: 32px; height: 30px; padding: 0; }
+#partScan svg { width: 17px; height: 17px; }
 .sc-bottom { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 40px 24px calc(env(safe-area-inset-bottom, 0px) + 26px); display: flex; justify-content: center; background: linear-gradient(transparent, rgb(0 0 0 / .75)); }
 .sc-bottom .btn { min-width: 160px; min-height: 44px; border-radius: 22px; background: rgb(255 255 255 / .12); border-color: rgb(255 255 255 / .25); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .sc-frame em, .sc-ico .spin { animation: none; } }
@@ -361,7 +372,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     <div class="split" id="splitR" role="separator" aria-orientation="vertical" aria-label="Ширина правой панели" tabindex="0" title="Потяните, чтобы изменить ширину. Двойной клик — по умолчанию"></div>
     <aside class="rpanel" aria-label="BOM и настройки">
       <section class="rbody" id="paneBom" aria-label="BOM">
-      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn sm" type="button" id="copyBom">Копировать CSV</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
+      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn" type="button" id="partScan" title="Сканировать QR компонента" aria-label="Сканировать QR компонента" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg></button><button class="btn sm" type="button" id="copyBom">Копировать CSV</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
       <div class="bomhead">
         <input type="search" id="bq" placeholder="Фильтр: 100n, 0402, LM…" aria-label="Фильтр BOM" autocomplete="off" spellcheck="false">
       </div>
@@ -404,7 +415,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
 </div></div>
 <div class="scanner" id="scanDlg" hidden role="dialog" aria-modal="true" aria-label="Открыть с компьютера">
   <video id="scanVid" playsinline muted autoplay poster="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="></video>
-  <div class="sc-top"><b>Открыть с компьютера</b><span id="scanHint">Наведите камеру на QR-код в окне BoardV на компьютере</span></div>
+  <div class="sc-top"><b id="scanTtl">Открыть с компьютера</b><span id="scanHint">Наведите камеру на QR-код в окне BoardV на компьютере</span></div>
   <div class="sc-frame" id="scanFrame"><i></i><i></i><i></i><i></i><em></em></div>
   <div class="sc-state" id="scanState" hidden>
     <div class="sc-ico" id="scanIco"></div>
@@ -413,6 +424,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     <ul id="scanTips" hidden><li>Телефон и компьютер в одной Wi-Fi сети (не гостевой)</li><li>На телефоне выключен VPN или в нём разрешена локальная сеть</li><li>В брандмауэре Windows BoardV разрешён для частной сети</li></ul>
     <button type="button" class="btn primary" id="scanAgain" hidden>Сканировать снова</button>
   </div>
+  <div class="sc-result" id="partRes" hidden></div>
   <div class="sc-bottom"><button type="button" class="btn" id="scanStop">Отмена</button></div>
 </div>
 <div class="dropmask" id="mask" hidden><div class="dm"><i class="logo" aria-hidden="true"></i><b>Отпустите файл, чтобы открыть</b><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div></div></div>
@@ -645,7 +657,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     setModel(model, { files: used.concat(metaNames), valuesFrom: metaNames.join(', ') || (by.json || by.ascii || by.pcbdoc ? 'из файла платы' : ''), pinNames: pinNames });
   }
   function setModel(model, info) {
-    M = model; src = info; setShared(!!info.shared);
+    M = model; src = info; PART_OK = {}; setShared(!!info.shared);
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true;
     refreshAll(true);
   }
@@ -1081,7 +1093,8 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     BOM_COLS.forEach(function (c) { h += '<th class="' + c[2] + '"' + (BS.key === c[0] ? ' aria-sort="' + (BS.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" data-sort="' + c[0] + '">' + c[1] + (BS.key === c[0] ? (BS.dir > 0 ? ' ↑' : ' ↓') : '') + '</button></th>'; });
     h += '</tr></thead><tbody>';
     gs.forEach(function (g) {
-      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (g.key === S.group ? ' class="on"' : '') + '><td class="c-v">' + esc(g.value || '—') + '</td><td class="c-f">' + esc(g.footprint || '—') +
+      var got = !!PART_OK[g.key], cls = (g.key === S.group ? 'on' : '') + (got ? ' got' : '');
+      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '><td class="c-v">' + (got ? '<span class="chk" title="Отсканирован">✓</span>' : '') + esc(g.value || '—') + '</td><td class="c-f">' + esc(g.footprint || '—') +
            (g.desc ? '<div class="note">' + esc(g.desc) + '</div>' : '') + '</td><td class="c-q">' + g.parts.length + '</td><td class="c-r">' +
            g.parts.map(function (p) { return p.bottom ? '<span class="b">' + esc(p.ref) + '</span>' : esc(p.ref); }).join(', ') + '</td></tr>';
     });
@@ -1393,27 +1406,34 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
   function scanView(kind, title, text, tips) { // kind: 'camera' | 'wait' | 'error'
     var d = $('scanDlg'); d.classList.toggle('busy', kind !== 'camera');
     $('scanState').hidden = kind === 'camera'; $('scanFrame').hidden = kind !== 'camera';
-    $('scanHint').textContent = 'Наведите камеру на QR-код в окне BoardV на компьютере';
+    $('scanHint').textContent = SCAN_MODE === 'part' ? 'Наведите камеру на QR-код на катушке или пакете компонента' : 'Наведите камеру на QR-код в окне BoardV на компьютере';
     if (kind === 'camera') return;
     $('scanIco').innerHTML = kind === 'wait' ? '<div class="spin"></div>' : ICO_ERR;
     $('scanTitle').textContent = title || ''; $('scanText').textContent = text || '';
     $('scanTips').hidden = !tips; $('scanAgain').hidden = kind !== 'error';
   }
-  function stopScan() { clearInterval(scanTimer); scanTimer = 0; if (scanStream) scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; $('scanVid').srcObject = null; }
+  function stopScan() { $('scanVid').classList.remove('live'); clearInterval(scanTimer); scanTimer = 0; if (scanStream) scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; $('scanVid').srcObject = null; }
   function closeScanner() { scanJob++; stopScan(); $('scanDlg').hidden = true; }
-  function openScanner() {
-    if (!CAN_SCAN) return;
-    openSheet(null); scanJob++; $('scanDlg').hidden = false; scanView('camera');
+  var SCAN_MODE = 'board';
+  function openScanner(mode) {
+    SCAN_MODE = mode === 'part' ? 'part' : 'board';
+    if (SCAN_MODE === 'board' ? !CAN_SCAN : !CAN_CAM) return;
+    openSheet(null); scanJob++; $('scanDlg').hidden = false; scanView('camera'); partResult(null);
+    $('scanTtl').textContent = SCAN_MODE === 'part' ? 'Сканирование компонентов' : 'Открыть с компьютера';
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }).then(function (st) {
       if ($('scanDlg').hidden) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
-      scanStream = st; var v = $('scanVid'); v.srcObject = st; v.play().catch(function () {});
+      scanStream = st; var v = $('scanVid'); v.classList.remove('live'); v.srcObject = st; v.play().catch(function () {});
+      var shown = false, reveal = function () { if (shown || !v.videoWidth) return; shown = true; setTimeout(function () { v.classList.add('live'); }, 180); }; // skip the camera's first blank frames
+      v.onplaying = reveal;
       var c = document.createElement('canvas'), cx = c.getContext('2d', { willReadFrequently: true });
       scanTimer = setInterval(function () {
-        if (!v.videoWidth) return;
+        if (!v.videoWidth) return; reveal();
         var k = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
         cx.drawImage(v, 0, 0, c.width, c.height);
-        var code = jsQR(cx.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: 'dontInvert' });
-        if (code && /^BV\d;/.test(code.data)) { stopScan(); receiveBoard(code.data); }
+        var code = jsQR(cx.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: SCAN_MODE === 'part' ? 'attemptBoth' : 'dontInvert' });
+        if (!code || !code.data) return;
+        if (SCAN_MODE === 'part') onPartCode(code.data);
+        else if (/^BV\d;/.test(code.data)) { stopScan(); receiveBoard(code.data); }
       }, 200);
     }).catch(function () { scanView('error', 'Нет доступа к камере', 'Разрешите BoardV использовать камеру в настройках Android и попробуйте снова.'); });
   }
@@ -1472,16 +1492,79 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
         flash('Плата с компьютера: только просмотр');
       }).catch(function () { scanView('error', 'Не удалось открыть плату', 'Данные не расшифровались. Покажите на компьютере новый код.'); });
   }
+  /* ---------- component labels: read the part number from the reel / bag QR and find it in the BOM ---------- */
+  var CAN_CAM = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  var PART_OK = {}, partLast = { text: '', at: 0 };
+  function normPN(t) { return String(t || '').toUpperCase().replace(/[^0-9A-ZА-ЯЁ]/g, ''); }
+  function partCandidates(text) {
+    var out = [], seen = {};
+    function add(v) { var n = normPN(v); if (n.length >= 3 && !seen[n]) { seen[n] = 1; out.push({ raw: String(v).trim(), n: n, key: true }); } }
+    // labelled fields: LCSC {pm:...}, "P/N: ...", "MPN=...", ECIA / MH10 data identifiers 1P / P (fields split by GS or RS)
+    var re = /(?:^|[{,;|\s])(?:pm|pn|mpn|p\/n|part\s*(?:no|number|#)?|mfr\s*p\/?n|manufacturer\s*part\s*number)\s*[:=#]\s*([^,;}|\r\n]+)/gi, m;
+    while ((m = re.exec(text))) add(m[1]);
+    text.split(/[\x1d\x1e\x04\r\n]+/).forEach(function (f) { var mm = /^(?:1P|P)(.{4,})$/.exec(f.trim()); if (mm) add(mm[1]); });
+    // any other letters+digits word
+    (text.match(/[0-9A-Za-zА-Яа-я][0-9A-Za-zА-Яа-я\-\/.#+]{2,}/g) || []).forEach(function (w) {
+      var n = normPN(w); if (n.length >= 4 && /\d/.test(n) && /[A-ZА-Я]/.test(n) && !seen[n]) { seen[n] = 1; out.push({ raw: w, n: n, key: false }); }
+    });
+    return out;
+  }
+  function matchPart(text) {
+    if (!bomIndex) return null;
+    var cands = partCandidates(text), best = null;
+    bomIndex.forEach(function (g) {
+      var fields = [g.value, g.footprint].concat(String(g.desc || '').split(/[\s,;]+/)).map(normPN).filter(function (x) { return x.length >= 3; }), score = 0, hit = '';
+      cands.forEach(function (c) {
+        fields.forEach(function (f, i) {
+          var sc = 0;
+          if (f === c.n) sc = i === 0 ? 10 : i === 1 ? 4 : 6;                         // exact: value > description > package
+          else if (f.length >= 6 && c.n.length >= 6 && (c.n.indexOf(f) === 0 || f.indexOf(c.n) === 0)) sc = i === 1 ? 2 : 5; // same part number with a packaging suffix
+          if (sc && c.key) sc += 2;
+          if (sc > score) { score = sc; hit = c.raw; }
+        });
+      });
+      if (score >= 5 && (!best || score > best.score)) best = { g: g, score: score, hit: hit };
+    });
+    return { best: best, cands: cands };
+  }
+  function partResult(r) {
+    var el = $('partRes');
+    if (!r) { el.hidden = true; el.innerHTML = ''; el.onclick = null; return; }
+    el.hidden = false;
+    if (r.best) {
+      var g = r.best.g;
+      el.className = 'sc-result ok';
+      el.innerHTML = '<div class="mk">✓</div><b></b><span></span>';
+      el.querySelector('b').textContent = (g.value || '—') + (g.footprint ? ' · ' + g.footprint : '');
+      el.querySelector('span').textContent = 'Есть в BOM: ' + g.parts.length + ' шт. — ' + g.parts.slice(0, 12).map(function (p) { return p.ref; }).join(', ') + (g.parts.length > 12 ? '…' : '');
+      el.onclick = function () { closeScanner(); selectGroup(g.key); };
+    } else {
+      el.className = 'sc-result no';
+      el.innerHTML = '<div class="mk">?</div><b>Нет в BOM этой платы</b><span></span>';
+      el.querySelector('span').textContent = (r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '—' }).raw;
+      el.onclick = null;
+    }
+  }
+  function onPartCode(text) {
+    var now = Date.now(); if (text === partLast.text && now - partLast.at < 2500) return; // same label still in view
+    partLast = { text: text, at: now };
+    var r = matchPart(text); if (!r) return;
+    partResult(r);
+    if (r.best) { PART_OK[r.best.g.key] = 1; renderBom(); if (navigator.vibrate) try { navigator.vibrate(35); } catch (e) {} }
+  }
+  $('partScan').onclick = function () { openScanner('part'); };
+  function updPartScan() { $('partScan').hidden = !(CAN_CAM && M); }
+
   function setShared(on) { // view-only copy: nothing leaves the phone, no screenshots
     if (window.BoardVAndroid && window.BoardVAndroid.setSecure) try { window.BoardVAndroid.setSecure(!!on); } catch (e) {}
     $('copyBom').hidden = !!on;
     updShareBtn();
   }
   $('scanStop').onclick = closeScanner;
-  $('scanAgain').onclick = openScanner;
+  $('scanAgain').onclick = function () { openScanner(SCAN_MODE); };
   if (CAN_SCAN) { $('scanEmpty').hidden = false; $('mscan').hidden = false; }
-  $('scanEmpty').onclick = function (e) { e.stopPropagation(); openScanner(); };
-  $('mscan').onclick = openScanner;
+  $('scanEmpty').onclick = function (e) { e.stopPropagation(); openScanner('board'); };
+  $('mscan').onclick = function () { openScanner('board'); };
 
   /* ---------- files opened from the system (double-click, "Open with") ---------- */
   if ('launchQueue' in window && window.launchQueue.setConsumer) {
@@ -1661,7 +1744,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
 
   function refreshAll(refit) {
     buildNetIndex();
-    $('empty').hidden = !!M; applyLayout(false); updShareBtn();
+    $('empty').hidden = !!M; applyLayout(false); updShareBtn(); updPartScan();
     $('fileName').textContent = src.files.join(' + ');
     if (refit) { V.rot = IS_PHONE && H > W * 1.15 && M.w > M.h * 1.15 ? 1 : 0; setSide('top', true); fit(); } // phone held upright + wide board: turn it to fill the screen
     renderCard(); renderList(); status(); req();

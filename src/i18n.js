@@ -103,6 +103,8 @@ var I18N = (function () {
     'На компьютере никто не подтвердил доступ.': 'Nobody confirmed access on the PC.', 'Отклонено': 'Declined', 'Компьютер отклонил подключение.': 'The PC declined the connection.',
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
+    'Сканирование компонентов': 'Scanning parts', 'Наведите камеру на QR-код на катушке или пакете компонента': 'Point the camera at the QR code on the reel or bag',
+    'Сканировать QR компонента': 'Scan a part QR code', 'Есть в BOM:': 'In the BOM:', 'Нет в BOM этой платы': 'Not in this board BOM', 'Отсканирован': 'Scanned',
     // ---- file parsing messages (core.js / pcbdoc.js)
     'компонентов': 'parts', 'падов': 'pads', 'цепей': 'nets', 'номиналы у': 'values for', 'пинов': 'pins', 'точек': 'points', 'отрезков, контур': 'segments, outline',
     'В .PcbDoc не найдены потоки компонентов и падов. Это точно файл платы Altium (а не библиотека .PcbLib)?': 'No parts or pads found in the .PcbDoc. Is it an Altium board file (not a .PcbLib library)?',

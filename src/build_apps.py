@@ -18,8 +18,9 @@ def lib():
     pcb = open(os.path.join(ROOT, 'pcbdoc.js')).read().replace("if (typeof module !== 'undefined') module.exports = PCBDOC;", "")
     core = open(os.path.join(ROOT, 'core.js')).read().replace("if (typeof module !== 'undefined') module.exports = BV;", "")
     i18n = open(os.path.join(ROOT, 'i18n.js')).read()
-    vendor = ''.join(open(os.path.join(ROOT, 'vendor', f)).read() + '\n' for f in ('qrcode.min.js', 'jsqr.min.js'))
-    return pcb + '\n' + core + '\n' + i18n + '\n' + vendor
+    parts = open(os.path.join(ROOT, 'parts.js')).read().replace("if (typeof module !== 'undefined') module.exports = PARTS;", "")
+    vendor = ''.join(open(os.path.join(ROOT, 'vendor', f)).read() + '\n' for f in ('qrcode.min.js', 'jsqr.min.js', 'zxing-dm.min.js'))
+    return pcb + '\n' + core + '\n' + i18n + '\n' + parts + '\n' + vendor
 
 
 def logo_uri(px=96):

@@ -246,6 +246,9 @@ canvas.drag { cursor: grabbing; }
 .sc-result .mk { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; font-weight: 700; }
 .sc-result.ok .mk { background: #1f9d55; color: #fff; }
 .sc-result.no .mk { background: rgb(255 255 255 / .12); color: #ddd; }
+.sc-result.warn .mk { background: #d98a1c; color: #fff; }
+.sc-result .mk { grid-row: span 3; }
+.sc-result i { grid-column: 2; font-style: normal; font-size: 12px; color: rgb(255 255 255 / .6); overflow-wrap: anywhere; }
 .sc-result b { font-size: 15px; overflow-wrap: anywhere; }
 .sc-result span { font-size: 12.5px; color: rgb(255 255 255 / .75); overflow-wrap: anywhere; }
 .bomt td.c-v .chk { color: #22b35e; font-weight: 700; margin-right: 6px; }
@@ -1406,7 +1409,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
   function scanView(kind, title, text, tips) { // kind: 'camera' | 'wait' | 'error'
     var d = $('scanDlg'); d.classList.toggle('busy', kind !== 'camera');
     $('scanState').hidden = kind === 'camera'; $('scanFrame').hidden = kind !== 'camera';
-    $('scanHint').textContent = SCAN_MODE === 'part' ? 'Наведите камеру на QR-код на катушке или пакете компонента' : 'Наведите камеру на QR-код в окне BoardV на компьютере';
+    $('scanHint').textContent = SCAN_MODE === 'part' ? 'Наведите камеру на QR или DataMatrix на катушке или пакете компонента' : 'Наведите камеру на QR-код в окне BoardV на компьютере';
     if (kind === 'camera') return;
     $('scanIco').innerHTML = kind === 'wait' ? '<div class="spin"></div>' : ICO_ERR;
     $('scanTitle').textContent = title || ''; $('scanText').textContent = text || '';
@@ -1425,15 +1428,30 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
       scanStream = st; var v = $('scanVid'); v.classList.remove('live'); v.srcObject = st; v.play().catch(function () {});
       var shown = false, reveal = function () { if (shown || !v.videoWidth) return; shown = true; setTimeout(function () { v.classList.add('live'); }, 180); }; // skip the camera's first blank frames
       v.onplaying = reveal;
-      var c = document.createElement('canvas'), cx = c.getContext('2d', { willReadFrequently: true });
+      var c = document.createElement('canvas'), cx = c.getContext('2d', { willReadFrequently: true }), tick = 0, bd = null, bdBusy = false;
+      // labels on reels and bags carry a QR or a DataMatrix; the system detector reads both when the phone has it
+      if (SCAN_MODE === 'part' && window.BarcodeDetector && BarcodeDetector.getSupportedFormats) BarcodeDetector.getSupportedFormats().then(function (f) {
+        var want = f.filter(function (x) { return x === 'qr_code' || x === 'data_matrix'; });
+        if (want.indexOf('data_matrix') >= 0) bd = new BarcodeDetector({ formats: want });
+      }).catch(function () {});
+      function got(text) {
+        if (!text) return;
+        if (SCAN_MODE === 'part') onPartCode(text);
+        else if (/^BV\d;/.test(text)) { stopScan(); receiveBoard(text); }
+      }
       scanTimer = setInterval(function () {
         if (!v.videoWidth) return; reveal();
+        if (bd) { if (!bdBusy) { bdBusy = true; bd.detect(v).then(function (list) { bdBusy = false; if (list && list[0] && scanStream) got(list[0].rawValue); }).catch(function () { bdBusy = false; bd = null; }); } return; }
         var k = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
         cx.drawImage(v, 0, 0, c.width, c.height);
-        var code = jsQR(cx.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: SCAN_MODE === 'part' ? 'attemptBoth' : 'dontInvert' });
-        if (!code || !code.data) return;
-        if (SCAN_MODE === 'part') onPartCode(code.data);
-        else if (/^BV\d;/.test(code.data)) { stopScan(); receiveBoard(code.data); }
+        var img = cx.getImageData(0, 0, c.width, c.height), code;
+        if (SCAN_MODE === 'part' && (tick++ & 1) && window.BVDM) { // every other frame: DataMatrix
+          var d = img.data, g = new Uint8ClampedArray(c.width * c.height);
+          for (var i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8;
+          got(BVDM.read(g, c.width, c.height)); return;
+        }
+        code = jsQR(img.data, c.width, c.height, { inversionAttempts: SCAN_MODE === 'part' ? 'attemptBoth' : 'dontInvert' });
+        if (code) got(code.data);
       }, 200);
     }).catch(function () { scanView('error', 'Нет доступа к камере', 'Разрешите BoardV использовать камеру в настройках Android и попробуйте снова.'); });
   }
@@ -1509,9 +1527,21 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     });
     return out;
   }
+  // what a BOM line is in numbers: "100нФ 16В" + footprint "C0402" -> capacitor 100 nF, 16 V, 0402
+  function bomParams(g) {
+    if (g.pp !== undefined) return g.pp;
+    var pre = g.prefix === 'C' || g.prefix === 'R' ? g.prefix : null, pp = null;
+    if (pre) {
+      pp = PARTS.decode(normPN(g.value)) || PARTS.fromBom(g.value + ' ' + g.footprint + ' ' + g.desc, pre);
+      if (pp) { if (pp.kind !== pre) pp = null; else if (!pp.size) { var sz = PARTS.fromBom('1 ' + g.footprint, pre); if (sz && sz.size) pp.size = sz.size; } }
+    }
+    return (g.pp = pp);
+  }
   function matchPart(text) {
     if (!bomIndex) return null;
-    var cands = partCandidates(text), best = null;
+    var cands = partCandidates(text), best = null, near = null, dec = null;
+    // a passive's part number says what it is: GRM21BR71C105MA01L = 1 µF 16 V 0805 X7R; labelled fields first
+    cands.slice().sort(function (a, b) { return b.key - a.key; }).some(function (c) { return (dec = PARTS.decode(c.n) || PARTS.decode(c.raw)); });
     bomIndex.forEach(function (g) {
       var fields = [g.value, g.footprint].concat(String(g.desc || '').split(/[\s,;]+/)).map(normPN).filter(function (x) { return x.length >= 3; }), score = 0, hit = '';
       cands.forEach(function (c) {
@@ -1523,27 +1553,35 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
           if (sc > score) { score = sc; hit = c.raw; }
         });
       });
+      if (dec) {
+        var pm = PARTS.match(dec, bomParams(g));
+        if (pm.score && !pm.warn.length && 20 + pm.score > score) score = 20 + pm.score;
+        else if (pm.score && pm.warn.length && (!near || pm.score > near.score)) near = { g: g, score: pm.score, warn: pm.warn };
+      }
       if (score >= 5 && (!best || score > best.score)) best = { g: g, score: score, hit: hit };
     });
-    return { best: best, cands: cands };
+    return { best: best, near: best ? null : near, cands: cands, dec: dec };
   }
   function partResult(r) {
     var el = $('partRes');
     if (!r) { el.hidden = true; el.innerHTML = ''; el.onclick = null; return; }
     el.hidden = false;
-    if (r.best) {
-      var g = r.best.g;
-      el.className = 'sc-result ok';
-      el.innerHTML = '<div class="mk">✓</div><b></b><span></span>';
+    var g = r.best ? r.best.g : r.near ? r.near.g : null;
+    el.className = 'sc-result ' + (r.best ? 'ok' : r.near ? 'warn' : 'no');
+    el.innerHTML = '<div class="mk"></div><b></b><span></span>' + (r.dec ? '<i></i>' : '');
+    el.querySelector('.mk').textContent = r.best ? '✓' : r.near ? '!' : '?';
+    if (g) {
       el.querySelector('b').textContent = (g.value || '—') + (g.footprint ? ' · ' + g.footprint : '');
-      el.querySelector('span').textContent = 'Есть в BOM: ' + g.parts.length + ' шт. — ' + g.parts.slice(0, 12).map(function (p) { return p.ref; }).join(', ') + (g.parts.length > 12 ? '…' : '');
+      el.querySelector('span').textContent = r.best
+        ? 'Есть в BOM: ' + g.parts.length + ' шт. — ' + g.parts.slice(0, 12).map(function (p) { return p.ref; }).join(', ') + (g.parts.length > 12 ? '…' : '')
+        : 'Номинал совпадает, но ' + r.near.warn.join(', ');
       el.onclick = function () { closeScanner(); selectGroup(g.key); };
     } else {
-      el.className = 'sc-result no';
-      el.innerHTML = '<div class="mk">?</div><b>Нет в BOM этой платы</b><span></span>';
+      el.querySelector('b').textContent = 'Нет в BOM этой платы';
       el.querySelector('span').textContent = (r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '—' }).raw;
       el.onclick = null;
     }
+    if (r.dec) el.querySelector('i').textContent = r.dec.mfr + ' ' + r.dec.pn + ' → ' + PARTS.fmt(r.dec);
   }
   function onPartCode(text) {
     var now = Date.now(); if (text === partLast.text && now - partLast.at < 2500) return; // same label still in view

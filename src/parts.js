@@ -27,6 +27,10 @@ var PARTS = (function () {
     var m = /^(\d{2,3})(\d)$/.exec(code); if (!m) return NaN;
     return +m[1] * Math.pow(10, +m[2]);
   }
+  function v3(v) { return /R/.test(v) ? parseFloat(v.replace('R', '.')) : +v.slice(0, 2) * Math.pow(10, +v.charAt(2)); } // "160" -> 16 V, "500" -> 50 V, "6R3"
+  function dz(d) { return d.replace(/NPO|NP0|COG|CG/, 'C0G'); }
+  function tolOf(letters, code) { var t = TOL[letters.slice(-1)]; return t && t <= 5 ? t : code.length === 4 ? 1 : 5; }
+  var TANT = { A: '1206', B: '1210', C: '2312', D: '2917', E: '2917', R: '0805', P: '0805', S: '1206', T: '1210', U: '2312', V: '2924', W: '2924', X: '2917', Y: '2917', H: '1206' };
   function C(o) { o.kind = 'C'; return o; }
   function R(o) { o.kind = 'R'; return o; }
   var RULES = [
@@ -54,37 +58,92 @@ var PARTS = (function () {
     [/^(?:[A-Z])?(0201|0402|0603|0805|1206|1210|1812)(B|X|CG|F|N)([0-9R]{3})([A-Z])(\d{3}|\dR\d)[A-Z]{2}/, function (m) { // Fenghua, Walsin, many Chinese makers: 0402B104K160NT
       var D = { B: 'X7R', X: 'X5R', CG: 'C0G', N: 'C0G', F: 'Y5V' }, v = m[5];
       return C({ mfr: 'Fenghua/Walsin', size: m[1], diel: D[m[2]], val: cap3(m[3]), tol: TOL[m[4]], volt: /R/.test(v) ? parseFloat(v.replace('R', '.')) : +v.slice(0, 2) * Math.pow(10, +v.charAt(2)) }); }],
-    [/^([AJLETGUHQ])MK(042|063|105|107|212|316|325|432)([A-Z0-9]{2})([0-9R]{3})([A-Z])/, function (m) {
-      var V = { A: 4, J: 6.3, L: 10, E: 16, T: 25, G: 35, U: 50, H: 100, Q: 250 }, D = { B7: 'X7R', BJ: 'X5R', C6: 'X6S', C7: 'X7S', CG: 'C0G', F: 'Y5V' };
+    [/^([PAJLETGUHQS])[MV]K(042|063|105|107|212|316|325|432)([A-Z0-9]{2})([0-9R]{3})([A-Z])/, function (m) {
+      var V = { P: 2.5, A: 4, J: 6.3, L: 10, E: 16, T: 25, G: 35, U: 50, H: 100, Q: 250, S: 630 }, D = { B7: 'X7R', BJ: 'X5R', C6: 'X6S', C7: 'X7S', CG: 'C0G', F: 'Y5V' };
       return C({ mfr: 'Taiyo Yuden', volt: V[m[1]], size: TY_SIZE[m[2]], diel: D[m[3]], val: cap3(m[4]), tol: TOL[m[5]] }); }],
+    // ---- tantalum (case letter instead of size)
+    [/^T(?:AJ|PS|CJ|LJ|AC|RJ)([A-EHPRSTUVWXY])(\d{3})([JKM])(\d{3}|\dR\d)/, function (m) { // AVX TAJA106K016RNJ
+      return C({ mfr: 'AVX tantalum', size: TANT[m[1]], val: cap3(m[2]), tol: TOL[m[3]], volt: /R/.test(m[4]) ? parseFloat(m[4].replace('R', '.')) : +m[4], diel: 'Ta' }); }],
+    [/^T49[1-9]([A-EX])(\d{3})([JKM])(\d{3}|\dR\d)/, function (m) { // KEMET T491A106K016AT
+      return C({ mfr: 'KEMET tantalum', size: TANT[m[1]], val: cap3(m[2]), tol: TOL[m[3]], volt: /R/.test(m[4]) ? parseFloat(m[4].replace('R', '.')) : +m[4], diel: 'Ta' }); }],
+    // ---- more ceramic capacitors
+    [/^TCC(0201|0402|0603|0805|1206|1210|1812)(X7R|X5R|COG|C0G|NPO|NP0|Y5V|X6S|X7S)([0-9R]{3})([A-Z])(\d{3}|\dR\d)/, function (m) { // CCTC TCC0603X7R104K500CT
+      return C({ mfr: 'CCTC', size: m[1], diel: dz(m[2]), val: cap3(m[3]), tol: TOL[m[4]], volt: v3(m[5]) }); }],
+    [/^CM(03|05|105|21|316|32)(X7R|X5R|X7S|X6S|CG|C0G|SL)([0-9R]{3})([A-Z])(\d{2})A/, function (m) { // Kyocera CM105X5R105K10AT
+      var S = { '03': '0201', '05': '0402', '105': '0603', '21': '0805', '316': '1206', '32': '1210' };
+      return C({ mfr: 'Kyocera', size: S[m[1]], diel: dz(m[2]), val: cap3(m[3]), tol: TOL[m[4]], volt: m[5] === '06' ? 6.3 : m[5] === '04' ? 4 : +m[5] }); }],
+    [/^VJ(0201|0402|0603|0805|1206|1210|1812)([A-Z])([0-9R]{3})([A-Z])/, function (m) { // Vishay VJ0402Y104KXJCW1BC
+      return C({ mfr: 'Vishay', size: m[1], diel: { A: 'C0G', Y: 'X7R', G: 'X5R', V: 'Y5V' }[m[2]], val: cap3(m[3]), tol: TOL[m[4]] }); }],
+    [/^CGJ(\d)[A-Z]\d(X7R|X5R|C0G|X7S|X6S|X7T|X8R|NP0)(\d[A-Z])([0-9R]{3})([A-Z])/, function (m) { // TDK CGJ
+      var S = { 1: '0201', 2: '0402', 3: '0603', 4: '0805', 5: '1206', 6: '1210' };
+      return C({ mfr: 'TDK', size: S[m[1]], diel: dz(m[2]), volt: V2[m[3]], val: cap3(m[4]), tol: TOL[m[5]] }); }],
     // ---- chip resistors
-    [/^RC(0201|0402|0603|0805|1206|1210|2010|2512)([A-Z])R-?\d{2}([0-9RKM.]+?)L?$/, function (m) {
+    [/^(?:RC|RT|RL|AC|AF|AR|RE|PA|PT|SR|RV)(0075|01005|0100|0201|0402|0603|0805|1206|1210|1218|2010|2512)([A-Z])[RBEKL][A-Z]?-?\d{2}([0-9RKML.]+?)L?$/, function (m) { // Yageo RC0402FR-0710KL, RT, RL, AC, AF…
       return R({ mfr: 'Yageo', size: m[1], tol: TOL[m[2]], val: res(m[3].replace('.', 'R')) }); }],
-    [/^CRCW(0201|0402|0603|0805|1206|1210|2010|2512)([0-9RKM]{3,5})([A-Z])/, function (m) {
+    [/^(?:CRCW|CRCE|TNPW|TNPU|RCG|RCS|RCV|RCA|RCC|MCT|MCS|MCU|CRMA|PHP|PAT|PNM)(0201|0402|0603|0805|1206|1210|2010|2512|1020|0612|1218)([0-9RKML]{3,5})([A-Z])/, function (m) { // Vishay CRCW040210K0FKED, TNPW, RCG, RCS…
       return R({ mfr: 'Vishay', size: m[1], val: res(m[2]), tol: TOL[m[3]] }); }],
-    [/^ERJ-?(1G|2G|3G|6G|8G|1R|2R|3R|6R|8R|3E|6E|8E|2B|3B|6B|8B|U02|U03|U06|P03|P06|PA3)[A-Z]{1,3}?([FDGJ])(\d{3,4}|R\d{2}|\dR\d{1,2})[A-Z]?$/, function (m) {
-      var S = { 1: '0201', 2: '0402', 3: '0603', 6: '0805', 8: '1206' }, d = (m[1].match(/\d/) || [''])[0];
-      return R({ mfr: 'Panasonic', size: S[d], tol: TOL[m[2]], val: res(m[3]) }); }],
-    [/^ERJ-?([1-8])[A-Z]{2,3}([FDGJ])?(\d{3,4})[A-Z]?$/, function (m) { // ERJ-3GEYJ103V, ERJ-2RKF1002X
-      var S = { 1: '0201', 2: '0402', 3: '0603', 6: '0805', 8: '1206' };
-      return R({ mfr: 'Panasonic', size: S[m[1]], tol: m[3].length === 4 ? 1 : 5, val: res(m[3]) }); }],
-    [/^(0201|0402|0603|0805|1206|1210|2010|2512)W[A-Z0-9]([FJDB])(\d{4}|[0-9RKM]{4})T/, function (m) { // UNI-ROYAL 0402WGF1002TCE
-      var c = m[3]; return R({ mfr: 'Uni-Royal', size: m[1], tol: TOL[m[2]], val: m[2] === 'J' && /^0\d{3}$/.test(c) ? res(c.slice(1)) : res(c) }); }],
-    [/^RC(0603|1005|1608|2012|3216)([FJD])([0-9RKM]{3,4})/, function (m) {
-      return R({ mfr: 'Samsung', size: METRIC[m[1]], tol: TOL[m[2]], val: res(m[3]) }); }],
-    [/^CR(0201|0402|0603|0805|1206)-?([FJ])[XW]-?([0-9RKM]{3,4})/, function (m) {
+    [/^ER[JA]-?(P03|P06|P08|P14|PA2|PA3|PB3|PB6|PM8|U01|U02|U03|U06|U08|UP3|UP6|UP8|H2|H3|L03|L06|L08)([A-Z]{0,4}?)(\d{3,4}|\dR\d{1,2}|R\d{2,3})[A-Z]?$/, function (m) { // ERJ-PA3F1002V, ERJ-U06J103V
+      var S = { P03: '0603', P06: '0805', P08: '1206', P14: '1210', PA2: '0402', PA3: '0603', PB3: '0603', PB6: '0805', PM8: '1206', U01: '0201', U02: '0402', U03: '0603', U06: '0805', U08: '1206', UP3: '0603', UP6: '0805', UP8: '1206', H2: '0402', H3: '0603', L03: '0603', L06: '0805', L08: '1206' };
+      return R({ mfr: 'Panasonic', size: S[m[1]], tol: tolOf(m[2], m[3]), val: res(m[3]) }); }],
+    [/^ER[JA]-?([1-8XZ])([A-Z0-9]?[A-Z]{1,3})(\d{3,4}|\dR\d{1,2}|R\d{2,3})[A-Z]?$/, function (m) { // ERJ-3GEYJ103V, ERJ-2RKF1002X, ERA-3AEB103V
+      var S = { 1: '0201', 2: '0402', 3: '0603', 6: '0805', 8: '1206', 14: '1210', X: '01005', Z: '0201' };
+      return R({ mfr: 'Panasonic', size: S[m[1]], tol: tolOf(m[2], m[3]), val: res(m[3]) }); }],
+    [/^(0075|0100|01005|0201|0402|0603|0805|1206|1210|1812|2010|2512)(?:W[A-Z0-9]|S[A-Z0-9])([FJDBG])(\d{4}|[0-9RKM]{4})T[0-9A-Z]{1,2}E?/, function (m) { // UNI-ROYAL 0402WGF1002TCE, 0603SAF1002T5E
+      var c = m[3]; return R({ mfr: 'Uni-Royal', size: m[1], tol: TOL[m[2]], val: m[2] !== 'F' && m[2] !== 'D' && m[2] !== 'B' && /^0\d{3}$/.test(c) ? res(c.slice(1)) : res(c) }); }],
+    [/^RC(0603|1005|1608|2012|3216|3225|5025|6432)([FJDB])([0-9RKM]{3,4})/, function (m) { // Samsung RC1005F103CS
+      return R({ mfr: 'Samsung', size: METRIC[m[1]] || { '5025': '2010' }[m[1]], tol: TOL[m[2]], val: res(m[3]) }); }],
+    [/^CR-?(01|02|03|05|06|10|0A|12)([BCDFJ])([LEPH])([0-9A-F])-*([0-9RKM]+)$/, function (m) { // Viking CR-05FL7---4K7
+      var S = { '01': '0201', '02': '0402', '03': '0603', '05': '0805', '06': '1206', '10': '1210', '0A': '2010', '12': '2512' };
+      return R({ mfr: 'Viking', size: S[m[1]], tol: TOL[m[2]], val: res(m[5]) }); }],
+    [/^(?:AR|ARG|PR|CS|CSR|AS|PU|HR|TR)-?(01|02|03|05|06|10|0A|12)([BCDFJ])([A-Z]{1,2}|[A-Z]\d)-*([0-9RKM]{3,6})$/, function (m) { // Viking AR03FTC1002, ARG03BTC1002, CS-06…
+      var S = { '01': '0201', '02': '0402', '03': '0603', '05': '0805', '06': '1206', '10': '1210', '0A': '2010', '12': '2512' };
+      return R({ mfr: 'Viking', size: S[m[1]], tol: TOL[m[2]], val: res(m[4]) }); }],
+    [/^CR(0201|0402|0603|0805|1206|1210|2010|2512)-?([FJD])[XWV]-?([0-9RKM]{3,4})/, function (m) { // Bourns CR0402-FX-1002GLF
       return R({ mfr: 'Bourns', size: m[1], tol: TOL[m[2]], val: res(m[3]) }); }],
-    [/^RK73[HB](1H|1E|1J|2A|2B|2E|3A)[A-Z]{2,4}?([0-9RKM]{3,4})([FJDG])/, function (m) {
-      var S = { '1H': '0201', '1E': '0402', '1J': '0603', '2A': '0805', '2B': '1206', '2E': '1210', '3A': '2512' };
+    [/^R[KN]73[HBGZ](1F|1H|1E|1J|2A|2B|2E|2H|3A|W2A|W2B|W3A)[A-Z]{1,4}?([0-9RKM]{3,4})([BCDFJG])/, function (m) { // KOA RK73H1ETTP1002F, RN73
+      var S = { '1F': '01005', '1H': '0201', '1E': '0402', '1J': '0603', '2A': '0805', '2B': '1206', '2E': '1210', '2H': '2010', '3A': '2512', W2A: '0805', W2B: '1206', W3A: '2512' };
       return R({ mfr: 'KOA', size: S[m[1]], val: res(m[2]), tol: TOL[m[3]] }); }],
-    [/^(?:RT|RS|RM|AR|AC|AF)(0201|0402|0603|0805|1206)([A-Z])R-?\d{2}([0-9RKM.]+?)L?$/, function (m) { // Yageo RT/AC series
-      return R({ mfr: 'Yageo', size: m[1], tol: TOL[m[2]], val: res(m[3].replace('.', 'R')) }); }]
+    [/^(?:MCR|ESR|KTR|SFR|SDR|UCR|LTR|PMR|MCT)(004|006|01|03|10|18|25|50|100)[A-Z]{2,3}([FJDGB])X?(\d{3,4}|[0-9RKML]{3,5})$/, function (m) { // ROHM MCR03EZPFX1002, ESR03EZPJ103
+      var S = { '004': '01005', '006': '0201', '01': '0402', '03': '0603', '10': '0805', '18': '1206', '25': '2010', '50': '2512', '100': '2512' };
+      return R({ mfr: 'ROHM', size: S[m[1]], tol: TOL[m[2]], val: res(m[3]) }); }],
+    [/^RS-?(03|05|06|10|12|20|25)[A-Z](\d{3,4}|[0-9R]{3,4})([FJDB])T/, function (m) { // Fenghua RS-05K1002FT
+      var S = { '03': '0201', '05': '0402', '06': '0603', '10': '0805', '12': '1206', '20': '2010', '25': '2512' };
+      return R({ mfr: 'Fenghua', size: S[m[1]], val: res(m[2]), tol: TOL[m[3]] }); }],
+    [/^W[RFA](01|02|04|06|08|10|12|20|25)[A-Z](\d{3,4}|[0-9RKM]{3,4}|000)([FJDBP])T/, function (m) { // Walsin WR04X1002FTL, WR06X103JTL
+      var S = { '01': '01005', '02': '0201', '04': '0402', '06': '0603', '08': '0805', '10': '1210', '12': '1206', '20': '2010', '25': '2512' };
+      return R({ mfr: 'Walsin', size: S[m[1]], val: m[2] === '000' ? 0 : res(m[2]), tol: TOL[m[3]] }); }],
+    [/^FRC(0201|0402|0603|0805|1206|1210|2010|2512)([FJDB])(\d{3,4}|[0-9RKM]{3,4})T/, function (m) { // FOJAN FRC0402F1002TS
+      return R({ mfr: 'FOJAN', size: m[1], tol: TOL[m[2]], val: res(m[3]) }); }],
+    [/^RTT(01|02|03|05|06|10|12|20|25)(\d{3,4}|[0-9R]{3,4})([FJDB])T/, function (m) { // RALEC RTT031002FTP
+      var S = { '01': '0201', '02': '0402', '03': '0603', '05': '0805', '06': '1206', '10': '1210', '12': '2512', '20': '2010', '25': '2512' };
+      return R({ mfr: 'RALEC', size: S[m[1]], val: res(m[2]), tol: TOL[m[3]] }); }],
+    [/^RM(02|04|06|10|12|20|25)([FJDB])T[A-Z](\d{3,4}|[0-9R]{3,4})/, function (m) { // TA-I RM04FTN1002
+      var S = { '02': '0201', '04': '0402', '06': '0603', '10': '0805', '12': '1206', '20': '2010', '25': '2512' };
+      return R({ mfr: 'TA-I', size: S[m[1]], tol: TOL[m[2]], val: res(m[3]) }); }],
+    [/^RMC[FPH](0201|0402|0603|0805|1206|1210|2010|2512)([FJGD])T([0-9RKML]{2,6})$/, function (m) { // Stackpole RMCF0402FT10K0
+      return R({ mfr: 'Stackpole', size: m[1], tol: TOL[m[2]], val: res(m[3]) }); }],
+    [/^RNC[PSF](0201|0402|0603|0805|1206|1210|2010|2512)([BCDFJ])T[A-Z]([0-9RKML]{2,6})$/, function (m) { // Stackpole RNCP0402FTD10K0
+      return R({ mfr: 'Stackpole', size: m[1], tol: TOL[m[2]], val: res(m[3]) }); }],
+    [/^R[RG](0306|0510|0816|1220|1608|1005|2012|3216)[A-Z]{1,2}-?([0-9RKM]{3,4})-?([BCDFJ])/, function (m) { // Susumu RR0510P-103-D, RG1608P-103-B-T5
+      var S = { '0306': '0201', '0510': '0402', '0816': '0603', '1220': '0805' };
+      return R({ mfr: 'Susumu', size: S[m[1]] || METRIC[m[1]], val: res(m[2]), tol: TOL[m[3]] }); }],
+    [/^CRG(0201|0402|0603|0805|1206|1210|2010|2512)([FJ])([0-9RKML]{2,6})$/, function (m) { // TE CRG0402F10K
+      return R({ mfr: 'TE', size: m[1], tol: TOL[m[2]], val: res(m[3]) }); }],
+    [/^(?:CR|CQ)(0201|0402|0603|0805|1206)([FJ])([0-9RKM]{3,5})[A-Z]/, function (m) { // Ever Ohms and similar CR0603F10K0P05Z
+      return R({ mfr: 'Ever Ohms', size: m[1], tol: TOL[m[2]], val: res(m[3]) }); }],
+    // ---- last resort: size + dielectric + capacitance + tolerance + voltage anywhere in the code (many Chinese makers)
+    [/(0201|0402|0603|0805|1206|1210|1812)(X7R|X5R|C0G|COG|NP0|NPO|Y5V|X6S|X7S)([0-9R]{3})([A-Z])(\d{3}|\dR\d)/, function (m) {
+      return C({ mfr: '', size: m[1], diel: dz(m[2]), val: cap3(m[3]), tol: TOL[m[4]], volt: v3(m[5]) }); }]
   ];
   function decode(pn) {
-    var s = String(pn || '').toUpperCase().replace(/\s+/g, '');
-    for (var i = 0; i < RULES.length; i++) {
-      var m = RULES[i][0].exec(s); if (!m) continue;
-      var o = RULES[i][1](m); if (o && isFinite(o.val) && o.val >= 0) { o.pn = s; return o; }
+    var s0 = String(pn || '').toUpperCase().replace(/\s+/g, '');
+    // a few junk characters glued in front ("1P", "PN", "MPN:") are skipped
+    for (var cut = 0; cut <= 4 && cut < s0.length - 6; cut++) {
+      var s = s0.slice(cut);
+      for (var i = 0; i < RULES.length; i++) {
+        var m = RULES[i][0].exec(s); if (!m) continue;
+        var o = RULES[i][1](m); if (o && isFinite(o.val) && o.val >= 0) { o.pn = s; return o; }
+      }
     }
     return null;
   }
@@ -124,7 +183,7 @@ var PARTS = (function () {
   }
 
   // a better dielectric may replace a worse one: X7R instead of X5R is fine, the other way round is not
-  var DR = { C0G: 9, U2J: 6, X8R: 5, X8L: 5, X7R: 4, X7S: 3, X7T: 3, X7U: 2, X6S: 3, X5R: 2, Y5V: 1, Z5U: 1 };
+  var DR = { C0G: 9, U2J: 6, X8R: 5, X8L: 5, X7R: 4, X7S: 3, X7T: 3, X7U: 2, X6S: 3, X5R: 2, Y5V: 1, Z5U: 1, Ta: 0 };
   function near(a, b) { return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 0.005; }
   // score: 0 = different part; otherwise how sure, plus what does not fit
   function match(part, bom) {
@@ -145,6 +204,14 @@ var PARTS = (function () {
     var n = v / u[0]; n = Math.round(n * 100) / 100;
     return [String(n).replace('.', DS()) + '\u00a0' + u[1], o.volt ? String(o.volt).replace('.', DS()) + '\u00a0' + V() : '', o.size || '', o.diel || '', o.tol ? '±' + String(o.tol).replace('.', DS()) + '%' : ''].filter(Boolean).join(' · ');
   }
-  return { decode: decode, fromBom: fromBom, match: match, fmt: fmtVal };
+  // label text without a known part number: "RES 10K OHM 1% 0402", "CAP CER 100NF 16V X7R 0402", "Резистор 10 кОм"
+  function fromLabel(text) {
+    var t = String(text || '').replace(/[\x00-\x1f]+/g, ' ');
+    var r = /\b(?:RES|RESISTOR|OHMS?)\b|Ω|Ом|резист/i.test(t), c = /\b(?:CAP|CAPACITOR|MLCC)\b|\d\s*(?:[pnuµμ]F|[пнм]к?Ф)\b|конденс/i.test(t);
+    if (r === c) return null;
+    var o = fromBom(t, r ? 'R' : 'C'); if (!o || o.kind !== (r ? 'R' : 'C')) return null;
+    o.mfr = ''; o.pn = ''; return o;
+  }
+  return { decode: decode, fromBom: fromBom, fromLabel: fromLabel, match: match, fmt: fmtVal };
 })();
 if (typeof module !== 'undefined') module.exports = PARTS;

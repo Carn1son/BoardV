@@ -1541,7 +1541,8 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     if (!bomIndex) return null;
     var cands = partCandidates(text), best = null, near = null, dec = null;
     // a passive's part number says what it is: GRM21BR71C105MA01L = 1 µF 16 V 0805 X7R; labelled fields first
-    cands.slice().sort(function (a, b) { return b.key - a.key; }).some(function (c) { return (dec = PARTS.decode(c.n) || PARTS.decode(c.raw)); });
+    cands.slice().sort(function (a, b) { return b.key - a.key; }).some(function (c) { return (dec = PARTS.decode(c.raw) || PARTS.decode(c.n)); });
+    if (!dec) dec = PARTS.fromLabel(text); // only a description on the label
     bomIndex.forEach(function (g) {
       var fields = [g.value, g.footprint].concat(String(g.desc || '').split(/[\s,;]+/)).map(normPN).filter(function (x) { return x.length >= 3; }), score = 0, hit = '';
       cands.forEach(function (c) {
@@ -1581,7 +1582,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
       el.querySelector('span').textContent = (r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '—' }).raw;
       el.onclick = null;
     }
-    if (r.dec) el.querySelector('i').textContent = r.dec.mfr + ' ' + r.dec.pn + ' → ' + PARTS.fmt(r.dec);
+    if (r.dec) el.querySelector('i').textContent = ((r.dec.mfr + ' ' + r.dec.pn).trim() ? (r.dec.mfr + ' ' + r.dec.pn).trim() + ' → ' : '') + PARTS.fmt(r.dec);
   }
   function onPartCode(text) {
     var now = Date.now(); if (text === partLast.text && now - partLast.at < 2500) return; // same label still in view

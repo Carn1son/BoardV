@@ -637,27 +637,46 @@ function shareSend(type, data) { if (win) win.webContents.send('share', { type, 
 function shareStop(reason) {
   if (!share) return;
   const s = share; share = null; clearTimeout(s.timer);
-  s.waiting.forEach((w) => { clearTimeout(w.t); try { w.res.writeHead(410); w.res.end(); } catch (e) { /* already closed */ } });
   try { s.server.close(); } catch (e) { /* not listening */ }
   shareSend('ended', reason || '');
 }
 ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
   shareStop('restart');
-  const s = { token: crypto.randomBytes(16).toString('hex'), blob: Buffer.from(blob), waiting: new Map(), bad: 0, seq: 0 };
+  // phone: GET /bv/<token>/hello -> 202 {id} right away (and this PC asks the user);
+  //        GET /bv/<token>/data?id=N -> 204 while undecided, 403 declined, 200 encrypted board once
+  const s = { token: crypto.randomBytes(16).toString('hex'), blob: Buffer.from(blob), reqs: new Map(), bad: 0, seq: 0, sent: false };
   s.server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-store');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
-    if (share !== s || req.method !== 'GET' || req.url !== '/bv/' + s.token) {
+    const u = new URL(req.url, 'http://x'), base = '/bv/' + s.token;
+    if (share !== s || req.method !== 'GET' || !u.pathname.startsWith(base + '/')) {
       s.bad++; res.writeHead(404); res.end();
       if (s.bad > 30) shareStop('too many wrong requests');
       return;
     }
-    const id = ++s.seq, ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
-    const t = setTimeout(() => { if (s.waiting.delete(id)) { res.writeHead(408); res.end(); shareSend('timeout', { id }); } }, 90000);
-    s.waiting.set(id, { res, t });
-    res.on('close', () => { if (s.waiting.has(id)) { clearTimeout(t); s.waiting.delete(id); shareSend('gone', { id }); } });
-    shareSend('request', { id, ip });
+    if (s.sent) { res.writeHead(410); res.end(); return; }
+    const ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+    if (u.pathname === base + '/hello') {
+      let id = 0;
+      s.reqs.forEach((r, k) => { if (r.ip === ip && r.ok === null) id = k; }); // the same phone asking again
+      if (!id) { id = ++s.seq; s.reqs.set(id, { ip, ok: null, at: Date.now() }); shareSend('request', { id, ip }); }
+      res.writeHead(202, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ id }));
+      return;
+    }
+    if (u.pathname === base + '/data') {
+      const r = s.reqs.get(Number(u.searchParams.get('id')));
+      if (!r || r.ip !== ip) { res.writeHead(404); res.end(); return; }
+      if (r.ok === null) { res.writeHead(204); res.end(); return; }
+      if (!r.ok) { res.writeHead(403); res.end(); return; }
+      s.sent = true;
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+      res.end(s.blob);
+      shareSend('sent', { ip });
+      setTimeout(() => shareStop('sent'), 1000); // one phone, one time
+      return;
+    }
+    res.writeHead(404); res.end();
   });
   s.server.on('error', (e) => { shareSend('error', String((e && e.message) || e)); reject(e); });
   s.server.listen(0, '0.0.0.0', () => {
@@ -668,13 +687,7 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
 }));
 ipcMain.on('share-decide', (_e, m) => {
   const s = share; if (!s || !m) return;
-  const w = s.waiting.get(m.id); if (!w) return;
-  clearTimeout(w.t); s.waiting.delete(m.id);
-  if (!m.ok) { w.res.writeHead(403); w.res.end(); return; }
-  w.res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
-  w.res.end(s.blob);
-  shareSend('sent', { id: m.id });
-  setTimeout(() => shareStop('sent'), 500); // one phone, one time
+  const r = s.reqs.get(m.id); if (r && r.ok === null) r.ok = !!m.ok;
 });
 ipcMain.on('share-stop', () => shareStop('stopped'));
 

@@ -1,0 +1,485 @@
+<title>Altium Boardview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: two-pane workbench — inputs and results on the left, live board preview on the right; stacks on phones. */
+:root {
+  --bg: #eef1ee; --panel: #ffffff; --fg: #1b2420; --muted: #5a6862; --line: #d3dad5;
+  --accent: #1d7350; --accent-fg: #ffffff; --warn: #9a5b00; --warn-bg: #fff4dd; --err: #b3263e;
+  --pcb: #1c3d2f; --pcb-edge: #c9d6cf; --silk: #e9efe9; --copper: #c98a3c; --bottomc: #7aa7e6; --hl: #ff5c7a;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111614; --panel: #19201d; --fg: #e2e9e5; --muted: #93a29b; --line: #2b3531;
+  --accent: #3aa979; --accent-fg: #06130d; --warn: #f0b155; --warn-bg: #2a2214; --err: #ff7088;
+  --pcb: #0f281e; --pcb-edge: #6f8a7d; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111614; --panel: #19201d; --fg: #e2e9e5; --muted: #93a29b; --line: #2b3531;
+  --accent: #3aa979; --accent-fg: #06130d; --warn: #f0b155; --warn-bg: #2a2214; --err: #ff7088;
+  --pcb: #0f281e; --pcb-edge: #6f8a7d; color-scheme: dark }
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+.wrap { padding-inline: 16px; padding-block: 14px 24px; max-width: 1500px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+h1 { font-family: var(--f-display); font-size: 22px; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 18px 14px; text-align: center; cursor: pointer; display: grid; gap: 4px; transition: border-color .15s, background .15s; }
+.drop:hover, .drop.over, .drop:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); outline: none; }
+.drop b { font-weight: 600; }
+.drop small { color: var(--muted); }
+.files { display: grid; gap: 6px; }
+.file { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; }
+.tag { font-family: var(--f-mono); font-size: 11px; padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); white-space: nowrap; }
+.tag.bad { background: color-mix(in srgb, var(--err) 14%, transparent); color: var(--err); }
+.fname { min-width: 0; }
+.fname div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.fname small { color: var(--muted); display: block; overflow-wrap: anywhere; }
+.x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.x:hover, .x:focus-visible { color: var(--err); outline: 1px solid var(--line); }
+.sample { font-size: 12px; color: var(--warn); background: var(--warn-bg); padding: 6px 8px; border-radius: 6px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.stat { display: grid; gap: 0; }
+.stat b { font-family: var(--f-mono); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.warn { margin: 0; padding-left: 18px; color: var(--warn); font-size: 13px; display: grid; gap: 4px; }
+.err { color: var(--err); font-size: 13px; }
+.ok { color: var(--accent); font-size: 13px; }
+.field { display: grid; gap: 4px; }
+input[type=text], input[type=search] { font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); min-width: 0; width: 100%; box-sizing: border-box; }
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+button.b { font: inherit; font-weight: 500; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
+button.b.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+button.b:hover { filter: brightness(1.06); }
+button.b:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.b:disabled { opacity: .45; cursor: not-allowed; }
+details summary { cursor: pointer; font-weight: 600; }
+details ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--fg); }
+details li small { color: var(--muted); }
+code { font-family: var(--f-mono); font-size: 12px; background: color-mix(in srgb, var(--fg) 7%, transparent); padding: 1px 4px; border-radius: 3px; }
+.viewer { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; overflow: hidden; height: min(78vh, 900px); min-height: 380px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 5px 10px; border: 0; background: none; color: var(--fg); cursor: pointer; }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.bar .grow { flex: 1 1 160px; min-width: 0; }
+.icon { font: inherit; width: 32px; height: 30px; border: 1px solid var(--line); border-radius: 6px; background: none; color: var(--fg); cursor: pointer; }
+.icon:focus-visible { outline: 2px solid var(--accent); }
+.canvas-wrap { position: relative; min-height: 0; background: var(--bg); touch-action: none; }
+canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+canvas.drag { cursor: grabbing; }
+.info { padding: 7px 10px; border-top: 1px solid var(--line); font-family: var(--f-mono); font-size: 12px; color: var(--muted); min-height: 18px; overflow-wrap: anywhere; }
+.info b { color: var(--fg); font-weight: 500; }
+.legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Altium → Boardview</h1>
+    <p>Выгрузки из Altium превращаются в <code>.brd</code> и <code>.bvr</code> для OpenBoardView и FlexBV, плюс <code>.json</code> с номиналами для Boardview Reader. Всё считается в браузере, файлы никуда не отправляются.</p>
+  </header>
+
+  <div class="grid">
+    <div class="side">
+      <section class="box" aria-labelledby="in-h">
+        <div class="lbl" id="in-h">Файлы из Altium</div>
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Выбрать файлы">
+          <b>Перетащите файлы сюда или нажмите</b>
+          <small>.PcbDoc · PCB ASCII · IPC-D-356A · Gerber контура</small>
+        </div>
+        <input type="file" id="file" multiple hidden>
+        <div class="files" id="files"></div>
+        <div class="sample" id="sampleNote">Сейчас загружен пример платы. Добавьте свои файлы, и пример уберётся.</div>
+      </section>
+
+      <section class="box" aria-labelledby="res-h">
+        <div class="lbl" id="res-h">Результат</div>
+        <div class="stats">
+          <div class="stat"><b id="sParts">0</b><span>деталей</span></div>
+          <div class="stat"><b id="sPins">0</b><span>пинов</span></div>
+          <div class="stat"><b id="sNets">0</b><span>цепей</span></div>
+          <div class="stat"><b id="sBot">0</b><span>снизу</span></div>
+        </div>
+        <div id="status"></div>
+        <ul class="warn" id="warns"></ul>
+        <div class="field">
+          <label class="lbl" for="name">Имя файла</label>
+          <input type="text" id="name" value="board" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="btns" id="dlBtns">
+          <button class="b primary" id="dlZip" type="button">Скачать .zip (.brd + .bvr + .json)</button>
+          <button class="b" id="dlBrd" type="button" hidden>Скачать .brd</button>
+          <button class="b" id="dlBvr" type="button" hidden>Скачать .bvr</button>
+          <button class="b" id="dlJson" type="button" hidden>Скачать .json</button>
+          <button class="b" id="cpBrd" type="button">Копировать .brd</button>
+        </div>
+        <div id="dlMsg" class="ok" aria-live="polite"></div>
+      </section>
+
+      <details class="box" id="help">
+        <summary>Как выгрузить из Altium</summary>
+        <ol>
+          <li><b>Сам .PcbDoc</b>, лучший вариант: просто перетащите файл платы из проекта. Из него берутся пады, цепи, контур и номиналы (если на плате есть текст Comment).</li>
+          <li><b>PCB ASCII</b>, если .PcbDoc почему-то не читается. В PCB: File → Save As (или Save Copy As) → тип <code>PCB ASCII File (*.PcbDoc)</code>. Внутри все пады с координатами, цепи и контур платы.</li>
+          <li><b>IPC-D-356A</b>, если ASCII не подходит. File → Fabrication Outputs → Test Point Report → формат IPC-D-356A. <small>Если деталей или пинов мало, значит, в отчёт попали только тестовые точки.</small></li>
+          <li><b>Контур</b>, по желанию: Gerber слоя Board Outline (<code>.GKO</code>, <code>.GM1</code> и т.п.), если плата не прямоугольная.</li>
+        </ol>
+      </details>
+    </div>
+
+    <section class="viewer" aria-label="Превью платы">
+      <div class="bar">
+        <div class="seg" role="group" aria-label="Сторона">
+          <button type="button" data-side="top" aria-pressed="true">Верх</button>
+          <button type="button" data-side="bottom" aria-pressed="false">Низ</button>
+          <button type="button" data-side="both" aria-pressed="false">Обе</button>
+        </div>
+        <input type="search" id="find" class="grow" placeholder="Деталь или цепь: U1, GND…" list="findList" aria-label="Поиск детали или цепи">
+        <datalist id="findList"></datalist>
+        <button class="icon" id="zIn" type="button" aria-label="Приблизить">+</button>
+        <button class="icon" id="zOut" type="button" aria-label="Отдалить">−</button>
+        <button class="icon" id="zFit" type="button" aria-label="Вписать плату">⤢</button>
+        <div class="legend"><span><i class="dot" style="background:var(--copper)"></i>верх</span><span><i class="dot" style="background:var(--bottomc)"></i>низ</span></div>
+      </div>
+      <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+      <div class="info" id="info">Нажмите на пин, чтобы подсветить цепь. Колесо — масштаб, перетаскивание — сдвиг. Вид снизу зеркальный, как у ноутбучных boardview.</div>
+    </section>
+  </div>
+</div>
+
+<script>
+/*CORE*/
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var TYPES = { pcbdoc: 'PcbDoc', ascii: 'PCB ASCII', ipc356: 'IPC-D-356A', pnp: 'Pick&Place', bom: 'BOM', gerber: 'Контур', brd: '.brd', bvr: '.bvr', json: '.json' };
+  var files = []; // {name, type, data, info, error, sample}
+  var board = null, brdText = '', bvrText = '', jsonText = '';
+  var view = { side: 'top', k: 1, ox: 0, oy: 0, net: null, part: null };
+  var dl = null, inArtifact = false;
+
+  /* ---------- sample board (example data) ---------- */
+  function sampleAscii() {
+    var L = ['|RECORD=Board|VX0=0mil|VY0=0mil|KIND0=0|VX1=1800mil|VY1=0mil|KIND1=0|VX2=1800mil|VY2=1100mil|KIND2=0|VX3=0mil|VY3=1100mil|KIND3=0'];
+    var nets = ['GND', '+12V', 'VIN', 'SW', 'FB', 'EN', 'VOUT'];
+    nets.forEach(function (n) { L.push('|RECORD=Net|NAME=' + n); });
+    var comps = [], pads = [];
+    function comp(ref, layer) { comps.push('|RECORD=Component|LAYER=' + layer + '|SOURCEDESIGNATOR=' + ref); return comps.length - 1; }
+    function pad(c, name, x, y, net, sx, sy, hole) { pads.push('|RECORD=Pad|COMPONENT=' + c + '|NAME=' + name + '|X=' + x + 'mil|Y=' + y + 'mil|NET=' + nets.indexOf(net) + '|XSIZE=' + sx + 'mil|YSIZE=' + sy + 'mil|HOLESIZE=' + (hole || 0) + 'mil'); }
+    var u = comp('U1', 'TOP');
+    ['VIN', 'EN', 'GND', 'FB'].forEach(function (n, i) { pad(u, i + 1, 760, 650 - i * 50, n, 70, 24); });
+    ['SW', 'SW', 'VIN', 'GND'].forEach(function (n, i) { pad(u, 8 - i, 1000, 650 - i * 50, n, 70, 24); });
+    var j = comp('J1', 'TOP');
+    ['VIN', 'GND'].forEach(function (n, i) { pad(j, i + 1, 150, 650 - i * 200, n, 90, 90, 50); });
+    var j2 = comp('J2', 'TOP');
+    ['VOUT', 'GND'].forEach(function (n, i) { pad(j2, i + 1, 1650, 650 - i * 200, n, 90, 90, 50); });
+    var l = comp('L1', 'TOP'); pad(l, 1, 1180, 820, 'SW', 120, 140); pad(l, 2, 1420, 820, 'VOUT', 120, 140);
+    var r = [['R1', 'VOUT', 'FB', 1250, 450], ['R2', 'FB', 'GND', 1250, 300], ['R3', 'VIN', 'EN', 450, 900]];
+    r.forEach(function (x) { var c = comp(x[0], 'TOP'); pad(c, 1, x[3] - 30, x[4], x[1], 30, 34); pad(c, 2, x[3] + 30, x[4], x[2], 30, 34); });
+    var cs = [['C1', 'VIN', 'GND', 450, 600], ['C2', 'VIN', 'GND', 450, 450], ['C3', 'VOUT', 'GND', 1450, 550], ['C4', 'VOUT', 'GND', 1450, 400], ['C5', 'SW', 'GND', 880, 250]];
+    cs.forEach(function (x) { var c = comp(x[0], 'BOTTOM'); pad(c, 1, x[3], x[4] + 30, x[1], 34, 30); pad(c, 2, x[3], x[4] - 30, x[2], 34, 30); });
+    var tp = comp('TP1', 'BOTTOM'); pad(tp, 1, 1100, 150, 'FB', 40, 40);
+    return L.concat(comps, pads).join('\n');
+  }
+
+  /* ---------- files ---------- */
+  function decode(buf) {
+    var t = new TextDecoder('utf-8').decode(buf);
+    if (t.indexOf(String.fromCharCode(0xFFFD)) >= 0) { try { t = new TextDecoder('windows-1251').decode(buf); } catch (e) {} }
+    return t;
+  }
+  function addFiles(list) {
+    if (files.length && files[0].sample) files = [];
+    var pending = list.length;
+    Array.prototype.forEach.call(list, function (f) {
+      f.arrayBuffer().then(function (buf) {
+        var u8 = new Uint8Array(buf), bin = PCBDOC.isCfb(u8);
+        var text = bin ? '' : decode(buf);
+        var type = bin ? 'pcbdoc' : BV.detect(f.name, text);
+        files = files.filter(function (x) { return x.name !== f.name; });
+        files.push({ name: f.name, type: type, text: text, bin: bin ? u8 : null, size: f.size });
+        if (--pending === 0) rebuild(true);
+      });
+    });
+  }
+  function rebuild(fit) {
+    var src = {}, status = $('status'); status.innerHTML = '';
+    files.forEach(function (f) {
+      f.error = null; f.info = '';
+      if (!f.type) { f.error = 'формат не распознан'; return; }
+      if (f.type === 'brd' || f.type === 'bvr' || f.type === 'json') { f.error = 'это уже готовый boardview, откройте его в Boardview Reader'; return; }
+      try {
+        var r = f.type === 'pcbdoc' ? BV.parsePcbDoc(f.bin) : f.type === 'ascii' ? BV.parseAscii(f.text) : f.type === 'ipc356' ? BV.parseIpc356(f.text)
+              : f.type === 'pnp' ? BV.parsePnp(f.text) : f.type === 'bom' ? BV.parseBom(f.text) : BV.parseGerber(f.text);
+        f.info = r.info;
+        var prio = { pcbdoc: 3, ascii: 2, ipc356: 1 }[f.type];
+        if (prio) { if (!src.pins || prio > src._prio) { src.pins = r; src._prio = prio; } }
+        else if (f.type === 'pnp') src.pnp = r; else if (f.type === 'bom') src.bom = r; else src.outline = r;
+      } catch (e) { f.error = e.message; }
+    });
+    renderFiles();
+    board = null; brdText = bvrText = jsonText = '';
+    try {
+      if (!files.length) throw new Error('Добавьте файлы из Altium.');
+      board = BV.build(src);
+      brdText = BV.writeBrd(board); bvrText = BV.writeBvr(board); jsonText = BV.writeJson(board, base());
+      if (!board.parts.some(function (p) { return p.value; })) board.warnings.push('Номиналов нет: у деталей в файле платы не задан текст Comment.');
+      var bad = BV.checkBrd(brdText);
+      status.innerHTML = bad ? '<div class="err">Проверка .brd не прошла: ' + bad + '</div>'
+                             : '<div class="ok">Файл .brd проверен по правилам парсера OpenBoardView.</div>';
+    } catch (e) { status.innerHTML = '<div class="err"></div>'; status.firstChild.textContent = e.message; }
+    var w = $('warns'); w.innerHTML = '';
+    (board ? board.warnings : []).forEach(function (t) { var li = document.createElement('li'); li.textContent = t; w.appendChild(li); });
+    $('sParts').textContent = board ? board.parts.length : 0;
+    $('sPins').textContent = board ? board.nPins : 0;
+    $('sNets').textContent = board ? board.nNets : 0;
+    $('sBot').textContent = board ? board.parts.filter(function (p) { return p.bottom; }).length : 0;
+    $('sampleNote').hidden = !(files[0] && files[0].sample);
+    ['dlZip', 'dlBrd', 'dlBvr', 'dlJson', 'cpBrd'].forEach(function (id) { $(id).disabled = !brdText; });
+    var dlst = $('findList'); dlst.innerHTML = '';
+    if (board) {
+      var seen = {};
+      board.parts.forEach(function (p) { add(p.ref); });
+      board.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.net !== 'UNCONNECTED') add(q.net); }); });
+      function add(v) { if (seen[v]) return; seen[v] = 1; var o = document.createElement('option'); o.value = v; dlst.appendChild(o); }
+    }
+    view.net = view.part = null;
+    if (fit) fitView(); draw();
+  }
+  function renderFiles() {
+    var box = $('files'); box.innerHTML = '';
+    files.forEach(function (f, i) {
+      var row = document.createElement('div'); row.className = 'file';
+      var tag = document.createElement('span'); tag.className = 'tag' + (f.error ? ' bad' : ''); tag.textContent = f.type ? TYPES[f.type] : '???';
+      var nm = document.createElement('div'); nm.className = 'fname';
+      var a = document.createElement('div'); a.textContent = f.name;
+      var s = document.createElement('small'); s.textContent = f.error || f.info;
+      nm.appendChild(a); nm.appendChild(s);
+      var x = document.createElement('button'); x.className = 'x'; x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Убрать ' + f.name);
+      x.onclick = function () { files.splice(i, 1); rebuild(true); };
+      row.appendChild(tag); row.appendChild(nm); row.appendChild(x); box.appendChild(row);
+    });
+  }
+
+  var drop = $('drop'), inp = $('file');
+  drop.onclick = function () { inp.click(); };
+  drop.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inp.click(); } };
+  inp.onchange = function () { if (inp.files.length) addFiles(inp.files); inp.value = ''; };
+  ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function (e) { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+  document.addEventListener('dragover', function (e) { e.preventDefault(); });
+  document.addEventListener('drop', function (e) { e.preventDefault(); if (e.target !== drop && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+
+  /* ---------- downloads ---------- */
+  function base() { return ($('name').value.trim() || 'board').replace(/[\\/:*?"<>|]+/g, '_'); }
+  function msg(t, bad) { var m = $('dlMsg'); m.className = bad ? 'err' : 'ok'; m.textContent = t; }
+  function directSave(name, text) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/octet-stream' }));
+    a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  $('dlZip').onclick = function () {
+    if (!brdText) return;
+    var n = base(), data = BV.zip([{ name: n + '.brd', text: brdText }, { name: n + '.bvr', text: bvrText }, { name: n + '.json', text: jsonText }]);
+    if (dl) {
+      dl.save({ filename: n + '.zip', data: new Blob([data]) }).then(function () { msg('Архив сохранён. Его можно сразу открыть в Boardview Reader, или распаковать и открыть .brd в OpenBoardView.'); })
+        .catch(function (e) { msg(e && e.code === 'declined' ? 'Сохранение отменено.' : 'Не удалось сохранить: ' + (e && e.message || e), e && e.code !== 'declined'); });
+    } else if (!inArtifact) {
+      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/zip' })); a.download = n + '.zip';
+      document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } else msg('Скачивание здесь недоступно. Нажмите «Копировать .brd» и вставьте текст в файл с расширением .brd.', true);
+  };
+  $('dlBrd').onclick = function () { directSave(base() + '.brd', brdText); };
+  $('dlBvr').onclick = function () { directSave(base() + '.bvr', bvrText); };
+  $('dlJson').onclick = function () { directSave(base() + '.json', jsonText); };
+  $('cpBrd').onclick = function () {
+    var done = function () { msg('Текст .brd скопирован. Вставьте его в Блокнот и сохраните как ' + base() + '.brd'); };
+    try {
+      navigator.clipboard.writeText(brdText).then(done, fallback);
+    } catch (e) { fallback(); }
+    function fallback() {
+      var t = document.createElement('textarea'); t.value = brdText; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); done(); } catch (e) { msg('Браузер не дал скопировать.', true); }
+      t.remove();
+    }
+  };
+  // Published artifact: use the downloads capability. Opened as a local file: plain downloads work.
+  inArtifact = !!(window.claude && typeof window.claude.use === 'function');
+  if (inArtifact) {
+    window.claude.use('downloads').then(function (d) { dl = d; if (!d) $('dlZip').title = 'Скачивание недоступно в этом окне'; }).catch(function () {});
+  } else { $('dlBrd').hidden = false; $('dlBvr').hidden = false; $('dlJson').hidden = false; }
+
+  /* ---------- viewer ---------- */
+  var cv = $('cv'), ctx = cv.getContext('2d'), W = 0, H = 0, dpr = 1;
+  function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function resize() {
+    var r = cv.parentElement.getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
+    var nw = Math.max(1, r.width), nh = Math.max(1, r.height), first = !W;
+    W = nw; H = nh; cv.width = W * dpr; cv.height = H * dpr;
+    if (first) fitView(); draw();
+  }
+  new ResizeObserver(resize).observe(cv.parentElement);
+  var mq = window.matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  function flip() { return view.side === 'bottom'; }
+  function sx(x) { return view.ox + (flip() ? board.w - x : x) * view.k; }
+  function sy(y) { return view.oy + (board.h - y) * view.k; }
+  function fitView() {
+    if (!board || !W) return;
+    var m = 24; view.k = Math.min((W - 2 * m) / board.w, (H - 2 * m) / board.h);
+    view.ox = (W - board.w * view.k) / 2; view.oy = (H - board.h * view.k) / 2;
+  }
+  function visible(p) { return view.side === 'both' || (view.side === 'bottom') === !!p.bottom; }
+  function partBox(p) {
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    p.pins.forEach(function (q) { var r = isFinite(q.r) ? q.r : 10; x0 = Math.min(x0, q.x - r); x1 = Math.max(x1, q.x + r); y0 = Math.min(y0, q.y - r); y1 = Math.max(y1, q.y + r); });
+    return [x0 - 8, y0 - 8, x1 + 8, y1 + 8];
+  }
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = css('--bg'); ctx.fillRect(0, 0, W, H);
+    if (!board) {
+      ctx.fillStyle = css('--muted'); ctx.font = '14px ' + css('--f-body'); ctx.textAlign = 'center';
+      ctx.fillText('Здесь появится плата', W / 2, H / 2); return;
+    }
+    var C = { pcb: css('--pcb'), edge: css('--pcb-edge'), silk: css('--silk'), cu: css('--copper'), bot: css('--bottomc'), hl: css('--hl'), acc: css('--accent') };
+    ctx.beginPath();
+    board.outline.forEach(function (q, i) { var X = sx(q[0]), Y = sy(q[1]); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.closePath(); ctx.fillStyle = C.pcb; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.edge; ctx.stroke();
+    var order = board.parts.slice().sort(function (a, b) { return visible(a) - visible(b); });
+    var labelSize = Math.max(9, Math.min(13, view.k * 30));
+    order.forEach(function (p) {
+      var vis = visible(p), col = p.bottom ? C.bot : C.cu;
+      ctx.globalAlpha = vis ? 1 : 0.18;
+      var b = partBox(p), X0 = sx(b[0]), X1 = sx(b[2]), Y0 = sy(b[3]), Y1 = sy(b[1]);
+      ctx.strokeStyle = p === view.part ? C.hl : C.silk; ctx.lineWidth = p === view.part ? 2 : 0.8;
+      ctx.globalAlpha = vis ? (p === view.part ? 1 : 0.55) : 0.1;
+      ctx.strokeRect(Math.min(X0, X1), Y0, Math.abs(X1 - X0), Y1 - Y0);
+      p.pins.forEach(function (q) {
+        var on = view.net && q.net === view.net;
+        ctx.globalAlpha = vis || on ? 1 : 0.18;
+        var r = Math.max(1.6, (isFinite(q.r) ? q.r : 10) * view.k);
+        ctx.beginPath(); ctx.arc(sx(q.x), sy(q.y), r, 0, Math.PI * 2);
+        ctx.fillStyle = on ? C.hl : (q.net === 'UNCONNECTED' ? C.edge : col); ctx.fill();
+        if (on) { ctx.lineWidth = 2; ctx.strokeStyle = C.hl; ctx.beginPath(); ctx.arc(sx(q.x), sy(q.y), r + 3, 0, Math.PI * 2); ctx.stroke(); }
+      });
+      if (vis && view.k * (b[2] - b[0]) > 18) {
+        ctx.globalAlpha = 1; ctx.fillStyle = C.silk; ctx.font = '500 ' + labelSize + 'px ' + css('--f-mono');
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(p.ref, (X0 + X1) / 2, Y0 - 2);
+      }
+    });
+    ctx.globalAlpha = 1;
+  }
+  function hit(mx, my) {
+    var best = null, bd = 10;
+    board.parts.forEach(function (p) {
+      if (!visible(p)) return;
+      p.pins.forEach(function (q) {
+        var r = Math.max(1.6, (isFinite(q.r) ? q.r : 10) * view.k), d = Math.hypot(sx(q.x) - mx, sy(q.y) - my) - r;
+        if (d < bd) { bd = d; best = { part: p, pin: q }; }
+      });
+    });
+    if (best) return best;
+    for (var i = 0; i < board.parts.length; i++) {
+      var p = board.parts[i]; if (!visible(p)) continue;
+      var b = partBox(p), X0 = Math.min(sx(b[0]), sx(b[2])), X1 = Math.max(sx(b[0]), sx(b[2]));
+      if (mx >= X0 && mx <= X1 && my >= sy(b[3]) && my <= sy(b[1])) return { part: p };
+    }
+    return null;
+  }
+  function setInfo(html) { $('info').innerHTML = html; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function selectNet(net) {
+    view.net = net; var n = 0, parts = {};
+    board.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.net === net) { n++; parts[p.ref + (p.bottom ? '↓' : '')] = 1; } }); });
+    var list = Object.keys(parts);
+    setInfo('Цепь <b>' + esc(net) + '</b> · ' + n + ' пинов · ' + esc(list.slice(0, 30).join(', ')) + (list.length > 30 ? '…' : ''));
+  }
+  function selectPart(p, zoom) {
+    view.part = p; view.net = null;
+    var nets = {}; p.pins.forEach(function (q) { nets[q.net] = 1; });
+    setInfo('<b>' + esc(p.ref) + '</b> · ' + (p.bottom ? 'низ' : 'верх') + ' · ' + (p.smd ? 'SMD' : 'выводной') + ' · ' + p.pins.length + ' пинов' + (p.fromPnp ? ' · без пинов' : '') + ' · цепи: ' + esc(Object.keys(nets).join(', ')));
+    if (view.side !== 'both' && (view.side === 'bottom') !== !!p.bottom) setSide(p.bottom ? 'bottom' : 'top');
+    if (zoom) {
+      var b = partBox(p), cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+      view.k = Math.max(view.k, Math.min(W, H) / Math.max(400, (b[2] - b[0]) * 4));
+      view.ox = W / 2 - (flip() ? board.w - cx : cx) * view.k; view.oy = H / 2 - (board.h - cy) * view.k;
+    }
+  }
+  var drag = null;
+  cv.addEventListener('pointerdown', function (e) { if (!board) return; cv.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, ox: view.ox, oy: view.oy, moved: false }; });
+  cv.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; cv.classList.add('drag'); }
+    if (drag.moved) { view.ox = drag.ox + dx; view.oy = drag.oy + dy; draw(); }
+  });
+  cv.addEventListener('pointerup', function (e) {
+    cv.classList.remove('drag');
+    if (drag && !drag.moved && board) {
+      var r = cv.getBoundingClientRect(), h = hit(e.clientX - r.left, e.clientY - r.top);
+      if (h && h.pin) {
+        view.part = h.part;
+        if (h.pin.net === 'UNCONNECTED') { view.net = null; setInfo('<b>' + esc(h.part.ref) + '</b> пин ' + esc(h.pin.name) + ' · без цепи'); }
+        else { selectNet(h.pin.net); setInfo('<b>' + esc(h.part.ref) + '</b> пин ' + esc(h.pin.name) + ' → ' + $('info').innerHTML); }
+      } else if (h) selectPart(h.part, false);
+      else { view.net = view.part = null; setInfo('Ничего не выбрано.'); }
+      draw();
+    }
+    drag = null;
+  });
+  cv.addEventListener('wheel', function (e) {
+    if (!board) return; e.preventDefault();
+    var r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015));
+  }, { passive: false });
+  function zoomAt(mx, my, f) {
+    var k2 = Math.max(0.005, Math.min(60, view.k * f)); f = k2 / view.k;
+    view.ox = mx - (mx - view.ox) * f; view.oy = my - (my - view.oy) * f; view.k = k2; draw();
+  }
+  $('zIn').onclick = function () { zoomAt(W / 2, H / 2, 1.4); };
+  $('zOut').onclick = function () { zoomAt(W / 2, H / 2, 1 / 1.4); };
+  $('zFit').onclick = function () { fitView(); draw(); };
+  function setSide(s) {
+    view.side = s;
+    document.querySelectorAll('.seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.side === s)); });
+    draw();
+  }
+  document.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { setSide(b.dataset.side); }; });
+  $('find').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !board) return;
+    var q = $('find').value.trim(); if (!q) return;
+    var up = q.toUpperCase();
+    var p = board.parts.filter(function (x) { return x.ref.toUpperCase() === up; })[0];
+    if (p) { selectPart(p, true); draw(); return; }
+    var has = board.parts.some(function (x) { return x.pins.some(function (y) { return y.net.toUpperCase() === up; }); });
+    if (has) {
+      var net = null; board.parts.forEach(function (x) { x.pins.forEach(function (y) { if (y.net.toUpperCase() === up) net = y.net; }); });
+      view.part = null; selectNet(net); draw();
+    } else setInfo('Не найдено: ' + esc(q));
+  });
+  $('find').addEventListener('change', function () { $('find').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); });
+
+  /* ---------- start with the example ---------- */
+  files = [{ name: 'пример-плата.PcbDoc (ASCII)', type: 'ascii', text: sampleAscii(), sample: true }];
+  $('name').value = 'example';
+  rebuild(true);
+  var oldAdd = addFiles;
+  addFiles = function (l) { if (files[0] && files[0].sample) { files = []; $('name').value = (l[0].name || 'board').replace(/\.[^.]+$/, ''); } oldAdd(l); };
+})();
+</script>

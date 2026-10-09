@@ -1,0 +1,1463 @@
+<title>BoardV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: repair-bench viewer — slim top bar, inspector on the left, board canvas fills the rest, status line at the bottom.
+   Deliberately single dark theme, like bench boardview tools: the board reads best on black in any room light. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0d0d; --panel: #131716; --panel2: #191e1c; --fg: #e4ebe7; --muted: #8b9a93; --line: #27302c;
+  --accent: #f2b544; --accent-fg: #1a1203;
+  --board: #3a3e3d; --edge: #8d9491; --silk: #cfd8d3; --pin: #f4f6f5; --gnd: #9aa19e; --nc: #141615;
+  --botpart: #7fa9e8; --sel: #ffd60a; --selpart: #ffffff; --grp: #ffffff; --grpb: #ffffff; --hlw: #ffffff; --hlk: #000000; --pwr: #6d0f14; --dim: #5a605e; --refc: #ffffff; --canvas: #1b1d1c; --outline: #d4d8d6; --valc: #e6ebe8; --board2: #173a2c; --partfill: #cfd8d3; --selhere: #ffffff; --selfar: #ffffff;
+  --ui-grp: var(--grp); --ui-sel: var(--sel); --ui-pin: var(--pin); --ui-refc: var(--refc); --ui-bot: var(--botpart);
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+html[data-ui=light] { color-scheme: light; --bg: #e9edeb; --panel: #ffffff; --panel2: #f2f4f3; --fg: #18201c; --muted: #5b6862; --line: #d2d9d5; --accent: #e07b00; --accent-fg: #ffffff;
+  --ui-grp: #18201c; --ui-sel: #9a6f00; --ui-pin: #18201c; --ui-refc: #18201c; --ui-bot: #2f63b8; }
+html[data-ui=light] .netlink.pwr { color: #a3121b; }
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 13px; line-height: 1.4; overflow: hidden; }
+.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-block: 8px; padding-inline: 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.brand { display: inline-flex; align-items: center; gap: 7px; font-family: var(--f-display); font-size: 16px; letter-spacing: .06em; white-space: nowrap; color: var(--fg); }
+.logo { display: block; width: 26px; height: 26px; background: url(__LOGO__) center / contain no-repeat; flex: none; }
+.iconbtn { width: 34px; height: 32px; padding: 0; border: 0; background: none; color: var(--fg); cursor: pointer; display: inline-grid; place-items: center; border-radius: 6px; flex: none; }
+.iconbtn svg { width: 22px; height: 22px; display: block; }
+.iconbtn:hover { color: color-mix(in srgb, var(--accent) 70%, var(--fg)); }
+.iconbtn[aria-pressed=true] { color: var(--accent); }
+.iconbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#uiBtn { margin-left: auto; }
+.btn.ico { width: 40px; height: 32px; padding: 0; display: inline-grid; place-items: center; }
+.btn.ico svg, .mbtn svg { width: 17px; height: 17px; display: block; }
+.fileName { color: var(--muted); font-family: var(--f-mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 120px; }
+.btn { font: inherit; font-weight: 500; padding: 6px 11px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn:hover { filter: brightness(1.12); }
+.btn:focus-visible, .seg button:focus-visible, .row:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sidesel { font: inherit; font-weight: 500; height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel2); color: var(--fg); cursor: pointer; }
+.sidesel:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn[aria-pressed=true]#bomToggle { border-color: var(--accent); color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.seg button { font: inherit; padding: 5px 10px; border: 0; background: var(--panel2); color: var(--fg); cursor: pointer; }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); }
+.main { --lw: 330px; --rw: 440px; display: grid; grid-template-columns: var(--lw) 6px minmax(0, 1fr) 6px var(--rw); min-height: 0; }
+.main.nobom { grid-template-columns: var(--lw) 6px minmax(0, 1fr) 0 0; }
+.main.nobom .rpanel, .main.nobom #splitR { display: none; }
+.setbody { overflow: auto; padding: 10px 12px 12px; display: grid; gap: 8px; align-content: start; }
+.setbody fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px 10px; margin: 0; display: grid; gap: 7px; }
+.setbody legend { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; padding: 0 4px; }
+.srow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; }
+.srow span { min-width: 0; }
+.srow output { font-family: var(--f-mono); font-size: 11px; color: var(--muted); margin-left: 4px; }
+.srow input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.srow input[type=color] { width: 44px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; }
+.srow.chk { grid-template-columns: auto minmax(0, 1fr); cursor: pointer; }
+.srow.chk input { accent-color: var(--accent); width: 16px; height: 16px; }
+.presetrow { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 2px 2px 4px; }
+.presetrow span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+.presetrow select { font: inherit; font-weight: 600; background: var(--panel2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; min-width: 0; cursor: pointer; }
+.presetrow select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+details.grp { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel2) 55%, transparent); }
+details.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 600; border-radius: 8px; user-select: none; }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; flex: none; margin-right: 2px; }
+details.grp[open] > summary::before { transform: rotate(45deg); }
+details.grp > summary:hover { background: var(--panel2); }
+details.grp > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+details.grp > summary small { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 11.5px; }
+details.grp .gbody { display: grid; gap: 8px; padding: 4px 12px 12px; }
+.setfoot { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 8px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.split { cursor: col-resize; background: var(--line); position: relative; touch-action: none; }
+.split::after { content: ""; position: absolute; inset: 0 -4px; }
+.split:hover, .split.on, .split:focus-visible { background: var(--accent); outline: none; }
+.rpanel { background: var(--panel); display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; }
+.rbody { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; }
+.rbody.setpane { grid-template-rows: auto minmax(0, 1fr) auto; }
+#paneBom { grid-template-rows: auto auto minmax(0, 1fr); }
+.bomtop .cnt { margin-right: auto; color: var(--muted); font-family: var(--f-mono); font-size: 12px; white-space: nowrap; }
+.sethead .btn.sm { width: auto; height: auto; padding: 4px 9px; }
+.sethead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel2); }
+.sethead b { font-family: var(--f-display); font-size: 16px; letter-spacing: .03em; }
+.sethead .btn { width: 34px; height: 32px; padding: 0; display: inline-grid; place-items: center; }
+.srow select { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; }
+.rules { display: grid; gap: 6px; }
+.hk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 3px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+.hk:last-of-type { border-bottom: 0; }
+.hkkeys { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; }
+.hkkey { display: inline-flex; align-items: center; gap: 2px; font-family: var(--f-mono); font-size: 11.5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 2px 1px 7px; background: var(--panel2); }
+.hkkey button { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; padding: 0 4px; line-height: 1.2; }
+.hkkey button:hover { color: var(--fg); }
+.hkadd { min-width: 30px; }
+.hkadd.wait { color: var(--accent); border-color: var(--accent); }
+.rule { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 6px; align-items: center; }
+.rule input[type=text] { font: inherit; font-family: var(--f-mono); font-size: 12px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); min-width: 0; }
+.rule input[type=color], .netcolor input[type=color] { width: 44px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; }
+.netcolor { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+.bomhead { display: grid; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.bomhead .ttl { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.bomhead .ttl b { font-family: var(--f-display); font-size: 16px; letter-spacing: .03em; }
+.bomhead .ttl span { color: var(--muted); font-family: var(--f-mono); font-size: 12px; }
+.bomwrap { overflow: auto; min-height: 0; }
+table.bomt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.bomt thead th { position: sticky; top: 0; background: var(--panel2); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; text-align: left; padding: 0; border-bottom: 1px solid var(--line); z-index: 1; }
+.bomt thead th button { font: inherit; color: inherit; background: none; border: 0; padding: 7px 8px; width: 100%; text-align: inherit; cursor: pointer; letter-spacing: inherit; text-transform: inherit; }
+.bomt thead th button:hover, .bomt thead th button:focus-visible { color: var(--fg); outline: none; }
+.bomt thead th[aria-sort] button { color: var(--accent); }
+.bomt td { padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); vertical-align: top; }
+.bomt tbody tr { cursor: pointer; }
+.bomt tbody tr:hover { background: var(--panel2); }
+.bomt tbody tr.on { background: color-mix(in srgb, var(--ui-grp) 12%, transparent); box-shadow: inset 3px 0 0 var(--ui-grp); }
+.bomt tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.bomt .c-v { font-family: var(--f-mono); font-weight: 500; min-width: 11ch; max-width: 22ch; word-break: break-word; }
+.bomt thead th { white-space: nowrap; }
+.bomt .c-f .note { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
+.bomt .c-f { min-width: 12ch; }
+.bomt .c-f { color: var(--muted); word-break: break-word; }
+.bomt .c-q { font-family: var(--f-mono); font-weight: 600; color: var(--ui-grp); text-align: right; font-variant-numeric: tabular-nums; width: 1%; white-space: nowrap; }
+.bomt .c-r { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.bomt .c-r .b { color: var(--muted); text-decoration: underline dashed; text-underline-offset: 3px; }
+.bomt .c-r { color: var(--ui-grp); }
+.bomt th.c-q button { text-align: right; }
+.side { border-right: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; min-width: 0; }
+.search { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+input[type=search] { font: inherit; font-family: var(--f-mono); padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--fg); width: 100%; box-sizing: border-box; }
+input[type=search]:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.tabs { display: flex; gap: 4px; }
+.tab { font: inherit; flex: 1; padding: 5px 6px; border-radius: 5px; border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; }
+.tab[aria-selected=true] { border-color: var(--line); background: var(--panel2); color: var(--fg); }
+.card { padding: 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; max-height: 52vh; overflow: auto; min-width: 0; }
+.card:empty { display: none; }
+.eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+.ref { font-family: var(--f-mono); font-size: 22px; font-weight: 600; line-height: 1.1; overflow-wrap: anywhere; }
+.val { font-family: var(--f-mono); font-size: 16px; color: var(--ui-refc); overflow-wrap: anywhere; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font-family: var(--f-mono); font-size: 11px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); }
+.chip.b { color: var(--ui-bot); border-color: color-mix(in srgb, var(--ui-bot) 40%, transparent); }
+.chip.t { color: var(--ui-pin); border-color: color-mix(in srgb, var(--ui-pin) 40%, transparent); }
+table.pins { width: 100%; border-collapse: collapse; font-family: var(--f-mono); font-size: 12px; }
+table.pins td { padding: 3px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+table.pins td:first-child { color: var(--muted); width: 1%; white-space: nowrap; text-align: right; }
+.netlink { color: var(--fg); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.netlink:hover, .netlink:focus-visible { color: var(--ui-sel); text-decoration: underline; outline: none; }
+.netlink.gnd { color: var(--gnd); }
+.netlink.pwr { color: color-mix(in srgb, var(--pwr) 55%, #ffffff); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.netlink.nc { color: var(--muted); font-style: italic; } /* UI colour, independent of the board's N/C outline colour */
+.list { overflow: auto; min-height: 0; }
+.row { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 5px 12px; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.row:hover { background: var(--panel2); }
+.row.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.row b { font-family: var(--f-mono); font-weight: 500; overflow-wrap: anywhere; }
+.row span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.bom { grid-template-columns: minmax(0, 1fr) auto; }
+.row.bom .v { font-family: var(--f-mono); font-weight: 500; overflow-wrap: anywhere; }
+.row.bom .v small { display: block; font-family: var(--f-body); font-weight: 400; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.bom .refs { grid-column: 1 / -1; font-family: var(--f-mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.bom .qty { font-family: var(--f-mono); font-size: 15px; font-weight: 600; color: var(--ui-grp); font-variant-numeric: tabular-nums; }
+.row.bom.on { background: color-mix(in srgb, var(--ui-grp) 14%, transparent); }
+.listbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.btn.sm { padding: 3px 8px; font-size: 12px; }
+.reflist { display: flex; flex-wrap: wrap; gap: 4px; }
+.reflist .netlink { font-family: var(--f-mono); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; }
+.reflist .netlink.gt { color: var(--ui-grp); }
+.reflist .netlink.gb { color: var(--muted); border-style: dashed; }
+.chip.gt { color: var(--ui-grp); border-color: color-mix(in srgb, var(--ui-grp) 40%, transparent); }
+.chip.gb { color: var(--muted); border-style: dashed; }
+.row i { font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.more { padding: 8px 12px; color: var(--muted); }
+.note { font-size: 12px; color: var(--muted); }
+.note.warn { color: var(--accent); }
+kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; color: var(--fg); }
+.keys kbd { display: grid; place-items: center; text-align: center; min-height: 20px; padding: 1px 8px; box-sizing: border-box; }
+.keys { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; color: var(--muted); }
+.stage { position: relative; min-width: 0; min-height: 0; background: var(--bg); touch-action: none; }
+canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+canvas.drag { cursor: grabbing; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 5px 8px; font-family: var(--f-mono); font-size: 12px; white-space: nowrap; transform: translate(14px, 14px); box-shadow: 0 6px 18px rgb(0 0 0 / .45); }
+.tip em { font-style: normal; color: var(--accent); }
+.status { height: 26px; box-sizing: border-box; overflow: hidden; white-space: nowrap; align-items: center; display: flex; flex-wrap: nowrap; gap: 4px 18px; padding-block: 5px; padding-inline: 16px; border-top: 1px solid var(--line); background: var(--panel); font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.status b { color: var(--fg); font-weight: 500; }
+.dropmask { position: fixed; inset: 0; background: rgb(0 0 0 / .74); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 10; pointer-events: none; }
+.dropmask::before { content: ""; position: absolute; inset: 16px; border: 2px dashed #ffffff; border-radius: 16px; }
+.dropmask .dm { text-align: center; padding: 16px; color: #ffffff; display: grid; gap: 14px; justify-items: center; }
+.dropmask .fmts span { color: #ffd60a; border-color: rgb(255 214 10 / .6); }
+.dropmask .dm-t { font-family: var(--f-display); font-size: 44px; letter-spacing: .08em; text-transform: uppercase; line-height: 1; }
+.fmts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; font-family: var(--f-mono); font-size: 13px; }
+.fmts span { border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); color: var(--accent); border-radius: 5px; padding: 2px 8px; }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; cursor: pointer; background: var(--panel2); }
+.empty .in { display: grid; gap: 14px; justify-items: center; text-align: center; width: min(540px, 100%); box-sizing: border-box; padding: 34px 28px; border: 2px dashed var(--line); border-radius: 16px; transition: border-color .15s; }
+.empty:hover .in { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+.empty .logo { width: 64px; height: 64px; opacity: .9; }
+.empty b { font-family: var(--f-display); font-size: 22px; letter-spacing: .02em; font-weight: 600; }
+.empty .fmts span { color: var(--muted); border-color: var(--line); }
+.empty .note { font-size: 12.5px; }
+.err { color: var(--ui-sel); font-size: 12px; overflow-wrap: anywhere; }
+.toast { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 5; width: max-content; max-width: min(560px, calc(100% - 32px)); box-sizing: border-box; display: grid; gap: 8px; justify-items: center; text-align: center; padding: 12px 40px 12px 18px; background: var(--panel); border: 1px solid #c62828; border-radius: 10px; box-shadow: 0 10px 30px rgb(0 0 0 / .5); }
+.toast b { font-family: var(--f-display); font-size: 17px; letter-spacing: .02em; color: #ff6b6b; }
+.toast .nm { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.toast .fmts span { color: var(--fg); }
+.upd { display: grid; gap: 8px; }
+.upd .ln { font-size: 12.5px; }
+.upd .ok { color: var(--muted); }
+.upd .bad { color: #e06464; overflow-wrap: anywhere; }
+.upd .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.upd .bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.updbar { position: absolute; right: 14px; bottom: 14px; z-index: 5; width: min(340px, calc(100% - 28px)); box-sizing: border-box; padding: 12px 40px 12px 14px; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 10px 30px rgb(0 0 0 / .45); }
+.updbar b { display: block; font-family: var(--f-display); font-size: 15px; margin-bottom: 6px; }
+.updbar .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 26px; padding: 0; }
+.toast .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 26px; padding: 0; }
+@media (max-width: 760px) {
+  html:not(.mobile) body { overflow: auto; }
+  html:not(.mobile) .app { height: auto; min-height: 100%; }
+  html:not(.mobile) .main, html:not(.mobile) .main.nobom { grid-template-columns: minmax(0, 1fr); }
+  html:not(.mobile) .split { display: none; }
+  html:not(.mobile) .rpanel { border-top: 1px solid var(--line); }
+  html:not(.mobile) .bomwrap { max-height: 60vh; }
+  html:not(.mobile) .stage { height: 62vh; order: -1; }
+  html:not(.mobile) .side { border-right: 0; border-top: 1px solid var(--line); }
+  html:not(.mobile) .list { max-height: 50vh; }
+  html:not(.mobile) .card { max-height: none; }
+}
+/* ---------- phone mode (set by device detection, not by window width) ---------- */
+.mbtn, #msheet { display: none; }
+html.mobile { --sheetH: min(64vh, calc(100% - 150px)); }
+html.mobile body { overflow: hidden; font-size: 14px; }
+html.mobile .app { height: 100%; }
+html.mobile .top { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-inline: 10px; padding-block: 6px; scrollbar-width: none; }
+html.mobile .top::-webkit-scrollbar { display: none; }
+html.mobile .brand { display: none; }
+html.mobile #bomToggle, html.mobile #setBtn, html.mobile .fileName, html.mobile #fit { display: none; }
+html.mobile .mbtn { display: inline-flex; align-items: center; justify-content: center; }
+html.mobile .btn, html.mobile .seg button, html.mobile .sidesel { min-height: 36px; }
+html.mobile .main, html.mobile .main.nobom { grid-template-columns: minmax(0, 1fr); }
+html.mobile .split { display: none; }
+html.mobile .side, html.mobile .rpanel { display: none !important; }
+html.mobile .side, html.mobile .rpanel { position: fixed; left: 0; right: 0; bottom: 0; height: var(--sheetH); z-index: 8; border: 0; border-top: 1px solid var(--line); box-shadow: 0 -16px 40px rgb(0 0 0 / .55); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html.mobile .side, html.mobile .rpanel { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--panel); }
+html.mobile.sheet-open[data-mtab=info] .side { display: block !important; }
+html.mobile.sheet-open[data-mtab=bom] .rpanel, html.mobile.sheet-open[data-mtab=set] .rpanel { display: block !important; }
+/* one scroll per sheet: inner panes grow with their content instead of scrolling separately */
+html.mobile .search { position: sticky; top: 0; z-index: 2; background: var(--panel); }
+html.mobile .card, html.mobile .list, html.mobile .bomwrap, html.mobile .setbody { max-height: none; overflow: visible; min-height: 0; }
+html.mobile .rbody { display: block; }
+html.mobile .setfoot { padding-bottom: 18px; }
+html.mobile .srow { gap: 6px 12px; }
+html.mobile .srow span { line-height: 1.3; }
+html.mobile .sethead { display: none; }
+html.mobile .sethead.bomtop { display: flex; }
+html.mobile #bomClose { display: none; }
+html.mobile .rpanel { grid-template-rows: minmax(0, 1fr); }
+
+html.mobile #msheet { position: fixed; left: 0; right: 0; bottom: var(--sheetH); z-index: 9; gap: 4px; align-items: center; padding: 6px 8px; background: var(--panel2); border-top: 1px solid var(--line); border-radius: 12px 12px 0 0; }
+html.mobile.sheet-open #msheet { display: flex; }
+#msheet .mtab { font: inherit; font-weight: 600; flex: 1; min-height: 38px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+#msheet .mtab[aria-selected=true] { background: var(--panel); color: var(--fg); border-color: var(--line); }
+#msheet .mclose { min-width: 44px; }
+html.mobile .status { font-size: 11px; padding-inline: 10px; gap: 4px 12px; }
+html.mobile .status .mlogo { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-display); font-size: 12px; letter-spacing: .06em; color: var(--fg); }
+html.mobile .status .mlogo .logo { width: 16px; height: 16px; }
+html.mobile .dropmask .dm-t { font-size: 32px; }
+/* phone toolbar: everything fits one row on a 360px screen */
+html.mobile .top { gap: 4px; padding-inline: 8px; }
+html.mobile .top > * { flex: none; }
+html.mobile #uiBtn { margin-left: auto; }
+html.mobile .sidesel { padding: 0 20px 0 8px; }
+html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico { width: 38px; min-width: 38px; padding: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <div class="top">
+    <div class="brand"><i class="logo" aria-hidden="true"></i>BoardV</div>
+    <button class="btn mbtn" id="mmenu" type="button" aria-expanded="false" aria-label="Панели: поиск, BOM, настройки">☰</button>
+    <button class="btn primary" id="open" type="button">Открыть файлы</button>
+    <input type="file" id="file" multiple hidden>
+    <button class="btn" id="bomToggle" type="button" aria-pressed="true" title="Показать или скрыть BOM справа">BOM</button>
+    <select class="sidesel" id="sideSel" aria-label="Сторона платы" title="Сторона платы">
+      <option value="top">Верх</option><option value="bottom">Низ</option><option value="both">Обе</option>
+    </select>
+    <button class="btn" id="rot" type="button" title="Повернуть на 90° (R)">⟳ 90°</button>
+    <button class="btn ico" id="fit" type="button" title="Вписать плату" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
+    <button class="btn mbtn" id="mfit" type="button" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
+    <div class="fileName" id="fileName"></div>
+    <button class="iconbtn" id="uiBtn" type="button" aria-label="Оформление"></button>
+    <button class="iconbtn" id="setBtn" type="button" aria-pressed="false" aria-controls="paneSet" aria-label="Настройки" title="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="10.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="16.5" width="18" height="3" rx="1.5" fill="currentColor"/></svg></button>
+  </div>
+
+  <div class="main">
+    <aside class="side" aria-label="Инспектор">
+      <div class="search">
+        <input type="search" id="q" placeholder="R12, GND, 100n, 0402, LM2596…" aria-label="Поиск по деталям, цепям и номиналам" autocomplete="off" spellcheck="false">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tabParts" aria-selected="true" type="button">Детали</button>
+          <button class="tab" role="tab" id="tabNets" aria-selected="false" type="button">Цепи</button>
+        </div>
+      </div>
+      <div class="card" id="card" aria-live="polite"></div>
+      <div class="list" id="list" role="listbox" aria-label="Результаты"></div>
+    </aside>
+    <div class="split" id="splitL" role="separator" aria-orientation="vertical" aria-label="Ширина левой панели" tabindex="0" title="Потяните, чтобы изменить ширину. Двойной клик — по умолчанию"></div>
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Плата"></canvas>
+      <div class="empty" id="empty" role="button" tabindex="0" aria-label="Открыть файл платы">
+        <div class="in">
+          <i class="logo" aria-hidden="true"></i>
+          <b id="emptyT">Закинь поддерживаемый файл</b>
+          <div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div>
+          <div class="note" id="emptyN">Перетащи файл в окно или нажми, чтобы выбрать</div>
+        </div>
+      </div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="toast" id="toast" role="alert" hidden></div>
+      <div class="updbar" id="updBar" role="status" hidden></div>
+    </div>
+    <div class="split" id="splitR" role="separator" aria-orientation="vertical" aria-label="Ширина правой панели" tabindex="0" title="Потяните, чтобы изменить ширину. Двойной клик — по умолчанию"></div>
+    <aside class="rpanel" aria-label="BOM и настройки">
+      <section class="rbody" id="paneBom" aria-label="BOM">
+      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn sm" type="button" id="copyBom">Копировать CSV</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
+      <div class="bomhead">
+        <input type="search" id="bq" placeholder="Фильтр: 100n, 0402, LM…" aria-label="Фильтр BOM" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="bomwrap" id="bomList"></div>
+      </section>
+      <section class="rbody setpane" id="paneSet" aria-label="Настройки" hidden>
+        <div class="sethead"><b>Настройки</b><button class="btn" id="setClose" type="button" aria-label="Закрыть настройки" title="Закрыть (Esc)">✕</button></div>
+        <div class="setbody" id="setBody"></div>
+        <div class="setfoot">
+          <div class="btnrow">
+            <button class="btn sm" id="cfgExport" type="button" title="Сохранить все настройки в файл, чтобы перенести на другое устройство">Выгрузить настройки</button>
+            <button class="btn sm" id="cfgImport" type="button" title="Загрузить настройки из ранее выгруженного файла">Загрузить настройки</button>
+            <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
+          </div>
+          <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
+          <div class="note" id="verLine">Сборка от 09.10.2026</div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <div id="msheet" role="tablist" aria-label="Панели">
+    <button class="mtab" type="button" role="tab" data-mt="info" aria-selected="true">Поиск</button>
+    <button class="mtab" type="button" role="tab" data-mt="bom" aria-selected="false">BOM</button>
+    <button class="mtab" type="button" role="tab" data-mt="set" aria-selected="false">Настройки</button>
+    <button class="btn mclose" type="button" id="mclose" aria-label="Скрыть панель">✕</button>
+  </div>
+  <div class="status" id="status"><span>Файл не открыт</span></div>
+</div>
+<div class="dropmask" id="mask" hidden><div class="dm"><div class="dm-t">Drop file</div><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div></div></div>
+
+<script src="build-info.js"></script>
+<script src="BoardV-config.js"></script>
+<script>
+/*CORE*/
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  // Phone mode only on phones: mobile browser UA, or a touch-only device with a small screen. Window width alone never switches it.
+  var IS_PHONE = (function () {
+    var ua = navigator.userAgent || '';
+    if (/iPhone|iPod|Android.+Mobile|Windows Phone|IEMobile|Opera Mini/i.test(ua)) return true;
+    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches;
+    return !!coarse && Math.min(screen.width, screen.height) <= 540;
+  })();
+  var UI = 'dark'; try { UI = localStorage.getItem('bvr-ui') === 'light' ? 'light' : 'dark'; } catch (e) {}
+  var ICON_MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a.6.6 0 0 0-.8-.7A9.6 9.6 0 1 0 21.2 15.4a.6.6 0 0 0-.7-.8z"/></svg>';
+  var ICON_SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 1.8v2.4M12 19.8v2.4M1.8 12h2.4M19.8 12h2.4M4.8 4.8l1.7 1.7M17.5 17.5l1.7 1.7M4.8 19.2l1.7-1.7M17.5 6.5l1.7-1.7"/></g></svg>';
+  function setUi(m) {
+    UI = m === 'light' ? 'light' : 'dark'; document.documentElement.dataset.ui = UI;
+    var b = $('uiBtn'); b.innerHTML = UI === 'dark' ? ICON_SUN : ICON_MOON; // the icon shows where a click takes you
+    b.title = UI === 'dark' ? 'Сейчас Ночь. Нажмите, чтобы включить День' : 'Сейчас День. Нажмите, чтобы включить Ночь';
+    b.setAttribute('aria-label', b.title);
+    try { localStorage.setItem('bvr-ui', UI); } catch (e) {}
+    if (typeof CFG !== 'undefined' && CFG) { applyCfg(false); if (SETOPEN) buildSettings(); }
+  }
+  setUi(UI);
+  $('uiBtn').onclick = function () { setUi(UI === 'dark' ? 'light' : 'dark'); };
+  if (IS_PHONE) { document.documentElement.classList.add('mobile'); $('open').classList.add('ico'); $('open').setAttribute('aria-label', 'Открыть файл'); $('open').innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h4l2 2.2h7A2.5 2.5 0 0 1 21 8.7v8.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>'; $('rot').textContent = '⟳'; $('emptyN').textContent = 'Нажми, чтобы выбрать файл'; }
+  // where we run: Android app (WebView), Windows app (Electron), installed PWA, or a plain page/file
+  var APP_MODE = /BoardviewAndroid/.test(navigator.userAgent) ? 'android' : window.bvDesktop ? 'desktop'
+    : (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ? 'pwa' : 'page';
+  var M = null;               // board model from BV.finalize
+  var src = { files: [], valuesFrom: '', pinNames: true };
+  var V = { side: 'top', rot: 0, k: 1, cx: 0, cy: 0 };
+  var S = { part: null, net: null, group: null, tab: 'parts' };
+  var hover = null, W = 0, H = 0, dpr = 1;
+  var C = {};
+  function readColors() { var cs = getComputedStyle(document.documentElement); ['board', 'edge', 'silk', 'pin', 'gnd', 'nc', 'botpart', 'sel', 'selpart', 'grp', 'grpb', 'hlw', 'hlk', 'pwr', 'dim', 'refc', 'canvas', 'outline', 'valc', 'board2', 'partfill', 'selhere', 'selfar', 'muted', 'bg', 'fg', 'accent', 'f-mono'].forEach(function (k) { C[k] = cs.getPropertyValue('--' + k).trim(); }); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function isGnd(n) { return /^(a|d|p|s|c|e)?gnd\w*$|^vss\w*$|^ground$/i.test(n); }
+  // Supply rails: 12V, +12V, 3V3, 1V8, +3.3V, 5V0, P2V5, V3P3, -12V, VCC/VDD/AVDD/TX_VDD, VBUS, VIN, VBAT, anything starting with "+"
+  var powerCache = {};
+  function isPower(n) {
+    if (n in powerCache) return powerCache[n];
+    var u = String(n).toUpperCase(), r = false;
+    if (u !== 'UNCONNECTED' && !isGnd(n) && !/[_-](EN|ENA|ENABLE|PG|PGOOD|PWRGD|OK|GOOD|SENSE|SNS|FB|DET|DETECT|ON|OFF|CTRL|CTL|SEL|MON|ALERT|FLT|FAULT|INT|RST|RESET|LED)\d*$/.test(u)) {
+      r = /^\+/.test(u) ||
+          /(^|[^A-Z0-9])[+-]?P?\d+(\.\d+)?V(\d+)?(?=$|[^A-Z0-9]|[A-Z])/.test(u) && !/^NET/.test(u) ||
+          /(^|[^A-Z])V\d+P\d+/.test(u) ||
+          /(^|[^A-Z0-9])[AD]?V(CC|DD|EE|BUS|BAT|IN|SYS|PP|CORE|IO|MAIN|REF)([^A-Z]|$|[A-Z]{0,2}([^A-Z]|$))/.test(u) ||
+          /(^|[^A-Z0-9])(PWR|POWER|VSUPPLY|SUPPLY)([^A-Z]|$)/.test(u);
+    }
+    return (powerCache[n] = r);
+  }
+  function netCls(n) { return n === 'UNCONNECTED' ? 'nc' : isGnd(n) ? 'gnd' : isPower(n) ? 'pwr' : ''; }
+
+  /* ---------- settings: colors + effects, config file ---------- */
+  // "Гранд" = the former default (green board, round pads); the default is now grey with square pads
+  var GRAND = { canvas: '#0b0d0d', board: '#0d1e17', board2: '#173a2c', edge: '#6e8f80', outline: '#cfd8d3', partfill: '#cfd8d3', botpart: '#7fa9e8',
+    pin: '#eef2f0', pwr: '#6d0f14', gnd: '#8e9592', nc: '#8a938f', refc: '#ffffff', valc: '#e6ebe8',
+    sel: '#ffd60a', dim: '#5a605e', selhere: '#ffffff', selfar: '#ffffff' };
+  var DEF_COLORS = Object.assign({}, GRAND, { canvasDay: '#e7eae8', canvas: '#1b1d1c', board: '#3a3e3d', board2: '#4a4f4d', edge: '#8d9491', outline: '#d4d8d6', partfill: '#d4d8d6',
+    pin: '#f4f6f5', pwr: '#6d0f14', gnd: '#9aa19e', nc: '#141615', dim: '#5a605e' });
+  var DEF_FX = { boardGlow: 0, boardGrad: false, edgeW: 1.2, farAlpha: 0.13,
+    pinShape: 'rsquare', pinGlow: 0, pwrGlow: 0, gndGlow: 0,
+    outlineAlpha: 0.5, outlineW: 1, cornerR: 3, partFill: 0, labelScale: 1, showValues: true, showPinNums: true,
+    haloStyle: 'shadow', haloAlpha: 0.5, haloW: 1,
+    netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
+    selGlow: 1, selBreath: false, selDash: true, selDashSpeed: 0.2, selDim: true,
+    autoFit: false, wheelInvert: false, zoomSpeed: 1 };
+  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed']; // themes do not touch these
+  function G_(c) { return Object.assign({}, GRAND, c || {}); }
+  var PRESETS = {
+    'По умолчанию': { colors: {}, fx: {} },
+    'Гранд': { colors: G_(), fx: { pinShape: 'circle' } },
+    'Классика': { colors: G_({ pin: '#d39a52', pwr: '#9b5de5', gnd: '#4d7a62', nc: '#4a524e', refc: '#cfd8d3', valc: '#f2b544', sel: '#ff4d78', selhere: '#f2b544', selfar: '#f2b544' }),
+      fx: { pinShape: 'circle', cornerR: 0, selGlow: 0, selBreath: false, selDash: false } },
+    'Ночь': { colors: G_({ canvas: '#000000', board: '#000000', edge: '#d8d8a0', outline: '#9a9a9a', pin: '#5b7bff', pwr: '#ff4040', gnd: '#2c3c9c', nc: '#4c4c4c', refc: '#e0e0e0', valc: '#a0a0a0', sel: '#ffff00', dim: '#2e2e2e', selhere: '#ffff00', selfar: '#ffff00' }),
+      fx: { cornerR: 0, pinShape: 'square', outlineAlpha: 0.8, selGlow: 0 } },
+    'Темная': { colors: G_({ canvas: '#000000', board: '#060606', edge: '#5f5f5f', outline: '#9a9a9a', botpart: '#6f9be0', pin: '#d9d9d9', pwr: '#c62828', gnd: '#2e7d32', nc: '#6a6a6a', refc: '#ffffff', valc: '#b5b5b5', sel: '#ffeb3b', dim: '#3a3a3a' }), fx: { pinShape: 'circle' } },
+    'Синяя': { colors: G_({ canvas: '#070b12', board: '#0b1d3a', board2: '#14305e', edge: '#6a8cc4', outline: '#c9d6ee', pin: '#f1f4fa', pwr: '#8f1d22', gnd: '#7f8da3', nc: '#8c9ab3', valc: '#d7e2f5', dim: '#3d4c66' }), fx: { boardGrad: true, pinShape: 'circle' } },
+    'Красная': { colors: G_({ canvas: '#0d0606', board: '#3b0b0e', board2: '#5a1217', edge: '#d98b8f', outline: '#f0d2d3', pin: '#fff5f5', pwr: '#ffc23d', gnd: '#b69a9b', nc: '#c29c9e', valc: '#f6dfe0', sel: '#7df9ff', dim: '#5e3638', selhere: '#7df9ff', selfar: '#7df9ff' }), fx: { boardGrad: true, pinShape: 'circle' } },
+    'Светлая': { colors: G_({ canvas: '#e7eae8', board: '#f8f9f7', board2: '#eef1ef', edge: '#6b7570', outline: '#56605b', partfill: '#56605b', botpart: '#2f63b8', pin: '#2b2f2d', pwr: '#b71c1c', gnd: '#7d8784', nc: '#9aa19e', refc: '#111312', valc: '#4a524e', sel: '#e0a100', dim: '#c9cecb', selhere: '#000000', selfar: '#000000' }),
+      fx: { pinShape: 'circle', selGlow: 4, farAlpha: 0.2, outlineAlpha: 0.7 } },
+    'Неон': { colors: G_({ canvas: '#05030a', board: '#0d0820', board2: '#1a0f3d', edge: '#00e5ff', outline: '#ff2bd6', partfill: '#ff2bd6', botpart: '#00e5ff', pin: '#e0fbff', pwr: '#ff2b6d', gnd: '#5b62c9', nc: '#6c5f9c', refc: '#ffffff', valc: '#9ff6ff', sel: '#39ff14', dim: '#2a2440', selhere: '#00e5ff', selfar: '#ff2bd6' }),
+      fx: { pinShape: 'circle', boardGlow: 18, boardGrad: true, pinGlow: 4, pwrGlow: 8, selGlow: 22, cornerR: 5, outlineAlpha: 0.8, partFill: 0.06 } }
+  };
+  var SCHEMA = [
+    ['Область: фон и подложка', [['color', 'canvas', 'Фон окна'], ['color', 'board', 'Подложка платы'], ['check', 'boardGrad', 'Градиент подложки'], ['color', 'board2', 'Второй цвет градиента'],
+      ['color', 'edge', 'Контур платы'], ['range', 'edgeW', 'Толщина контура', 0.5, 4, 0.1], ['range', 'boardGlow', 'Свечение контура', 0, 40, 1], ['range', 'farAlpha', 'Видимость обратной стороны', 0, 0.6, 0.01]]],
+    ['Контакты', [['select', 'pinShape', 'Форма контактов', [['circle', 'Круг'], ['rsquare', 'Скруглённый квадрат'], ['square', 'Квадрат']]],
+      ['color', 'pin', 'Сигнальные'], ['color', 'pwr', 'Питание'], ['color', 'gnd', 'Земля'], ['color', 'nc', 'Не подключённые (обводка)'],
+      ['range', 'pinGlow', 'Свечение сигнальных', 0, 20, 1], ['range', 'pwrGlow', 'Свечение питания', 0, 20, 1], ['range', 'gndGlow', 'Свечение земли', 0, 20, 1]]],
+    ['Компоненты', [['color', 'outline', 'Обводка компонента'], ['color', 'botpart', 'Обводка нижних (режим «Обе»)'], ['range', 'outlineW', 'Толщина обводки компонента', 0.5, 4, 0.1],
+      ['range', 'cornerR', 'Скругление углов', 0, 12, 0.5], ['range', 'outlineAlpha', 'Яркость обводки', 0.1, 1, 0.05], ['color', 'partfill', 'Заливка корпуса'], ['range', 'partFill', 'Плотность заливки', 0, 0.6, 0.01],
+      ['color', 'refc', 'Обозначения (R1, U2…)'], ['color', 'valc', 'Номиналы'], ['range', 'labelScale', 'Размер подписей', 0.6, 1.8, 0.05], ['select', 'haloStyle', 'Обводка подписей', [['soft', 'Мягкая'], ['solid', 'Контур'], ['shadow', 'Тень'], ['none', 'Без обводки']]], ['range', 'haloAlpha', 'Плотность обводки подписей', 0, 1, 0.05], ['range', 'haloW', 'Толщина обводки подписей', 0.5, 2.5, 0.1], ['check', 'showValues', 'Показывать номиналы'], ['check', 'showPinNums', 'Номера пинов при приближении']]],
+    ['Выделение компонентов (ЛКМ и BOM)', [['check', 'selDim', 'Затемнять остальные компоненты'], ['color', 'selhere', 'На текущем слое'], ['color', 'selfar', 'На противоположном слое (пунктир)'], ['range', 'selGlow', 'Свечение', 0, 40, 1],
+      ['check', 'selBreath', '«Дыхание» свечения'], ['check', 'selDash', 'Бегущий пунктир'], ['range', 'selDashSpeed', 'Скорость пунктира', 0.2, 4, 0.1]]],
+    ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
+      ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
+    ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
+      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей']]]
+  ];
+  /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
+  var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
+    ['rotate', 'Поворот на 90°'], ['fit', 'Вписать плату'], ['clear', 'Сбросить выбор / закрыть настройки'], ['zoomIn', 'Приблизить'], ['zoomOut', 'Отдалить'],
+    ['bom', 'Показать / скрыть BOM'], ['settings', 'Открыть / закрыть настройки'], ['ui', 'Оформление: День / Ночь'], ['values', 'Номиналы на плате вкл/выкл'],
+    ['pinNums', 'Номера пинов вкл/выкл'], ['open', 'Открыть файл']];
+  var DEF_KEYS = { search: ['Slash', 'Ctrl+KeyF'], flip: ['Space'], top: [], bottom: [], both: ['KeyB'], cycle: ['KeyL'], rotate: ['KeyR'], fit: ['KeyF'], clear: ['Escape'],
+    zoomIn: ['Equal', 'NumpadAdd'], zoomOut: ['Minus', 'NumpadSubtract'], bom: [], settings: [], ui: [], values: [], pinNums: [], open: ['Ctrl+KeyO'] };
+  var KEYNAME = { Space: 'Пробел', Escape: 'Esc', Slash: '/', Backslash: '\\', Period: '.', Comma: ',', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']',
+    Minus: '-', Equal: '=', Backquote: '`', Enter: 'Enter', Tab: 'Tab', Backspace: '⌫', Delete: 'Del', Insert: 'Ins', Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn',
+    ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', NumpadAdd: 'Num +', NumpadSubtract: 'Num −', NumpadMultiply: 'Num *', NumpadDivide: 'Num /', NumpadDecimal: 'Num .', NumpadEnter: 'Num Enter' };
+  function keyLabel(combo) {
+    return combo.split('+').map(function (p) { return KEYNAME[p] || p.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad(\d)$/, 'Num $1'); }).join('+');
+  }
+  function comboOf(e) { return (e.ctrlKey || e.metaKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + (e.code || e.key); }
+  var LEGACY = { bomhere: 'selhere', bomfar: 'selfar', bomGlow: 'selGlow', bomBreath: 'selBreath', bomDash: 'selDash', bomDashSpeed: 'selDashSpeed' };
+  var CFG = { v: 3, preset: 'По умолчанию', colors: Object.assign({}, DEF_COLORS), fx: Object.assign({}, DEF_FX), nets: [], keys: JSON.parse(JSON.stringify(DEF_KEYS)) };
+  var FX = CFG.fx, cfgSource = 'по умолчанию', cfgHandle = null, ruleCache = null;
+  function mergeCfg(src) {
+    var c = { v: 3, colors: Object.assign({}, DEF_COLORS), fx: Object.assign({}, DEF_FX), nets: [], keys: JSON.parse(JSON.stringify(DEF_KEYS)) };
+    if (src && src.keys && typeof src.keys === 'object') Object.keys(DEF_KEYS).forEach(function (a) { if (Array.isArray(src.keys[a])) c.keys[a] = src.keys[a].filter(function (k) { return typeof k === 'string' && k; }); });
+    function put(obj, defs, k, v) { k = LEGACY[k] || k; if (k in defs && typeof v === typeof defs[k]) obj[k] = v; }
+    if (src && src.colors) Object.keys(src.colors).forEach(function (k) { if (/^#[0-9a-f]{6}$/i.test(src.colors[k])) put(c.colors, DEF_COLORS, k, src.colors[k]); });
+    var OLD_ANIM = { bomBreath: 1, bomGlow: 1, partGlow: 1, selBreath: 1, selGlow: 1, netPulse: 1, netRipple: 1, netGlow: 1 };
+    var oldFormat = !(src && src.v >= 2), beforeV3 = !(src && src.v >= 3);
+    if (src && src.fx) Object.keys(src.fx).forEach(function (k) { if (oldFormat && OLD_ANIM[k]) return; if (beforeV3 && k === 'pinShape' && src.fx[k] !== 'circle') return; put(c.fx, DEF_FX, k, src.fx[k]); });
+    if (src && typeof src.preset === 'string') c.preset = src.preset;
+    c.base = src && typeof src.base === 'string' && PRESETS[src.base] ? src.base : (c.preset && PRESETS[c.preset] ? c.preset : 'По умолчанию');
+    if (src && Array.isArray(src.nets)) c.nets = src.nets.filter(function (r) { return r && typeof r.p === 'string' && r.p.trim() && /^#[0-9a-f]{6}$/i.test(r.c); }).map(function (r) { return { p: r.p.trim(), c: r.c }; });
+    return c;
+  }
+  function netRuleColor(n) {
+    if (!CFG.nets.length || n === 'UNCONNECTED') return null;
+    if (!ruleCache) ruleCache = { res: CFG.nets.map(function (r) { return { re: new RegExp('^' + r.p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i'), c: r.c }; }), memo: {} };
+    if (n in ruleCache.memo) return ruleCache.memo[n];
+    var hit = null; for (var i = ruleCache.res.length - 1; i >= 0; i--) if (ruleCache.res[i].re.test(n)) { hit = ruleCache.res[i].c; break; } // later rules win
+    return (ruleCache.memo[n] = hit);
+  }
+  var BG_KEYS = ['canvas', 'canvasDay']; // window background: one colour for Ночь, one for День; themes leave them alone
+  function bgKey() { return typeof UI !== 'undefined' && UI === 'light' ? 'canvasDay' : 'canvas'; }
+  function keepBg(colors, from) { var c = Object.assign({}, colors); BG_KEYS.forEach(function (k) { if (from && from[k]) c[k] = from[k]; else delete c[k]; }); return c; }
+  function applyCfg(save) {
+    var root = document.documentElement.style;
+    Object.keys(CFG.colors).forEach(function (k) { root.setProperty('--' + k, CFG.colors[k]); });
+    root.setProperty('--canvas', CFG.colors[bgKey()]);
+    FX = CFG.fx; ruleCache = null; readColors(); if (typeof req === 'function') req();
+    if (save) { CFG.savedAt = new Date().toISOString(); try { localStorage.setItem('bvr-config', JSON.stringify(CFG)); } catch (e) {} }
+  }
+  function themeFx(themefx, cur) { // a theme sets the look; control options are kept
+    var f = Object.assign({}, themefx || {}); CONTROL_FX.forEach(function (k) { if (cur && k in cur) f[k] = cur[k]; }); return f;
+  }
+  function bgMigrate(c) { if (c && c.colors && !c.colors.canvasDay) { c.colors = Object.assign({}, c.colors); delete c.colors.canvas; } return c; } // old configs: backgrounds start from the defaults
+  (function loadCfg() {
+    var fileCfg = window.BOARDVIEW_CONFIG || null, local = null;
+    try { local = JSON.parse(localStorage.getItem('bvr-config') || 'null'); } catch (e) {}
+    var pick = fileCfg, from = 'BoardV-config.js';
+    if (local && (!fileCfg || (local.savedAt || '') > (fileCfg.savedAt || ''))) { pick = local; from = fileCfg ? 'браузер (новее, чем файл)' : 'браузер'; }
+    var RENAMED = { 'OpenBoardView': 'Ночь', 'FlexBV': 'Темная', 'Синяя маска': 'Синяя', 'Красная маска': 'Красная' };
+    if (pick && RENAMED[pick.preset]) pick.preset = RENAMED[pick.preset];
+    if (pick && pick.preset && PRESETS[pick.preset]) { var pr = PRESETS[pick.preset]; pick = { preset: pick.preset, savedAt: pick.savedAt, colors: keepBg(pr.colors, pick.colors && pick.colors.canvasDay ? pick.colors : null), fx: themeFx(pr.fx, pick.fx), nets: pick.nets, keys: pick.keys }; }
+    if (pick) { CFG = mergeCfg(bgMigrate(pick)); CFG.savedAt = pick.savedAt; cfgSource = from; }
+    FX = CFG.fx;
+  })();
+  function cfgText() {
+    return '// BoardV — настройки цветов и эффектов.\n// Лежит рядом с BoardV.html и подхватывается при запуске.\nwindow.BOARDVIEW_CONFIG = ' +
+      JSON.stringify({ v: 3, savedAt: CFG.savedAt || new Date().toISOString(), preset: CFG.preset, base: CFG.base, colors: CFG.colors, fx: CFG.fx, nets: CFG.nets, keys: CFG.keys }, null, 2) + ';\n';
+  }
+
+  /* ---------- loading ---------- */
+  function decode(u8) {
+    var t = new TextDecoder('utf-8').decode(u8);
+    if (t.indexOf(String.fromCharCode(0xFFFD)) >= 0) { try { t = new TextDecoder('windows-1251').decode(u8); } catch (e) {} }
+    return t;
+  }
+  function isZip(u8) { return u8.length > 4 && u8[0] === 0x50 && u8[1] === 0x4b && u8[2] === 3 && u8[3] === 4; }
+  function loadFiles(list) {
+    var items = [];
+    return Promise.all(Array.prototype.map.call(list, function (f) {
+      return f.arrayBuffer().then(function (buf) {
+        var u8 = new Uint8Array(buf);
+        if (PCBDOC.isCfb(u8)) { items.push({ name: f.name, bin: u8, type: 'pcbdoc' }); return; }
+        if (isZip(u8)) return BV.unzip(u8).then(function (es) { es.forEach(function (e) { if (e.data && !/\/$/.test(e.name)) items.push({ name: e.name.split('/').pop(), from: f.name, text: decode(e.data) }); }); });
+        items.push({ name: f.name, text: decode(u8) });
+      });
+    })).then(function () { ingest(items); }).catch(function () { unsupported(Array.prototype.map.call(list, function (f) { return f.name; })); });
+  }
+  function ingest(items) {
+    var by = {};
+    items.forEach(function (it) { it.type = it.type || BV.detect(it.name, it.text); (by[it.type] = by[it.type] || []).push(it); });
+    var unknown = uniq((by['null'] || []).map(function (i) { return i.from || i.name; }));
+    var meta = [], metaNames = [];
+    (by.pnp || []).forEach(function (i) { try { var r = BV.parsePnp(i.text); meta.push(r); metaNames.push(i.name); } catch (e) {} });
+    (by.bom || []).forEach(function (i) { try { var r = BV.parseBom(i.text); meta.push(r); metaNames.push(i.name); } catch (e) {} });
+    var model = null, used = [], pinNames = true;
+    try {
+      if (by.json) { model = BV.readJson(by.json[0].text); used.push(by.json[0].name); }
+      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); used.push(by.pcbdoc[0].name); }
+      else if (by.bvr) { model = BV.readBvr(by.bvr[0].text); used.push(by.bvr[0].name); }
+      else if (by.brd) { model = BV.readBrd(by.brd[0].text); used.push(by.brd[0].name); pinNames = false; }
+      else if (by.ascii || by.ipc356) {
+        var p = by.ascii ? by.ascii[0] : by.ipc356[0];
+        var s = { pins: by.ascii ? BV.parseAscii(p.text) : BV.parseIpc356(p.text) };
+        if (by.gerber) try { s.outline = BV.parseGerber(by.gerber[0].text); used.push(by.gerber[0].name); } catch (e) {}
+        var b = BV.build(s); model = BV.finalize(b.parts, b.outline); used.unshift(p.name);
+      }
+    } catch (e) { showError('Не удалось открыть файл', e.message); return; }
+    if (!model && !meta.length) {
+      if (unknown.length) unsupported(unknown); else showError('Файл пустой');
+      return;
+    }
+    if (!model) { // only values were dropped: merge into the open board
+      if (!M) { showError('Сначала откройте плату', metaNames.join(', ') + ' — это только номиналы. Добавьте их после файла платы.'); return; }
+      var n = 0; meta.forEach(function (m) { n += BV.applyMeta(M.parts, m.comps); });
+      src.valuesFrom = metaNames.join(', '); src.files = src.files.concat(metaNames);
+      flash(n ? 'Номиналы добавлены для ' + n + ' деталей' : 'В ' + metaNames.join(', ') + ' не нашлось совпадающих позиционных обозначений');
+      refreshAll(false); return;
+    }
+    meta.forEach(function (m) { BV.applyMeta(model.parts, m.comps); });
+    M = model; src = { files: used.concat(metaNames), valuesFrom: metaNames.join(', ') || (by.json || by.ascii || by.pcbdoc ? 'из файла платы' : ''), pinNames: pinNames };
+    S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true;
+    refreshAll(true);
+  }
+  var flashT = 0;
+  function flash(t) { status(t); clearTimeout(flashT); flashT = setTimeout(function () { status(); }, 3500); }
+  var toastT = 0;
+  function showError(title, detail, withFormats) { // every load error shows here, over the board, and fades after a while
+    var t = $('toast');
+    t.innerHTML = '<b></b>' + (detail ? '<div class="nm"></div>' : '') + (withFormats ? '<div class="note">Отправьте файл в одном из форматов:</div><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div>' : '') + '<button type="button" class="btn x" aria-label="Закрыть">✕</button>';
+    t.querySelector('b').textContent = title; if (detail) t.querySelector('.nm').textContent = detail;
+    t.querySelector('.x').onclick = function () { t.hidden = true; };
+    t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 8000);
+  }
+  function unsupported(names) { showError('Файл не поддерживается', names.join(', '), true); }
+
+  /* ---------- geometry ---------- */
+  function center() { return [M.x0 + M.w / 2, M.y0 + M.h / 2]; }
+  function w2s(x, y) {
+    var c = center(), u = x - c[0], v = y - c[1], t;
+    if (V.side === 'bottom') u = -u;
+    for (var i = 0; i < V.rot; i++) { t = u; u = -v; v = t; }
+    return [V.cx + u * V.k, V.cy - v * V.k];
+  }
+  function s2w(sx, sy) {
+    var u = (sx - V.cx) / V.k, v = -(sy - V.cy) / V.k, t, c = center();
+    for (var i = 0; i < V.rot; i++) { t = u; u = v; v = -t; }
+    if (V.side === 'bottom') u = -u;
+    return [u + c[0], v + c[1]];
+  }
+  function fit() {
+    if (!M || !W) return;
+    var bw = V.rot % 2 ? M.h : M.w, bh = V.rot % 2 ? M.w : M.h, m = 28;
+    V.k = Math.max(0.0005, Math.min((W - 2 * m) / bw, (H - 2 * m) / bh)); V.cx = W / 2; V.cy = H / 2;
+  }
+  function visible(p) { return V.side === 'both' || (V.side === 'bottom') === !!p.bottom; }
+  function partRect(p) { // screen rect
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    p.pins.forEach(function (q) { var s = w2s(q.x, q.y), r = q.r * V.k; x0 = Math.min(x0, s[0] - r); x1 = Math.max(x1, s[0] + r); y0 = Math.min(y0, s[1] - r); y1 = Math.max(y1, s[1] + r); });
+    var m = Math.max(2, 6 * V.k); return [x0 - m, y0 - m, x1 + m, y1 + m];
+  }
+  function centerOnPart(p, zoom) {
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    p.pins.forEach(function (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); });
+    if (zoom) { var span = Math.max(x1 - x0, y1 - y0, 80) * 5; V.k = Math.max(V.k, Math.min(W, H) / span); }
+    var s = w2s((x0 + x1) / 2, (y0 + y1) / 2); V.cx += W / 2 - s[0]; V.cy += H / 2 - s[1];
+  }
+
+  /* ---------- drawing ---------- */
+  var cv = $('cv'), ctx = cv.getContext('2d'), raf = 0;
+  function req() { if (!raf) raf = requestAnimationFrame(function () { raf = 0; draw(); }); }
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function draw() {
+    var animOn = !reduceMotion && ((S.net && (FX.netPulse || FX.netRipple)) || ((S.group || S.part) && !S.net && (FX.selBreath || FX.selDash)));
+    if (animOn) req(); // next frame for glow, marching dashes, net pulse
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = C.canvas; ctx.fillRect(0, 0, W, H);
+    if (!M) return;
+    // board
+    var bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    ctx.beginPath();
+    M.outline.forEach(function (q, i) { var s = w2s(q[0], q[1]); bx0 = Math.min(bx0, s[0]); bx1 = Math.max(bx1, s[0]); by0 = Math.min(by0, s[1]); by1 = Math.max(by1, s[1]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); });
+    ctx.closePath();
+    ctx.save(); if (FX.boardGlow > 0) { ctx.shadowColor = C.edge; ctx.shadowBlur = FX.boardGlow; }
+    if (FX.boardGrad) { var gr = ctx.createLinearGradient(bx0, by0, bx1, by1); gr.addColorStop(0, C.board); gr.addColorStop(1, C.board2); ctx.fillStyle = gr; } else ctx.fillStyle = C.board;
+    ctx.fill(); ctx.restore();
+    ctx.lineWidth = FX.edgeW; ctx.strokeStyle = C.edge; ctx.stroke();
+    var mono = C['f-mono'];
+    var far = [], near = [];
+    M.parts.forEach(function (p) { (visible(p) ? near : far).push(p); });
+    var dim = !!S.net && FX.netDim; // a selected net can grey out the rest of the board
+    // one selection model: a clicked component and a BOM position are the same kind of highlight
+    var SEL = null;
+    if (!dim && !S.net && (S.group || S.part)) {
+      SEL = {}; var g = S.group ? groupByKey(S.group) : null;
+      if (g) g.parts.forEach(function (p) { SEL[p.ref] = p; });
+      if (S.part) SEL[S.part.ref] = S.part;
+    }
+    var selDim = !!SEL && FX.selDim; // selected components can grey out all the others
+    function off(p) { return dim || (selDim && !SEL[p.ref]); }
+    ctx.globalAlpha = FX.farAlpha;
+    far.forEach(function (p) { p.pins.forEach(function (q) { dot(q, dim || selDim ? C.dim : C.edge, 0, 0, q.net === 'UNCONNECTED'); }); });
+    ctx.globalAlpha = 1;
+    var now = reduceMotion ? 0 : performance.now();
+    var glow = FX.selBreath && !reduceMotion ? FX.selGlow * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 380))) : FX.selGlow;
+    var dashOff = FX.selDash && !reduceMotion ? (now / 45 * FX.selDashSpeed) % 22 : 0;
+    near.forEach(function (p) {
+      var r = partRect(p), hovP = hover && hover.part === p && !hover.pin;
+      if (r[2] - r[0] < 1.5 && r[3] - r[1] < 1.5) return;
+      if (FX.partFill > 0 && !off(p)) { ctx.globalAlpha = FX.partFill; ctx.fillStyle = V.side === 'both' && p.bottom ? C.botpart : C.partfill; rrect(r[0], r[1], r[2] - r[0], r[3] - r[1]); ctx.fill(); ctx.globalAlpha = 1; }
+      if (SEL && SEL[p.ref]) return; // drawn by the selection pass
+      ctx.lineWidth = FX.outlineW;
+      ctx.strokeStyle = off(p) ? C.dim : (V.side === 'both' && p.bottom ? C.botpart : C.outline);
+      ctx.globalAlpha = off(p) ? 0.7 : hovP ? 1 : FX.outlineAlpha;
+      rrect(r[0], r[1], r[2] - r[0], r[3] - r[1]); ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+    if (SEL) { // this layer: solid frame + glow; opposite layer: marching dashes
+      var homeBottom = V.side === 'bottom', pad = 3;
+      Object.keys(SEL).forEach(function (k) {
+        var p = SEL[k], r = partRect(p), x = r[0] - pad, y = r[1] - pad, w = r[2] - r[0] + 2 * pad, h = r[3] - r[1] + 2 * pad;
+        ctx.save();
+        if (!!p.bottom === homeBottom) {
+          ctx.globalAlpha = 0.12; ctx.fillStyle = C.selhere; rrect(x, y, w, h, 2); ctx.fill(); ctx.globalAlpha = 1;
+          if (glow > 0) { ctx.shadowColor = C.selhere; ctx.shadowBlur = glow; }
+          ctx.lineWidth = 2; ctx.strokeStyle = C.selhere; rrect(x, y, w, h, 2); ctx.stroke();
+          if (glow > 0) { ctx.shadowBlur = glow * 0.5; ctx.stroke(); }
+        } else {
+          ctx.setLineDash([7, 4]); ctx.lineDashOffset = -dashOff;
+          rrect(x, y, w, h, 2);
+          ctx.lineWidth = 3.5; ctx.strokeStyle = C.canvas; ctx.globalAlpha = 0.7; ctx.stroke();
+          ctx.lineWidth = 1.8; ctx.strokeStyle = C.selfar; ctx.globalAlpha = 1; ctx.stroke();
+        }
+        ctx.restore();
+      });
+    }
+    // pins
+    near.forEach(function (p) {
+      p.pins.forEach(function (q) {
+        var hv = hover && hover.pin === q ? 1 : 0, nc = q.net === 'UNCONNECTED';
+        if (S.net && q.net === S.net) return; // drawn last, on top
+        if (off(p)) { dot(q, nc ? C.dim : C.dim, hv, 0, nc); return; }
+        if (nc) { dot(q, C.nc, hv, 0, true); return; }
+        var custom = netRuleColor(q.net);
+        if (custom) dot(q, custom, hv, FX.pinGlow);
+        else if (isGnd(q.net)) dot(q, C.gnd, hv, FX.gndGlow);
+        else if (isPower(q.net)) dot(q, C.pwr, hv, FX.pwrGlow);
+        else dot(q, C.pin, hv, FX.pinGlow);
+      });
+    });
+    if (S.net) { // selected net on top; far-side pins a bit fainter
+      var pulse = FX.netPulse && !reduceMotion ? 0.5 + 0.5 * Math.sin(now / 260 * FX.netSpeed) : 0;
+      var phase = FX.netRipple && !reduceMotion ? (now / 1100 * FX.netSpeed) % 1 : -1;
+      [[far, 0.6], [near, 1]].forEach(function (pass) {
+        pass[0].forEach(function (p) { p.pins.forEach(function (q) { if (q.net === S.net) netPin(q, pass[1]); }); });
+      });
+    }
+    function netPin(q, a) {
+      var s = w2s(q.x, q.y), rr = Math.max(1.6, q.r * V.k);
+      ctx.save(); ctx.globalAlpha = a;
+      if (FX.netGlow > 0) { ctx.shadowColor = C.sel; ctx.shadowBlur = FX.netGlow * (FX.netPulse ? 0.4 + 0.6 * pulse : 1); }
+      pinPath(s, rr); ctx.fillStyle = C.sel; ctx.fill();
+      ctx.shadowBlur = 0;
+      if (FX.netPulse) { ctx.lineWidth = 2; ctx.strokeStyle = C.sel; pinPath(s, rr + 2.5 + 1.5 * pulse); ctx.stroke(); }
+      if (phase >= 0) { ctx.globalAlpha = a * (1 - phase) * 0.8; ctx.lineWidth = 1.5; ctx.strokeStyle = C.sel; pinPath(s, rr + 3 + Math.max(10, rr) * 1.6 * phase); ctx.stroke(); }
+      ctx.restore();
+    }
+    // labels
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    near.forEach(function (p) {
+      var r = partRect(p), w = r[2] - r[0], h = r[3] - r[1];
+      if (Math.min(w, h) < 8) return;
+      var vertical = h > w * 1.3, len = (vertical ? h : w) - 4, thick = vertical ? w : h;
+      // measured fit: the designator never leaves the component outline
+      var fs = Math.min(16, thick * 0.42) * FX.labelScale;
+      ctx.font = '600 ' + fs + 'px ' + mono;
+      var tw = ctx.measureText(p.ref).width;
+      if (tw > len) { fs *= len / tw; ctx.font = '600 ' + fs + 'px ' + mono; }
+      if (fs < 6.5) return;
+      var cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, pOff = off(p);
+      var showVal = FX.showValues && p.value && thick > fs * 2.7;
+      if (FX.showValues && p.value && !showVal && thick / 2.7 >= 5.5) { fs = thick / 2.7; ctx.font = '600 ' + fs + 'px ' + mono; showVal = true; } // thin part: smaller text so the value still fits
+      ctx.save(); ctx.translate(cx, cy); if (vertical) ctx.rotate(-Math.PI / 2);
+      ctx.lineJoin = 'round';
+      haloText(p.ref, showVal ? -fs * 0.6 : 0, pOff ? C.dim : C.refc, fs);
+      if (showVal) {
+        var vfs = fs * 0.85, v = p.value; ctx.font = '400 ' + vfs + 'px ' + mono;
+        while (v.length > 2 && ctx.measureText(v).width > len) v = v.slice(0, -2) + '…';
+        if (ctx.measureText(v).width <= len) haloText(v, fs * 0.65, pOff ? C.dim : C.valc, vfs);
+      }
+      ctx.restore();
+      p.pins.forEach(function (q) {
+        if (q.net !== 'UNCONNECTED') return;
+        var rr = q.r * V.k; if (rr < 7) return;
+        var s = w2s(q.x, q.y), f = Math.min(12, rr * 0.62);
+        ctx.font = '600 ' + f + 'px ' + mono; ctx.fillStyle = pOff ? C.dim : C.nc;
+        if (ctx.measureText('N/C').width <= rr * 1.8) ctx.fillText('N/C', s[0], s[1]);
+      });
+      if (FX.showPinNums && src.pinNames) p.pins.forEach(function (q) {
+        if (q.net === 'UNCONNECTED') return;
+        var rr = q.r * V.k; if (rr < 9) return; // far away: no text at all
+        var f = Math.min(13, rr * 0.75), t = trim(q.name, 4);
+        ctx.font = '600 ' + f + 'px ' + mono; if (ctx.measureText(t).width > rr * 1.7) return; // does not fit the pad: skip
+        var pc = pOff ? C.dim : (S.net && q.net === S.net) ? C.sel : (netRuleColor(q.net) || (isGnd(q.net) ? C.gnd : isPower(q.net) ? C.pwr : C.pin));
+        var s = w2s(q.x, q.y); ctx.fillStyle = isLight(pc) ? 'rgba(0,0,0,.82)' : 'rgba(255,255,255,.9)'; ctx.fillText(t, s[0], s[1]);
+      });
+    });
+    function haloText(t, y, col, size) { // outline in the colour opposite to the text, so it reads on any board and background
+      var st = FX.haloStyle || 'shadow', a = FX.haloAlpha == null ? 0.5 : FX.haloAlpha, w = FX.haloW || 1;
+      ctx.save(); ctx.fillStyle = col;
+      if (st === 'none' || a <= 0) { ctx.fillText(t, 0, y); ctx.restore(); return; }
+      var hc = isLight(col) ? '0,0,0' : '255,255,255';
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      if (st === 'soft' || st === 'solid') {
+        ctx.lineWidth = Math.max(1, size * (st === 'solid' ? 0.22 : 0.15) * w); ctx.strokeStyle = 'rgba(' + hc + ',' + a + ')'; ctx.strokeText(t, 0, y);
+      }
+      if (st === 'soft' || st === 'shadow') {
+        ctx.shadowColor = 'rgba(' + hc + ',' + Math.min(1, a * (st === 'shadow' ? 1 : 0.9)) + ')'; ctx.shadowBlur = Math.max(2, size * 0.35 * w);
+        ctx.fillText(t, 0, y); if (st === 'shadow') ctx.fillText(t, 0, y); // a second pass makes a pure shadow dense enough
+      }
+      ctx.shadowColor = 'transparent'; ctx.fillText(t, 0, y);
+      ctx.restore();
+    }
+    function dot(q, col, ring, glowPx, hollow) {
+      var s = w2s(q.x, q.y), rr = Math.max(1.3, q.r * V.k);
+      pinPath(s, rr);
+      if (hollow) { ctx.lineWidth = Math.max(1, Math.min(2, rr * 0.25)); ctx.strokeStyle = col; ctx.stroke(); } // unconnected: outline only
+      else if (glowPx > 0) { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = glowPx; ctx.fillStyle = col; ctx.fill(); ctx.restore(); }
+      else { ctx.fillStyle = col; ctx.fill(); }
+      if (ring) { ctx.lineWidth = 1.5; ctx.strokeStyle = C.refc; pinPath(s, rr + 2.5); ctx.stroke(); }
+    }
+  }
+  // rounded rectangle path; radius from settings, never more than a quarter of the short side
+  function rrect(x, y, w, h, extra) {
+    var r = Math.max(0, Math.min((FX.cornerR || 0) + (extra || 0), Math.min(w, h) / 4));
+    ctx.beginPath();
+    if (r <= 0.3) { ctx.rect(x, y, w, h); return; }
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+  }
+  function pinPath(s, rr) {
+    ctx.beginPath();
+    if (FX.pinShape === 'square') ctx.rect(s[0] - rr, s[1] - rr, rr * 2, rr * 2);
+    else if (FX.pinShape === 'rsquare') { var k = rr * 0.5; ctx.moveTo(s[0] - rr + k, s[1] - rr); ctx.arcTo(s[0] + rr, s[1] - rr, s[0] + rr, s[1] + rr, k); ctx.arcTo(s[0] + rr, s[1] + rr, s[0] - rr, s[1] + rr, k); ctx.arcTo(s[0] - rr, s[1] + rr, s[0] - rr, s[1] - rr, k); ctx.arcTo(s[0] - rr, s[1] - rr, s[0] + rr, s[1] - rr, k); ctx.closePath(); }
+    else ctx.arc(s[0], s[1], rr, 0, 6.2832);
+  }
+  function isLight(c) { // relative brightness of a #rrggbb colour
+    var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c).trim()); if (!m) return true;
+    return (0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16)) / 255 > 0.55;
+  }
+  function trim(s, n) { s = String(s); n = Math.max(2, Math.floor(n)); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+  /* ---------- hit test ---------- */
+  function hit(mx, my) {
+    var best = null, bd = 6;
+    M.parts.forEach(function (p) {
+      if (!visible(p)) return;
+      p.pins.forEach(function (q) { var s = w2s(q.x, q.y), d = Math.hypot(s[0] - mx, s[1] - my) - Math.max(1.3, q.r * V.k); if (d < bd) { bd = d; best = { part: p, pin: q }; } });
+    });
+    if (best) return best;
+    var area = Infinity, bp = null;
+    M.parts.forEach(function (p) {
+      if (!visible(p)) return;
+      var r = partRect(p);
+      if (mx >= r[0] && mx <= r[2] && my >= r[1] && my <= r[3]) { var a = (r[2] - r[0]) * (r[3] - r[1]); if (a < area) { area = a; bp = p; } }
+    });
+    return bp ? { part: bp } : null;
+  }
+
+  /* ---------- selection & sidebar ---------- */
+  function selectPart(p, focus) {
+    S.part = p; if (focus) centerOnPart(p, true);
+    renderCard(); renderList(); status(); req();
+  }
+  function selectNet(n) { S.net = n; S.group = null; renderCard(); renderList(); status(); req(); }
+  function clearSel() { S.part = S.net = S.group = null; renderCard(); renderList(); status(); req(); }
+  function selectGroup(key) {
+    var g = groupByKey(key); if (!g) return;
+    S.group = key; S.part = S.net = null;
+    // bring every placement into view; zoom out if needed, never zoom in past the current scale
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    g.parts.forEach(function (p) { p.pins.forEach(function (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }); });
+    var bw = Math.max(x1 - x0, 100) * 1.25 + 120, bh = Math.max(y1 - y0, 100) * 1.25 + 120;
+    if (V.rot % 2) { var t = bw; bw = bh; bh = t; }
+    var kFit = Math.min(W / bw, H / bh);
+    var a = w2s(x0, y0), b = w2s(x1, y1), allIn = Math.min(a[0], b[0]) > 20 && Math.max(a[0], b[0]) < W - 20 && Math.min(a[1], b[1]) > 20 && Math.max(a[1], b[1]) < H - 20;
+    if (!allIn) { if (kFit < V.k) V.k = kFit; var c = w2s((x0 + x1) / 2, (y0 + y1) / 2); V.cx += W / 2 - c[0]; V.cy += H / 2 - c[1]; }
+    renderCard(); renderList(); status(); req();
+  }
+  function netPins(n) { var out = []; M.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.net === n) out.push({ p: p, q: q }); }); }); return out; }
+  function renderCard() {
+    var c = $('card'); c.innerHTML = '';
+    if (!M) return;
+    var h = '';
+    if (S.part) {
+      var p = S.part;
+      h += '<div class="eyebrow">Деталь</div><div class="ref">' + esc(p.ref) + '</div>';
+      if (p.value) h += '<div class="val">' + esc(p.value) + '</div>';
+      h += '<div class="chips"><span class="chip ' + (p.bottom ? 'b' : 't') + '">' + (p.bottom ? 'низ' : 'верх') + '</span><span class="chip">' + (p.smd ? 'SMD' : 'выводной') + '</span><span class="chip">' + p.pins.length + ' пин.</span></div>';
+      if (p.footprint || p.desc) h += '<dl class="kv">' + (p.footprint ? '<dt>Корпус</dt><dd>' + esc(p.footprint) + '</dd>' : '') + (p.desc ? '<dt>Описание</dt><dd>' + esc(p.desc) + '</dd>' : '') + '</dl>';
+      h += '<table class="pins"><tbody>';
+      p.pins.slice().sort(function (a, b) { return natCmp(a.name, b.name); }).forEach(function (q) {
+        h += '<tr><td>' + esc(q.name) + '</td><td><button type="button" class="netlink ' + netCls(q.net) + '" data-net="' + esc(q.net) + '">' + esc(q.net === 'UNCONNECTED' ? 'N/C' : q.net) + '</button></td></tr>';
+      });
+      h += '</tbody></table>';
+      if (!src.pinNames) h += '<div class="note">В формате .brd нет номеров пинов, они пронумерованы по порядку в файле.</div>';
+    }
+    if (S.net) {
+      var np = netPins(S.net);
+      var nc0 = netRuleColor(S.net);
+      h += '<div class="eyebrow">Цепь</div><div class="ref" style="color:var(--ui-sel)">' + esc(S.net) + '</div><label class="netcolor">Цвет этой цепи на плате <input type="color" data-netcolor="' + esc(S.net) + '" value="' + (nc0 || '#3fa7ff') + '">' + (nc0 ? '<button type="button" class="btn sm" data-netclear="' + esc(S.net) + '">Убрать</button>' : '') + '</label><div class="note">' + np.length + ' пинов на ' + uniq(np.map(function (x) { return x.p; })).length + ' деталях</div><table class="pins"><tbody>';
+      np.slice(0, 400).forEach(function (x) { h += '<tr><td>' + (x.p.bottom ? '↓' : '') + '</td><td><button type="button" class="netlink" data-part="' + esc(x.p.ref) + '">' + esc(x.p.ref) + '.' + esc(x.q.name) + (x.p.value ? ' · ' + esc(x.p.value) : '') + '</button></td></tr>'; });
+      h += '</tbody></table>';
+    }
+    if (S.group && groupByKey(S.group)) {
+      var g = groupByKey(S.group);
+      h += (S.part || S.net ? '<div class="eyebrow" style="margin-top:6px">Позиция BOM</div>' : '<div class="eyebrow">Позиция BOM</div>');
+      h += '<div class="val" style="color:var(--ui-grp);font-size:18px">' + esc(g.value || 'без номинала') + '</div>';
+      h += '<div class="chips"><span class="chip" style="color:var(--ui-grp)">' + g.parts.length + ' шт.</span>' + (g.top ? '<span class="chip gt">▲ верх ' + g.top + '</span>' : '') + (g.bot ? '<span class="chip gb">▼ низ ' + g.bot + '</span>' : '') + '</div>';
+      if (g.footprint || g.desc) h += '<dl class="kv">' + (g.footprint ? '<dt>Корпус</dt><dd>' + esc(g.footprint) + '</dd>' : '') + (g.desc ? '<dt>Описание</dt><dd>' + esc(g.desc) + '</dd>' : '') + '</dl>';
+      h += '<div class="reflist">' + g.parts.map(function (p) { return '<button type="button" class="netlink ' + (p.bottom ? 'gb' : 'gt') + '" data-part=""' + esc(p.ref) + '" title="' + (p.bottom ? 'снизу' : 'сверху') + '">' + esc(p.ref) + '</button>'; }).join('') + '</div>';
+    }
+    if (!S.part && !S.net && !S.group) {
+      var withVal = M.parts.filter(function (p) { return p.value; }).length;
+      h += '<div class="eyebrow">Плата</div><dl class="kv"><dt>Деталей</dt><dd>' + M.parts.length + ' (снизу ' + M.parts.filter(function (p) { return p.bottom; }).length + ')</dd><dt>Пинов</dt><dd>' + M.nPins + '</dd><dt>Цепей</dt><dd>' + M.nNets + '</dd><dt>Размер</dt><dd>' + (M.w * 0.0254).toFixed(1) + ' × ' + (M.h * 0.0254).toFixed(1) + ' мм</dd><dt>Номиналы</dt><dd>' + withVal + ' из ' + M.parts.length + '</dd></dl>';
+      if (!withVal) h += '<div class="note warn">Номиналов нет: у деталей в файле платы не задан текст Comment.</div>';
+      h += '<div class="legend"><span><i style="background:var(--ui-pin)"></i>сигнал</span><span><i style="background:var(--ui-sel)"></i>выбранная цепь</span><span><i style="background:var(--pwr)"></i>питание</span><span><i style="background:var(--gnd)"></i>земля</span><span><i style="background:none;box-shadow:inset 0 0 0 1.5px var(--nc)"></i>N/C — не подключён</span></div>';
+      h += '<div class="keys"><kbd>ЛКМ</kbd><span>выбор пин/компонент</span>';
+      ACTIONS.forEach(function (a) { // every action that has a key, in the same words as the hotkey settings
+        var ks = CFG.keys[a[0]] || []; if (ks.length) h += '<kbd>' + esc(keyLabel(ks[0])) + '</kbd><span>' + esc(a[1]) + '</span>';
+      });
+      h += '</div>';
+    }
+    c.innerHTML = h;
+  }
+  function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+  function natCmp(a, b) {
+    var re = /(\d+)|(\D+)/g, A = String(a).match(re) || [], B = String(b).match(re) || [];
+    for (var i = 0; i < Math.min(A.length, B.length); i++) { var x = A[i], y = B[i]; if (/^\d/.test(x) && /^\d/.test(y)) { if (+x !== +y) return +x - +y; } else if (x !== y) return x < y ? -1 : 1; }
+    return A.length - B.length;
+  }
+  $('card').addEventListener('change', function (e) { var t = e.target; if (t.dataset && t.dataset.netcolor) setNetColor(t.dataset.netcolor, t.value); });
+  $('card').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.netclear) { setNetColor(b.dataset.netclear, null); return; }
+    if (b.dataset.net) { if (b.dataset.net !== 'UNCONNECTED') selectNet(b.dataset.net); }
+    else if (b.dataset.part) { var p = M.parts.filter(function (x) { return x.ref === b.dataset.part; })[0]; if (p) { pickedOnPhone(); S.net = null; selectPart(p, true); } }
+    else if (b.dataset.group) selectGroup(b.dataset.group);
+  });
+  var netIndex = null, bomIndex = null, bomByKey = {};
+  function refPrefix(r) { var m = String(r).match(/^[A-Za-zА-Яа-я_]+/); return m ? m[0].toUpperCase() : '~'; }
+  function buildBom() {
+    bomByKey = {}; bomIndex = [];
+    M.parts.forEach(function (p) {
+      var key = (p.value || '').trim() + '\u0001' + (p.footprint || '').trim();
+      var g = bomByKey[key];
+      if (!g) { g = bomByKey[key] = { key: key, value: (p.value || '').trim(), footprint: (p.footprint || '').trim(), desc: p.desc || '', parts: [], set: {}, top: 0, bot: 0 }; bomIndex.push(g); }
+      g.parts.push(p); g.set[p.ref] = 1; if (p.bottom) g.bot++; else g.top++;
+      if (!g.desc && p.desc) g.desc = p.desc;
+    });
+    bomIndex.forEach(function (g) { g.parts.sort(function (a, b) { return natCmp(a.ref, b.ref); }); g.prefix = refPrefix(g.parts[0].ref); });
+    bomIndex.sort(function (a, b) { return (a.prefix < b.prefix ? -1 : a.prefix > b.prefix ? 1 : 0) || (!a.value - !b.value) || natCmp(a.value, b.value) || natCmp(a.footprint, b.footprint); });
+  }
+  function groupByKey(k) { return bomByKey[k] || null; }
+  function bomMatch(g, q) { return !q || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
+  function bomCsv() {
+    var rows = [['Comment', 'Footprint', 'Quantity', 'Designator', 'Description']];
+    bomIndex.forEach(function (g) { rows.push([g.value, g.footprint, String(g.parts.length), g.parts.map(function (p) { return p.ref; }).join(', '), g.desc]); });
+    return rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+  }
+  function buildNetIndex() { buildBom(); buildNetIndex2(); }
+  function buildNetIndex2() { var m = {}; M.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.net !== 'UNCONNECTED') m[q.net] = (m[q.net] || 0) + 1; }); }); netIndex = Object.keys(m).map(function (n) { return { n: n, c: m[n] }; }).sort(function (a, b) { return b.c - a.c || natCmp(a.n, b.n); }); }
+  function renderList() {
+    renderBom();
+    var box = $('list'), q = $('q').value.trim().toUpperCase(), out = [], LIM = 300;
+    $('tabParts').setAttribute('aria-selected', String(S.tab === 'parts')); $('tabNets').setAttribute('aria-selected', String(S.tab === 'nets'))
+    if (!M) { box.innerHTML = ''; return; }
+    var partMatch = function (p) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0; };
+    $('tabParts').textContent = 'Детали ' + M.parts.filter(partMatch).length;
+    $('tabNets').textContent = 'Цепи ' + netIndex.filter(function (n) { return !q || n.n.toUpperCase().indexOf(q) >= 0; }).length;
+    if (S.tab === 'bom') {
+      var gs = bomIndex.filter(function (g) { return bomMatch(g, q); });
+      var total = gs.reduce(function (a, g) { return a + g.parts.length; }, 0);
+      out.push('<div class="listbar"><span>' + gs.length + ' позиций · ' + total + ' шт.</span><button class="btn sm" type="button" id="copyBom">Копировать CSV</button></div>');
+      gs.forEach(function (g) {
+        out.push('<div class="row bom' + (g.key === S.group ? ' on' : '') + '" role="option" tabindex="0" data-group="' + esc(g.key) + '"><div class="v">' + esc(g.value || '— без номинала') + '<small>' + esc(g.footprint || 'корпус не указан') + '</small></div><div class="qty">' + g.parts.length + '</div><div class="refs">' + esc(g.parts.map(function (p) { return p.ref; }).join(', ')) + '</div></div>');
+      });
+      if (!gs.length) out.push('<div class="more">Ничего не найдено' + (q ? ' по «' + esc(q) + '»' : '') + '.</div>');
+      if (!M.parts.some(function (p) { return p.value; })) out.push('<div class="more">Номиналов нет, позиции сгруппированы только по корпусу.</div>');
+      box.innerHTML = out.join(''); return;
+    }
+    if (S.tab === 'parts') {
+      var ps = M.parts.filter(function (p) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0; });
+      ps.sort(function (a, b) { var ea = a.ref.toUpperCase() === q, eb = b.ref.toUpperCase() === q; return (eb - ea) || natCmp(a.ref, b.ref); });
+      ps.slice(0, LIM).forEach(function (p) { out.push('<div class="row' + (p === S.part ? ' on' : '') + '" role="option" tabindex="0" data-part="' + esc(p.ref) + '"><b>' + esc(p.ref) + '</b><span>' + esc(p.value || p.footprint || '') + '</span><i>' + (p.bottom ? '↓ ' : '') + p.pins.length + '</i></div>'); });
+      if (ps.length > LIM) out.push('<div class="more">Ещё ' + (ps.length - LIM) + '. Уточните поиск.</div>');
+      if (!ps.length) out.push('<div class="more">Ничего не найдено' + (q ? ' по «' + esc(q) + '»' : '') + '.</div>');
+      $('tabParts').textContent = 'Детали ' + ps.length;
+      $('tabNets').textContent = 'Цепи ' + netIndex.filter(function (n) { return !q || n.n.toUpperCase().indexOf(q) >= 0; }).length;
+    } else {
+      var ns = netIndex.filter(function (n) { return !q || n.n.toUpperCase().indexOf(q) >= 0; });
+      ns.sort(function (a, b) { var ea = a.n.toUpperCase() === q, eb = b.n.toUpperCase() === q; return (eb - ea); });
+      ns.slice(0, LIM).forEach(function (n) { out.push('<div class="row' + (n.n === S.net ? ' on' : '') + '" role="option" tabindex="0" data-net="' + esc(n.n) + '"><b class="netlink ' + netCls(n.n) + '">' + esc(n.n) + '</b><span></span><i>' + n.c + '</i></div>'); });
+      if (ns.length > LIM) out.push('<div class="more">Ещё ' + (ns.length - LIM) + '. Уточните поиск.</div>');
+      if (!ns.length) out.push('<div class="more">Ничего не найдено.</div>');
+      $('tabNets').textContent = 'Цепи ' + ns.length;
+      $('tabParts').textContent = 'Детали ' + M.parts.filter(function (p) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0; }).length;
+    }
+    box.innerHTML = out.join('');
+  }
+  function activateRow(r) {
+    pickedOnPhone();
+    if (r.dataset.group != null && r.classList.contains('bom')) { selectGroup(r.dataset.group); return; }
+    if (r.dataset.part) { var p = M.parts.filter(function (x) { return x.ref === r.dataset.part; })[0]; if (p) { S.net = null; selectPart(p, true); } }
+    else if (r.dataset.net) { S.part = null; selectNet(r.dataset.net); }
+  }
+  $('list').addEventListener('click', function (e) {
+    var r = e.target.closest('.row'); if (r) activateRow(r);
+  });
+  function copyText(t, okMsg) {
+    function fallback() {
+      var a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select();
+      try { document.execCommand('copy'); flash(okMsg); } catch (e) { flash('Браузер не дал скопировать'); } a.remove();
+    }
+    try { navigator.clipboard.writeText(t).then(function () { flash(okMsg); }, fallback); } catch (e) { fallback(); }
+  }
+  $('list').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var r = e.target.closest('.row'); if (r) activateRow(r); } });
+  $('q').addEventListener('input', renderList);
+  $('q').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { var r = $('list').querySelector('.row'); if (r) activateRow(r); }
+    if (e.key === 'Escape') { $('q').value = ''; renderList(); $('q').blur(); }
+  });
+  $('tabParts').onclick = function () { S.tab = 'parts'; renderList(); };
+  $('tabNets').onclick = function () { S.tab = 'nets'; renderList(); };
+
+
+  /* ---------- BOM panel ---------- */
+  var BS = { key: 'ref', dir: 1 };
+  var BOM_COLS = [['value', 'Номинал', 'c-v'], ['fp', 'Корпус', 'c-f'], ['qty', 'Шт', 'c-q'], ['ref', 'Обозначения', 'c-r']];
+  function renderBom() {
+    var box = $('bomList'); if (!M || !bomIndex) { box.innerHTML = ''; return; }
+    var q = $('bq').value.trim().toUpperCase();
+    var gs = bomIndex.filter(function (g) { return bomMatch(g, q); });
+    var cmp = { ref: function (a, b) { return 0; }, value: function (a, b) { return (!a.value - !b.value) || natCmp(a.value, b.value); },
+                fp: function (a, b) { return natCmp(a.footprint, b.footprint) || natCmp(a.value, b.value); },
+                qty: function (a, b) { return a.parts.length - b.parts.length; } }[BS.key];
+    if (BS.key !== 'ref') gs = gs.slice().sort(function (a, b) { return cmp(a, b) * BS.dir; });
+    else if (BS.dir < 0) gs = gs.slice().reverse();
+    var total = gs.reduce(function (a, g) { return a + g.parts.length; }, 0);
+    $('bomCount').textContent = gs.length + ' поз. · ' + total + ' шт.';
+    var h = '<table class="bomt"><thead><tr>';
+    BOM_COLS.forEach(function (c) { h += '<th class="' + c[2] + '"' + (BS.key === c[0] ? ' aria-sort="' + (BS.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" data-sort="' + c[0] + '">' + c[1] + (BS.key === c[0] ? (BS.dir > 0 ? ' ↑' : ' ↓') : '') + '</button></th>'; });
+    h += '</tr></thead><tbody>';
+    gs.forEach(function (g) {
+      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (g.key === S.group ? ' class="on"' : '') + '><td class="c-v">' + esc(g.value || '—') + '</td><td class="c-f">' + esc(g.footprint || '—') +
+           (g.desc ? '<div class="note">' + esc(g.desc) + '</div>' : '') + '</td><td class="c-q">' + g.parts.length + '</td><td class="c-r">' +
+           g.parts.map(function (p) { return p.bottom ? '<span class="b">' + esc(p.ref) + '</span>' : esc(p.ref); }).join(', ') + '</td></tr>';
+    });
+    h += '</tbody></table>';
+    if (!gs.length) h += '<div class="more">Ничего не найдено' + (q ? ' по «' + esc(q) + '»' : '') + '.</div>';
+    if (!M.parts.some(function (p) { return p.value; })) h += '<div class="more">Номиналов нет, позиции сгруппированы только по корпусу.</div>';
+    var st = box.scrollTop; box.innerHTML = h; box.scrollTop = st;
+  }
+  $('bomList').addEventListener('click', function (e) {
+    var sb = e.target.closest('button[data-sort]');
+    if (sb) { var k = sb.dataset.sort; if (BS.key === k) BS.dir = -BS.dir; else { BS.key = k; BS.dir = k === 'qty' ? -1 : 1; } renderBom(); return; }
+    var tr = e.target.closest('tr[data-group]'); if (tr) { pickedOnPhone(); selectGroup(tr.dataset.group); }
+  });
+  $('bomList').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-group]'); if (tr) selectGroup(tr.dataset.group); } });
+  $('bq').addEventListener('input', renderBom);
+  $('bq').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var tr = $('bomList').querySelector('tr[data-group]'); if (tr) selectGroup(tr.dataset.group); } if (e.key === 'Escape') { $('bq').value = ''; renderBom(); } });
+  $('copyBom').onclick = function () { if (bomIndex) copyText(bomCsv(), 'BOM скопирован. Вставьте в Excel или Google Таблицы.'); };
+
+  /* ---------- resizable panels ---------- */
+  var main = document.querySelector('.main'), LAY = { lw: 330, rw: 440, bom: true }, SETOPEN = false, KEYCAP = null; // settings cover the BOM column while open
+  try { var saved = JSON.parse(localStorage.getItem('bvr-layout') || 'null'); if (saved) LAY = Object.assign(LAY, saved); } catch (e) {}
+  // Side panels never squeeze the board area below a minimum: with no board open it keeps room for the
+  // "drop a file" box, with a board a usable canvas. Stored widths stay as the user set them; only what is shown is clamped.
+  var LMIN = 220, RMIN = 240;
+  function applyLayout(save, active) {
+    var right = !!(LAY.bom || SETOPEN), avail = window.innerWidth - 12 - (M ? 280 : 640);
+    LAY.lw = Math.max(LMIN, Math.round(LAY.lw)); LAY.rw = Math.max(RMIN, Math.round(LAY.rw));
+    if (active === 'lw') LAY.lw = Math.max(LMIN, Math.min(LAY.lw, avail - (right ? LAY.rw : 0)));   // the dragged edge stops at the limit
+    if (active === 'rw') LAY.rw = Math.max(RMIN, Math.min(LAY.rw, avail - LAY.lw));
+    var lw = LAY.lw, rw = right ? LAY.rw : 0;
+    if (lw + rw > avail) { if (right) rw = Math.max(RMIN, avail - lw); if (lw + rw > avail) lw = Math.max(LMIN, avail - rw); } // small window: shrink right panel first
+    main.style.setProperty('--lw', lw + 'px'); main.style.setProperty('--rw', (right ? rw : LAY.rw) + 'px');
+    main.classList.toggle('nobom', !LAY.bom && !SETOPEN);
+    $('bomToggle').setAttribute('aria-pressed', String(!!LAY.bom && !SETOPEN)); $('setBtn').setAttribute('aria-pressed', String(SETOPEN));
+    $('paneBom').hidden = SETOPEN; $('paneSet').hidden = !SETOPEN;
+    if (SETOPEN && !$('setBody').firstChild) buildSettings();
+    if (save) try { localStorage.setItem('bvr-layout', JSON.stringify(LAY)); } catch (e) {}
+  }
+  function splitter(el, key, sign) {
+    var start = null;
+    el.addEventListener('pointerdown', function (e) { el.setPointerCapture(e.pointerId); start = { x: e.clientX, w: LAY[key] }; el.classList.add('on'); e.preventDefault(); });
+    el.addEventListener('pointermove', function (e) { if (!start) return; LAY[key] = start.w + sign * (e.clientX - start.x); applyLayout(false, key); });
+    function end() { if (!start) return; start = null; el.classList.remove('on'); applyLayout(true); }
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    el.addEventListener('dblclick', function () { LAY[key] = key === 'lw' ? 330 : 440; applyLayout(true); });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); LAY[key] += (e.key === 'ArrowRight' ? 16 : -16) * sign; applyLayout(true, key); }
+    });
+  }
+  splitter($('splitL'), 'lw', 1); splitter($('splitR'), 'rw', -1);
+  function setSettings(open) { SETOPEN = !!open; KEYCAP = null; if (SETOPEN) { GROUPS_OPEN = {}; buildSettings(); } applyLayout(false); } // closing brings the BOM back exactly as it was
+  $('bomToggle').onclick = function () { if (SETOPEN) { SETOPEN = false; LAY.bom = true; } else LAY.bom = !LAY.bom; applyLayout(true); };
+  $('setBtn').onclick = function () { setSettings(!SETOPEN); };
+  $('setClose').onclick = function () { setSettings(false); $('setBtn').focus(); };
+  $('bomClose').onclick = function () { LAY.bom = false; applyLayout(true); $('bomToggle').focus(); };
+  window.addEventListener('resize', function () { applyLayout(false); });
+  applyLayout(false);
+
+  /* ---------- settings tab ---------- */
+  var inArtifact = !!(window.claude && typeof window.claude.use === 'function'), dlCap = null;
+  if (inArtifact) window.claude.use('downloads').then(function (d) { dlCap = d; }).catch(function () {});
+  var GROUPS_OPEN = {}; // expanded groups while the panel is open; every opening starts with all groups collapsed
+  function buildSettings() {
+    var body = $('setBody'), st = body.scrollTop;
+    var cur = CFG.preset && PRESETS[CFG.preset] ? CFG.preset : '';
+    var h = '<label class="presetrow" for="presetSel"><span>Тема</span><select id="presetSel">' + (cur ? '' : '<option value="" selected>Свои настройки</option>') +
+      Object.keys(PRESETS).map(function (n) { return '<option value="' + esc(n) + '"' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></label>';
+    function group(id, title, inner, count) {
+      return '<details class="grp" data-g="' + id + '"' + (GROUPS_OPEN[id] ? ' open' : '') + '><summary>' + esc(title) + (count ? '<small>' + count + '</small>' : '') + '</summary><div class="gbody">' + inner + '</div></details>';
+    }
+    SCHEMA.forEach(function (sec, si) {
+      var g = '';
+      sec[1].forEach(function (it) {
+        var t = it[0], k = it[1], id = 'cfg-' + k;
+        if (t === 'color') { var ck = k === 'canvas' ? bgKey() : k, lbl = k === 'canvas' ? it[2] + ' (' + (bgKey() === 'canvasDay' ? 'День' : 'Ночь') + ')' : it[2];
+          g += '<label class="srow" for="' + id + '"><span>' + esc(lbl) + '</span><input type="color" id="' + id + '" data-color="' + ck + '" value="' + CFG.colors[ck] + '"></label>'; }
+        else if (t === 'range') g += '<label class="srow" for="' + id + '"><span>' + esc(it[2]) + ' <output id="' + id + '-o">' + fmt(CFG.fx[k]) + '</output></span><input type="range" id="' + id + '" data-fx="' + k + '" min="' + it[3] + '" max="' + it[4] + '" step="' + it[5] + '" value="' + CFG.fx[k] + '"></label>';
+        else if (t === 'select') g += '<label class="srow" for="' + id + '"><span>' + esc(it[2]) + '</span><select id="' + id + '" data-fxs="' + k + '">' + it[3].map(function (o) { return '<option value="' + o[0] + '"' + (CFG.fx[k] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
+        else g += '<label class="srow chk" for="' + id + '"><input type="checkbox" id="' + id + '" data-fxb="' + k + '"' + (CFG.fx[k] ? ' checked' : '') + '><span>' + esc(it[2]) + '</span></label>';
+      });
+      g += '<div class="btnrow"><button type="button" class="btn sm" data-grp-reset="' + si + '" title="Вернуть значения этой группы из темы «' + esc(CFG.base || 'По умолчанию') + '»">Сбросить группу</button></div>';
+      h += group('s' + si, sec[0], g);
+    });
+    var r = '<div class="note">Имя цепи или маска: <code>*</code> — любые символы, <code>?</code> — один. Например <code>*3V3*</code>, <code>USB_*</code>, <code>I2C_SDA</code>. Нижнее правило главнее.</div><div class="rules" id="rules">';
+    CFG.nets.forEach(function (rl, i) {
+      r += '<div class="rule"><input type="text" value="' + esc(rl.p) + '" data-rule-p="' + i + '" aria-label="Маска цепи" spellcheck="false"><input type="color" value="' + rl.c + '" data-rule-c="' + i + '" aria-label="Цвет"><button type="button" class="btn sm" data-rule-del="' + i + '" aria-label="Удалить правило">✕</button></div>';
+    });
+    r += '</div><button type="button" class="btn sm" id="ruleAdd">+ Добавить правило</button>';
+    h += group('nets', 'Свои цвета цепей', r, CFG.nets.length || '');
+    var k = '<div class="note">Клавиши работают в любой раскладке. Нажмите «+», затем нужную клавишу (можно с Ctrl, Alt, Shift). Esc — отмена.</div>';
+    ACTIONS.forEach(function (a) {
+      k += '<div class="hk"><span>' + esc(a[1]) + '</span><div class="hkkeys">' + (CFG.keys[a[0]] || []).map(function (c) {
+        return '<span class="hkkey">' + esc(keyLabel(c)) + '<button type="button" data-hk-del="' + a[0] + '" data-hk-code="' + esc(c) + '" aria-label="Убрать ' + esc(keyLabel(c)) + '">✕</button></span>';
+      }).join('') + '<button type="button" class="btn sm hkadd' + (KEYCAP === a[0] ? ' wait' : '') + '" data-hk-add="' + a[0] + '">' + (KEYCAP === a[0] ? 'Нажмите клавишу…' : '+') + '</button></div></div>';
+    });
+    k += '<div class="btnrow"><button type="button" class="btn sm" id="hkReset">Клавиши по умолчанию</button></div>';
+    if (!IS_PHONE) h += group('keys', 'Горячие клавиши', k); // a phone has no keyboard
+    if (CAN_UPDATE) h += group('upd', 'Обновления', '<label class="srow chk" for="updAuto"><input type="checkbox" id="updAuto"' + (UPD.auto ? ' checked' : '') + '><span>Проверять обновления при запуске</span></label><div class="upd" id="updBox">' + updHtml() + '</div>');
+
+    body.innerHTML = h; body.scrollTop = st;
+  }
+  $('setBody').addEventListener('toggle', function (e) {
+    var d = e.target; if (!d.dataset || !d.dataset.g) return;
+    GROUPS_OPEN[d.dataset.g] = d.open;
+  }, true);
+  $('setBody').addEventListener('change', function (e) {
+    if (e.target.id !== 'presetSel' || !e.target.value) return;
+    var n = e.target.value, pr = PRESETS[n]; CFG = mergeCfg({ colors: keepBg(pr.colors, CFG.colors), fx: themeFx(pr.fx, CFG.fx), nets: CFG.nets, keys: CFG.keys }); CFG.preset = n; CFG.base = n;
+    changed('тема «' + n + '» (не сохранено в файл)', true); buildSettings();
+  });
+  function fmt(v) { return Math.round(v * 100) / 100; }
+  function changed(src, keepPreset) {
+    var ps = $('presetSel');
+    if (!keepPreset && CFG.preset) { delete CFG.preset; if (ps && ps.value) { ps.insertAdjacentHTML('afterbegin', '<option value="">Свои настройки</option>'); ps.value = ''; } }
+    applyCfg(true); cfgSource = src || 'свои'; if (S.net) renderCard(); }
+  $('setBody').addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.dataset.color) CFG.colors[t.dataset.color] = t.value;
+    else if (t.dataset.fx) { CFG.fx[t.dataset.fx] = parseFloat(t.value); var o = $(t.id + '-o'); if (o) o.textContent = fmt(CFG.fx[t.dataset.fx]); }
+    else if (t.dataset.fxb) CFG.fx[t.dataset.fxb] = t.checked;
+    else if (t.dataset.fxs) CFG.fx[t.dataset.fxs] = t.value;
+    else if (t.dataset.ruleP != null) { CFG.nets[+t.dataset.ruleP].p = t.value; CFG.nets = CFG.nets.filter(function (r) { return true; }); }
+    else if (t.dataset.ruleC != null) CFG.nets[+t.dataset.ruleC].c = t.value;
+    else return;
+    changed(null, !!t.dataset.color && BG_KEYS.indexOf(t.dataset.color) >= 0); // the background is not part of a theme
+  });
+  $('setBody').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.grpReset != null) {
+      var base = PRESETS[CFG.base] || PRESETS['По умолчанию'], ref = mergeCfg({ colors: base.colors, fx: base.fx });
+      SCHEMA[+b.dataset.grpReset][1].forEach(function (it) {
+        if (it[0] === 'color') { if (it[1] === 'canvas') CFG.colors[bgKey()] = DEF_COLORS[bgKey()]; else CFG.colors[it[1]] = ref.colors[it[1]]; }
+        else CFG.fx[it[1]] = ref.fx[it[1]];
+      });
+      changed('группа сброшена (не сохранено в файл)', true); buildSettings(); return;
+    }
+    if (b.dataset.hkAdd) { KEYCAP = KEYCAP === b.dataset.hkAdd ? null : b.dataset.hkAdd; buildSettings(); return; }
+    if (b.dataset.hkDel) { CFG.keys[b.dataset.hkDel] = (CFG.keys[b.dataset.hkDel] || []).filter(function (c) { return c !== b.dataset.hkCode; }); changed('свои клавиши (не сохранено в файл)', true); buildSettings(); renderCard(); return; }
+    if (b.id === 'hkReset') { CFG.keys = JSON.parse(JSON.stringify(DEF_KEYS)); KEYCAP = null; changed('клавиши по умолчанию (не сохранено в файл)', true); buildSettings(); renderCard(); return; }
+    if (b.id === 'ruleAdd') { CFG.nets.push({ p: S.net || '*', c: '#3fa7ff' }); changed(); buildSettings(); var inp = $('rules').querySelectorAll('input[type=text]'); if (inp.length) inp[inp.length - 1].focus(); }
+    else if (b.dataset.ruleDel != null) { CFG.nets.splice(+b.dataset.ruleDel, 1); changed(); buildSettings(); }
+  });
+  function setNetColor(net, color) { // from the net card
+    var i = CFG.nets.map(function (r) { return r.p.toUpperCase(); }).indexOf(net.toUpperCase());
+    if (color == null) { if (i >= 0) CFG.nets.splice(i, 1); } else if (i >= 0) CFG.nets[i].c = color; else CFG.nets.push({ p: net, c: color });
+    changed(); if (SETOPEN) buildSettings();
+  }
+  $('cfgReset').onclick = function () { KEYCAP = null; CFG = mergeCfg(null); CFG.preset = 'По умолчанию'; changed('по умолчанию', true); buildSettings(); flash('Все настройки сброшены'); };
+  function saveBlob(name, text) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  // settings live inside the app; these move them between devices as one file
+  window.bvSaved = function (ok) { flash(ok ? 'Настройки выгружены' : 'Настройки не сохранены'); }; // called back by the Android app
+  $('cfgExport').onclick = function () {
+    var json = JSON.stringify({ v: 3, app: 'BoardV', savedAt: new Date().toISOString(), preset: CFG.preset, base: CFG.base, colors: CFG.colors, fx: CFG.fx, nets: CFG.nets, keys: CFG.keys }, null, 2);
+    var name = 'BoardV-settings.json';
+    if (window.BoardVAndroid && window.BoardVAndroid.saveText) window.BoardVAndroid.saveText(name, json); // system "save as" on the phone
+    else if (dlCap) dlCap.save({ filename: name, data: json }).then(function () { flash('Настройки выгружены'); }).catch(function () {});
+    else if (!inArtifact) { saveBlob(name, json); flash('Настройки выгружены'); }
+    else copyText(json, 'Настройки скопированы');
+  };
+  $('cfgImport').onclick = function () { $('cfgFile').click(); };
+  $('cfgFile').onchange = function () {
+    var f = this.files[0]; this.value = ''; if (!f) return;
+    f.text().then(function (t) {
+      var a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a < 0 || b < a) throw new Error('нет данных');
+      CFG = mergeCfg(JSON.parse(t.slice(a, b + 1))); KEYCAP = null; changed('загружено', true); buildSettings(); renderCard(); flash('Настройки загружены');
+    }).catch(function () { showError('Не удалось загрузить настройки', f.name + ' — нужен файл, выгруженный из BoardV'); });
+  };
+
+  /* ---------- updates (Android and Windows apps): check GitHub, install only after the user agrees ---------- */
+  var UPD_API = 'https://api.github.com/repositories/1412049178/releases/latest';
+  var UPD_PAGE = 'https://github.com/Carn1son/BoardV/releases/latest';
+  var BUILD = window.BV_BUILD || null;
+  var HAS_DESK_UPD = APP_MODE === 'desktop' && !!(window.bvDesktop && window.bvDesktop.update);
+  var CAN_UPDATE = (APP_MODE === 'android' && !!window.BoardVUpdater) || HAS_DESK_UPD;
+  var UPD = { auto: true, st: 'idle', latest: '', day: '', pct: 0, msg: '', mode: '' };
+  try { UPD.auto = localStorage.getItem('bvr-autoupd') !== '0'; } catch (e) {}
+  function verNewer(a, b) {
+    a = String(a).split('.').map(Number); b = String(b || '0').split('.').map(Number);
+    for (var i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
+    return false;
+  }
+  function verDay(v) { var m = /^(\d{4})\.(\d{1,2})(\d{2})\./.exec(v || ''); return m ? m[3] + '.' + ('0' + m[2]).slice(-2) + '.' + m[1] : ''; } // 2026.1009.7 -> 09.10.2026
+  function updHtml() {
+    var h = '<div class="ln ok">Установлена сборка от ' + esc(BUILD && BUILD.day ? BUILD.day : '—') + '</div>', b = [], d = UPD.day || verDay(UPD.latest);
+    if (UPD.st === 'checking') h += '<div class="ln">Проверяю…</div>';
+    else if (UPD.st === 'none') h += '<div class="ln ok">У вас последняя версия.</div>';
+    else if (UPD.st === 'available') { h += '<div class="ln">Есть обновление: сборка от ' + esc(d) + '.</div>'; b.push(['go', UPD.mode === 'portable' ? 'Скачать новую версию' : 'Обновить', 1]); }
+    else if (UPD.st === 'perm') { h += '<div class="ln">Разрешите BoardV устанавливать приложения, вернитесь и нажмите «Обновить».</div>'; b.push(['perm', 'Открыть разрешение', 1], ['go', 'Обновить']); }
+    else if (UPD.st === 'downloading') h += '<div class="ln">Загрузка обновления… ' + (UPD.pct || 0) + '%</div><div class="bar"><i style="width:' + (UPD.pct || 0) + '%"></i></div>';
+    else if (UPD.st === 'installing') h += '<div class="ln">Открываю установщик…</div>';
+    else if (UPD.st === 'confirm') h += '<div class="ln">Подтвердите установку в окне Android.</div>';
+    else if (UPD.st === 'ready') { h += '<div class="ln">Обновление загружено.</div>'; b.push(['install', 'Перезапустить и установить', 1]); }
+    else if (UPD.st === 'error') { h += '<div class="ln bad">Не получилось: ' + esc(UPD.msg) + '</div>'; }
+    if (UPD.st !== 'downloading' && UPD.st !== 'installing' && UPD.st !== 'checking') b.push(['check', 'Проверить обновления']);
+    return h + '<div class="btnrow">' + b.map(function (x) { return '<button type="button" class="btn sm' + (x[2] ? ' primary' : '') + '" data-upd="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  }
+  function updRender() {
+    var box = $('updBox'); if (box) box.innerHTML = updHtml();
+    var bar = $('updBar'); if (!bar.hidden) bar.innerHTML = '<b>Обновление BoardV</b><div class="upd">' + updHtml() + '</div><button type="button" class="btn x" data-upd="later" aria-label="Позже">✕</button>';
+  }
+  function updSet(st, extra) { UPD.st = st; if (extra) Object.keys(extra).forEach(function (k) { UPD[k] = extra[k]; }); updRender(); }
+  function showUpdBar() { $('updBar').hidden = false; updRender(); }
+  function apiCheck(cur, auto) {
+    fetch(UPD_API, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('GitHub ответил ' + r.status); return r.json(); }).then(function (j) {
+      var v = String(j.tag_name || '').replace(/^v/, ''), day = (String(j.name || '').match(/(\d\d\.\d\d\.\d{4})/) || [])[1] || '';
+      if (/^\d+(\.\d+)+$/.test(v) && verNewer(v, cur)) { updSet('available', { latest: v, day: day }); if (auto) showUpdBar(); }
+      else updSet('none', { latest: v, day: day });
+    }).catch(function (e) { updSet(auto ? 'idle' : 'error', { msg: e.message || 'нет связи с GitHub' }); });
+  }
+  var updAuto = false;
+  function checkUpdates(auto) {
+    if (!CAN_UPDATE || UPD.st === 'downloading' || UPD.st === 'checking') return;
+    updAuto = !!auto; updSet('checking');
+    if (HAS_DESK_UPD) window.bvDesktop.update.check().then(function (r) {
+      UPD.mode = r.mode;
+      if (r.mode !== 'installer') return apiCheck(r.version, auto); // portable copy: compare and offer the download
+      if (r.error) updSet(auto ? 'idle' : 'error', { msg: r.error });
+    });
+    else apiCheck(BUILD && BUILD.version, auto);
+  }
+  function startUpdate() {
+    if (APP_MODE === 'android') {
+      if (!window.BoardVUpdater.canInstall()) { updSet('perm'); return; }
+      updSet('downloading', { pct: 0 }); window.BoardVUpdater.install(UPD_PAGE + '/download/BoardV.apk');
+    } else if (UPD.mode === 'portable') { window.open(UPD_PAGE + '/download/BoardV-portable.exe'); }
+    else { updSet('downloading', { pct: 0 }); window.bvDesktop.update.download(); }
+  }
+  window.bvUpdateEvent = function (type, arg) { // from the Android app
+    if (type === 'progress') updSet('downloading', { pct: +arg || 0 });
+    else if (type === 'installing' || type === 'confirm') updSet(type);
+    else if (type === 'cancelled') updSet('available');
+    else if (type === 'error') updSet('error', { msg: arg });
+  };
+  if (HAS_DESK_UPD) window.bvDesktop.update.on(function (m) {
+    if (m.type === 'available') { updSet('available', { latest: m.data && m.data.version, day: '' }); if (updAuto) showUpdBar(); }
+    else if (m.type === 'none') updSet('none');
+    else if (m.type === 'progress') updSet('downloading', { pct: m.data || 0 });
+    else if (m.type === 'downloaded') updSet('ready');
+    else if (m.type === 'error') updSet('error', { msg: m.data });
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-upd]'); if (!b) return;
+    var a = b.dataset.upd;
+    if (a === 'check') checkUpdates(false);
+    else if (a === 'go') startUpdate();
+    else if (a === 'perm') window.BoardVUpdater.openInstallSettings();
+    else if (a === 'install') window.bvDesktop.update.install();
+    else if (a === 'later') $('updBar').hidden = true;
+  });
+  $('setBody').addEventListener('change', function (e) {
+    if (e.target.id !== 'updAuto') return;
+    UPD.auto = e.target.checked; try { localStorage.setItem('bvr-autoupd', UPD.auto ? '1' : '0'); } catch (x) {}
+  });
+  if (CAN_UPDATE && UPD.auto) setTimeout(function () { checkUpdates(true); }, 4000);
+
+  /* ---------- files opened from the system (double-click, "Open with") ---------- */
+  if ('launchQueue' in window && window.launchQueue.setConsumer) {
+    window.launchQueue.setConsumer(function (lp) {
+      if (!lp || !lp.files || !lp.files.length) return;
+      Promise.all(lp.files.map(function (h) { return h.getFile(); })).then(function (fs) { loadFiles(fs); });
+    });
+  }
+  if (window.bvDesktop) {
+    window.bvDesktop.onOpenFiles(function (list) { loadFiles(list.map(function (f) { return new File([f.data], f.name); })); });
+    window.bvDesktop.ready();
+  }
+
+  /* ---------- no browser context menu (except in text fields) ---------- */
+  document.addEventListener('contextmenu', function (e) {
+    var t = e.target, tag = (t && t.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || (t && t.isContentEditable)) return;
+    e.preventDefault();
+  });
+
+  /* ---------- phone sheet ---------- */
+  function openSheet(t) {
+    if (!IS_PHONE) return;
+    var de = document.documentElement;
+    if (!t) { de.classList.remove('sheet-open'); $('mmenu').setAttribute('aria-expanded', 'false'); return; }
+    de.dataset.mtab = t; de.classList.add('sheet-open'); $('mmenu').setAttribute('aria-expanded', 'true');
+    document.querySelectorAll('#msheet .mtab').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.mt === t)); });
+    if (t === 'bom' || t === 'set') { var was = SETOPEN; SETOPEN = t === 'set'; if (SETOPEN) { if (!was) GROUPS_OPEN = {}; buildSettings(); } applyLayout(false); }
+  }
+  function pickedOnPhone() { if (IS_PHONE) openSheet(null); }
+  $('mmenu').onclick = function () { openSheet(document.documentElement.classList.contains('sheet-open') ? null : (document.documentElement.dataset.mtab || 'info')); };
+  $('mclose').onclick = function () { openSheet(null); };
+  document.querySelectorAll('#msheet .mtab').forEach(function (b) { b.onclick = function () { openSheet(b.dataset.mt); }; });
+  $('mfit').onclick = function () { fit(); req(); };
+
+  /* ---------- status ---------- */
+  var cursor = null;
+  function status(msg) {
+    var h = '';
+    if (msg) h = '<span><b>' + esc(msg) + '</b></span>';
+    else if (M) {
+      h += '<span>Сторона <b>' + ({ top: 'верх', bottom: 'низ (зеркально)', both: 'обе' })[V.side] + '</b></span><span>Поворот <b>' + V.rot * 90 + '°</b></span>';
+      if (S.part) h += '<span>Деталь <b>' + esc(S.part.ref) + '</b>' + (S.part.value ? ' · ' + esc(S.part.value) : '') + '</span>';
+      if (S.net) h += '<span>Цепь <b style="color:var(--ui-sel)">' + esc(S.net) + '</b></span>';
+      if (S.group && groupByKey(S.group)) { var g = groupByKey(S.group); h += '<span>Позиция <b style="color:var(--ui-grp)">' + esc(g.value || '—') + (g.footprint ? ' · ' + esc(g.footprint) : '') + ' × ' + g.parts.length + '</b></span>'; }
+    }
+    else if (!M) h = '<span>Файл не открыт</span>';
+    if (IS_PHONE) h += '<span class="mlogo"><i class="logo" aria-hidden="true"></i>BoardV</span>'; // the header brand is hidden on phones to make room for buttons
+    $('status').innerHTML = h;
+  }
+
+  /* ---------- interaction ---------- */
+  function resize() {
+    var r = $('stage').getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
+    var first = !W, w0 = W, h0 = H; W = Math.max(1, r.width); H = Math.max(1, r.height);
+    if (!first && (W !== w0 || H !== h0)) { if (M && FX.autoFit) fit(); else { V.cx += (W - w0) / 2; V.cy += (H - h0) / 2; } }
+    var pw = Math.round(W * dpr), ph = Math.round(H * dpr);
+    if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; draw(); }
+    if (first) fit(); req();
+  }
+  new ResizeObserver(resize).observe($('stage'));
+  var ptrs = {}, drag = null, pinch = null;
+  cv.addEventListener('pointerdown', function (e) {
+    if (!M) return; cv.setPointerCapture(e.pointerId); ptrs[e.pointerId] = [e.clientX, e.clientY];
+    var ids = Object.keys(ptrs);
+    if (ids.length === 2) { var a = ptrs[ids[0]], b = ptrs[ids[1]]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k: V.k }; drag = null; }
+    else drag = { x: e.clientX, y: e.clientY, cx: V.cx, cy: V.cy, moved: false };
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (!M) return;
+    var r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    if (ptrs[e.pointerId]) ptrs[e.pointerId] = [e.clientX, e.clientY];
+    if (pinch) {
+      var ids = Object.keys(ptrs); if (ids.length < 2) return;
+      var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      zoomAt((a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top, (pinch.k * d / pinch.d) / V.k); return;
+    }
+    if (drag) {
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 4) { drag.moved = true; cv.classList.add('drag'); $('tip').hidden = true; }
+      if (drag.moved) { V.cx = drag.cx + dx; V.cy = drag.cy + dy; req(); return; }
+    }
+    if (e.pointerType === 'mouse') {
+      var h = hit(mx, my), changed = !hover !== !h || (h && hover && (h.pin !== hover.pin || h.part !== hover.part));
+      hover = h;
+      var tip = $('tip');
+      if (h) {
+        tip.hidden = false; tip.style.left = mx + 'px'; tip.style.top = my + 'px';
+        tip.innerHTML = h.pin ? esc(h.part.ref) + '.' + esc(h.pin.name) + ' · <em>' + esc(h.pin.net === 'UNCONNECTED' ? 'N/C' : h.pin.net) + '</em>'
+                              : esc(h.part.ref) + (h.part.value ? ' · <em>' + esc(h.part.value) + '</em>' : '') + (h.part.footprint ? ' · ' + esc(h.part.footprint) : '');
+      } else tip.hidden = true;
+      if (changed) req();
+    }
+  });
+  function endPtr(e) {
+    delete ptrs[e.pointerId];
+    if (pinch) { if (Object.keys(ptrs).length < 2) pinch = null; return; }
+    cv.classList.remove('drag');
+    if (drag && !drag.moved && M) {
+      var r = cv.getBoundingClientRect(), h = hit(e.clientX - r.left, e.clientY - r.top);
+      if (h) S.group = null;
+      if (h && h.pin) { S.part = h.part; if (h.pin.net !== 'UNCONNECTED') S.net = h.pin.net; else S.net = null; renderCard(); renderList(); req(); }
+      else if (h) { S.net = null; selectPart(h.part, false); }
+      else clearSel();
+      status();
+    }
+    drag = null;
+  }
+  cv.addEventListener('pointerup', endPtr);
+  cv.addEventListener('pointercancel', endPtr);
+  cv.addEventListener('pointerleave', function () { $('tip').hidden = true; if (hover) { hover = null; req(); } });
+  cv.addEventListener('wheel', function (e) { if (!M) return; e.preventDefault(); var r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016 * (FX.zoomSpeed || 1) * (FX.wheelInvert ? -1 : 1))); }, { passive: false });
+  function zoomAt(mx, my, f) { var k2 = Math.max(0.0005, Math.min(400, V.k * f)); f = k2 / V.k; V.cx = mx - (mx - V.cx) * f; V.cy = my - (my - V.cy) * f; V.k = k2; req(); }
+  function setSide(s, keepView) {
+    if (M && !keepView && W) {
+      // keep the point under the screen center in place when flipping
+      var c = s2w(W / 2, H / 2); V.side = s; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1];
+    } else V.side = s;
+    $('sideSel').value = s;
+    status(); req();
+  }
+  $('sideSel').onchange = function () { setSide(this.value); this.blur(); };
+  function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
+  function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 1) % 4; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
+  $('rot').onclick = rotate;
+  $('fit').onclick = function () { fit(); req(); };
+  function runAction(a) {
+    if (a === 'search') { if (IS_PHONE) openSheet('info'); $('q').focus(); $('q').select(); }
+    else if (a === 'flip') setSide(V.side === 'top' ? 'bottom' : 'top');
+    else if (a === 'top' || a === 'bottom' || a === 'both') setSide(a);
+    else if (a === 'cycle') cycleSide();
+    else if (a === 'rotate') rotate();
+    else if (a === 'fit') { fit(); req(); }
+    else if (a === 'clear') { if (SETOPEN && !IS_PHONE) setSettings(false); else clearSel(); }
+    else if (a === 'zoomIn') zoomAt(W / 2, H / 2, 1.4);
+    else if (a === 'zoomOut') zoomAt(W / 2, H / 2, 1 / 1.4);
+    else if (a === 'bom') $('bomToggle').click();
+    else if (a === 'settings') setSettings(!SETOPEN);
+    else if (a === 'ui') setUi(UI === 'dark' ? 'light' : 'dark');
+    else if (a === 'values' || a === 'pinNums') { var k = a === 'values' ? 'showValues' : 'showPinNums'; CFG.fx[k] = !CFG.fx[k]; applyCfg(true); if (SETOPEN) buildSettings(); flash((a === 'values' ? 'Номиналы ' : 'Номера пинов ') + (CFG.fx[k] ? 'показаны' : 'скрыты')); }
+    else if (a === 'open') $('file').click();
+  }
+  function actionFor(combo) { for (var i = 0; i < ACTIONS.length; i++) if ((CFG.keys[ACTIONS[i][0]] || []).indexOf(combo) >= 0) return ACTIONS[i][0]; return null; }
+  document.addEventListener('keydown', function (e) {
+    if (KEYCAP) { // assigning a key in the settings
+      if (/^(Shift|Control|Alt|Meta|OS)(Left|Right)?$/.test(e.code) || e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+      e.preventDefault(); e.stopPropagation();
+      var a = KEYCAP; KEYCAP = null;
+      if (e.code === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey) { buildSettings(); return; }
+      var combo = comboOf(e), from = actionFor(combo);
+      if (from && from !== a) CFG.keys[from] = CFG.keys[from].filter(function (c) { return c !== combo; });
+      if ((CFG.keys[a] || []).indexOf(combo) < 0) (CFG.keys[a] = CFG.keys[a] || []).push(combo);
+      changed('свои клавиши (не сохранено в файл)', true); buildSettings(); renderCard();
+      var nm = function (x) { return ACTIONS.filter(function (y) { return y[0] === x; })[0][1]; };
+      flash(keyLabel(combo) + ' → «' + nm(a) + '»' + (from && from !== a ? ', снято с «' + nm(from) + '»' : ''));
+      return;
+    }
+    var tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    var c = comboOf(e), act = actionFor(c);
+    if (!act && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) act = actionFor(c.replace('Shift+', '')); // e.g. Shift+= for "+"
+    if (!act) return;
+    if (act !== 'clear' && e.target.tagName === 'BUTTON' && (e.code === 'Space' || e.code === 'Enter')) return; // let buttons react to their own keys
+    e.preventDefault(); runAction(act);
+  });
+
+  /* ---------- files in ---------- */
+  $('open').onclick = function () { $('file').click(); };
+  $('empty').onclick = function () { $('file').click(); };
+  $('empty').onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } };
+  $('file').onchange = function () { if (this.files.length) loadFiles(this.files); this.value = ''; };
+  var depth = 0;
+  function hasFiles(e) { var t = e.dataTransfer && e.dataTransfer.types; return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0; }
+  window.addEventListener('dragenter', function (e) { if (!hasFiles(e)) return; e.preventDefault(); depth++; $('mask').hidden = false; });
+  window.addEventListener('dragleave', function (e) { if (!hasFiles(e)) return; e.preventDefault(); if (--depth <= 0) { depth = 0; $('mask').hidden = true; } });
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); depth = 0; $('mask').hidden = true; if (e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+
+  function refreshAll(refit) {
+    buildNetIndex();
+    $('empty').hidden = !!M; applyLayout(false);
+    $('fileName').textContent = src.files.join(' + ');
+    if (refit) { V.rot = IS_PHONE && H > W * 1.15 && M.w > M.h * 1.15 ? 1 : 0; setSide('top', true); fit(); } // phone held upright + wide board: turn it to fill the screen
+    renderCard(); renderList(); status(); req();
+  }
+
+  /* ---------- start ---------- */
+  applyCfg(false);
+  status(); req(); // empty field until a file is dropped or picked
+})();
+</script>

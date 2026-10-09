@@ -1,0 +1,71 @@
+{
+  "name": "boardv",
+  "productName": "BoardV",
+  "version": "2026.10.9",
+  "description": "BoardV — просмотр плат Altium",
+  "author": "carnison",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.carnison.boardview",
+    "productName": "BoardV",
+    "files": [
+      "main.js",
+      "preload.js",
+      "www/**/*"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/Carn1son/BoardV/releases/latest/download"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "artifactName": "BoardV-Setup.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "BoardV-portable.exe"
+    },
+    "fileAssociations": [
+      {
+        "ext": "PcbDoc",
+        "name": "Altium PCB",
+        "role": "Viewer"
+      },
+      {
+        "ext": "brd",
+        "name": "Boardview",
+        "role": "Viewer"
+      },
+      {
+        "ext": "bvr",
+        "name": "Boardview BVR",
+        "role": "Viewer"
+      }
+    ]
+  }
+}

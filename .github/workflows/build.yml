@@ -1,0 +1,139 @@
+name: Build apps
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    name: Build number
+    runs-on: ubuntu-latest
+    outputs:
+      ver: ${{ steps.v.outputs.ver }}
+      vcode: ${{ steps.v.outputs.vcode }}
+      day: ${{ steps.v.outputs.day }}
+    steps:
+      - id: v
+        run: |
+          export TZ=Europe/Moscow
+          RUN=${{ github.run_number }}
+          echo "ver=$(date +%Y).$((10#$(date +%m%d))).$RUN" >> "$GITHUB_OUTPUT"
+          echo "vcode=$(date +%Y%m%d)$(printf %02d $((RUN % 100)))" >> "$GITHUB_OUTPUT"
+          echo "day=$(date +%d.%m.%Y)" >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Android APK
+    needs: meta
+    runs-on: ubuntu-latest
+    env:
+      BV_VER: ${{ needs.meta.outputs.ver }}
+      BV_VCODE: ${{ needs.meta.outputs.vcode }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Signing key
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          if [ -n "$KS_PASS" ] && [ -f src/keys/boardv.jks.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -in src/keys/boardv.jks.enc -out "$RUNNER_TEMP/boardv.jks" -pass env:KS_PASS
+            echo "BV_KEYSTORE=$RUNNER_TEMP/boardv.jks" >> "$GITHUB_ENV"
+            echo "BV_KEYPASS=$KS_PASS" >> "$GITHUB_ENV"
+            echo "Signing with the permanent BoardV key"
+          else
+            echo "::warning::Secret ANDROID_KEYSTORE_PASS is not set: the APK is signed with a temporary key and will not install over a previous build"
+          fi
+      - name: Put the web app into the APK
+        run: |
+          echo "window.BV_BUILD = { version: '$BV_VER', day: '${{ needs.meta.outputs.day }}', app: 'android' };" > www/build-info.js
+          rm -rf android/app/src/main/assets/www
+          mkdir -p android/app/src/main/assets
+          cp -r www android/app/src/main/assets/www
+      - name: Build
+        run: gradle -p android assembleRelease
+      - name: Rename
+        run: cp android/app/build/outputs/apk/release/app-release.apk BoardV.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BoardV-android
+          path: BoardV.apk
+
+  windows:
+    name: Windows EXE
+    needs: meta
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Copy the web app
+        shell: bash
+        run: |
+          echo "window.BV_BUILD = { version: '${{ needs.meta.outputs.ver }}', day: '${{ needs.meta.outputs.day }}', app: 'windows' };" > www/build-info.js
+          rm -rf electron/www
+          cp -r www electron/www
+          mkdir -p electron/build
+          cp www/icon-512.png electron/build/icon.png
+      - name: Install
+        working-directory: electron
+        shell: bash
+        run: |
+          npm install --save-dev electron@31.7.7 electron-builder@25.1.8
+          npm install --save electron-updater@^6.3.9
+          npm pkg set version=${{ needs.meta.outputs.ver }}
+      - name: Build
+        working-directory: electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --win nsis portable --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BoardV-windows
+          path: |
+            electron/dist/*.exe
+            electron/dist/*.blockmap
+            electron/dist/latest.yml
+
+  release:
+    name: Release (download links, updates)
+    needs: [meta, android, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ needs.meta.outputs.ver }}
+          DAY: ${{ needs.meta.outputs.day }}
+        run: |
+          set -e
+          ls -R dl
+          BASE="https://github.com/$GITHUB_REPOSITORY/releases/latest/download"
+          printf '%s\n' "Сборка от $DAY (версия $VER)." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "- Windows, без установки: $BASE/BoardV-portable.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
+          gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV — сборка от $DAY" --notes-file notes.md --latest
+      - name: Keep only the newest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ needs.meta.outputs.ver }}
+        run: |
+          for t in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" -q '.[].tag_name'); do
+            [ "$t" = "v$VER" ] || gh release delete "$t" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          done
+          for t in $(gh api "repos/$GITHUB_REPOSITORY/tags?per_page=100" -q '.[].name'); do
+            [ "$t" = "v$VER" ] || gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$t" || true
+          done

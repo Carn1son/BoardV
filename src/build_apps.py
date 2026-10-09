@@ -18,7 +18,8 @@ def lib():
     pcb = open(os.path.join(ROOT, 'pcbdoc.js')).read().replace("if (typeof module !== 'undefined') module.exports = PCBDOC;", "")
     core = open(os.path.join(ROOT, 'core.js')).read().replace("if (typeof module !== 'undefined') module.exports = BV;", "")
     i18n = open(os.path.join(ROOT, 'i18n.js')).read()
-    return pcb + '\n' + core + '\n' + i18n
+    vendor = ''.join(open(os.path.join(ROOT, 'vendor', f)).read() + '\n' for f in ('qrcode.min.js', 'jsqr.min.js'))
+    return pcb + '\n' + core + '\n' + i18n + '\n' + vendor
 
 
 def logo_uri(px=96):
@@ -231,12 +232,15 @@ ANDROID_MANIFEST = '''<?xml version="1.0" encoding="utf-8"?>
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="BoardV"
         android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
         <activity
@@ -271,6 +275,10 @@ import android.os.Bundle;
 import android.view.Window;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.view.WindowManager;
+import android.webkit.PermissionRequest;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -286,8 +294,21 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> pendingFiles;
     private String pendingSave;
 
+    private static final int CAMERA_REQUEST = 1003;
+    private PermissionRequest pendingCamera;
+
     /** Lets the page save a text file (exported settings) through the system "Save as" screen. */
     public class Bridge {
+        /** A board received from a PC is view-only: block screenshots and screen recording while it is open. */
+        @JavascriptInterface
+        public void setSecure(final boolean on) {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                    else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                }
+            });
+        }
         @JavascriptInterface
         public void saveText(final String name, final String text) {
             runOnUiThread(new Runnable() {
@@ -369,6 +390,17 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        if (requestCode == CAMERA_REQUEST && pendingCamera != null) {
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) pendingCamera.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+            else pendingCamera.deny();
+            pendingCamera = null;
+            return;
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (intent == null || !ACTION_INSTALL_STATUS.equals(intent.getAction())) return;
@@ -416,7 +448,26 @@ public class MainActivity extends Activity {
                 return true; // links open in the browser, the app stays on the board
             }
         });
+        s.setMediaPlaybackRequiresUserGesture(false);
         web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) { // camera for the QR scanner only
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        boolean wantsCamera = false;
+                        for (String r : request.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) wantsCamera = true;
+                        if (!wantsCamera) { request.deny(); return; }
+                        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                            request.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+                        } else {
+                            if (pendingCamera != null) pendingCamera.deny();
+                            pendingCamera = request;
+                            requestPermissions(new String[] { Manifest.permission.CAMERA }, CAMERA_REQUEST);
+                        }
+                    }
+                });
+            }
+
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (pendingFiles != null) pendingFiles.onReceiveValue(null);
@@ -572,6 +623,61 @@ ipcMain.handle('upd-check', async () => {
 ipcMain.handle('upd-download', async () => {
   try { await updater.downloadUpdate(); return true; } catch (e) { upd('error', String((e && e.message) || e)); return false; }
 });
+// ---- show the open board on a phone: one-time, encrypted by the page, sent only after the user allows it ----
+const http = require('http');
+const os = require('os');
+const crypto = require('crypto');
+let share = null;
+function lanIPs() {
+  const out = [];
+  Object.values(os.networkInterfaces()).forEach((list) => (list || []).forEach((a) => { if (a.family === 'IPv4' && !a.internal) out.push(a.address); }));
+  return out;
+}
+function shareSend(type, data) { if (win) win.webContents.send('share', { type, data }); }
+function shareStop(reason) {
+  if (!share) return;
+  const s = share; share = null; clearTimeout(s.timer);
+  s.waiting.forEach((w) => { clearTimeout(w.t); try { w.res.writeHead(410); w.res.end(); } catch (e) { /* already closed */ } });
+  try { s.server.close(); } catch (e) { /* not listening */ }
+  shareSend('ended', reason || '');
+}
+ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
+  shareStop('restart');
+  const s = { token: crypto.randomBytes(16).toString('hex'), blob: Buffer.from(blob), waiting: new Map(), bad: 0, seq: 0 };
+  s.server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+    if (share !== s || req.method !== 'GET' || req.url !== '/bv/' + s.token) {
+      s.bad++; res.writeHead(404); res.end();
+      if (s.bad > 30) shareStop('too many wrong requests');
+      return;
+    }
+    const id = ++s.seq, ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+    const t = setTimeout(() => { if (s.waiting.delete(id)) { res.writeHead(408); res.end(); shareSend('timeout', { id }); } }, 90000);
+    s.waiting.set(id, { res, t });
+    res.on('close', () => { if (s.waiting.has(id)) { clearTimeout(t); s.waiting.delete(id); shareSend('gone', { id }); } });
+    shareSend('request', { id, ip });
+  });
+  s.server.on('error', (e) => { shareSend('error', String((e && e.message) || e)); reject(e); });
+  s.server.listen(0, '0.0.0.0', () => {
+    share = s;
+    s.timer = setTimeout(() => shareStop('timeout'), 10 * 60 * 1000);
+    resolve({ port: s.server.address().port, ips: lanIPs(), token: s.token });
+  });
+}));
+ipcMain.on('share-decide', (_e, m) => {
+  const s = share; if (!s || !m) return;
+  const w = s.waiting.get(m.id); if (!w) return;
+  clearTimeout(w.t); s.waiting.delete(m.id);
+  if (!m.ok) { w.res.writeHead(403); w.res.end(); return; }
+  w.res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+  w.res.end(s.blob);
+  shareSend('sent', { id: m.id });
+  setTimeout(() => shareStop('sent'), 500); // one phone, one time
+});
+ipcMain.on('share-stop', () => shareStop('stopped'));
+
 ipcMain.on('upd-install', () => { if (updater) updater.quitAndInstall(true, true); }); // silent: files are replaced in place, no installer wizard, then BoardV starts again
 
 const BOARD = /\\.(pcbdoc|brd|bvr|zip|json)$/i;
@@ -623,6 +729,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('bvDesktop', {
   onOpenFiles: (cb) => ipcRenderer.on('open-files', (_e, files) => cb(files)),
   ready: () => ipcRenderer.send('renderer-ready'),
+  share: {
+    start: (blob) => ipcRenderer.invoke('share-start', blob),
+    decide: (id, ok) => ipcRenderer.send('share-decide', { id, ok }),
+    stop: () => ipcRenderer.send('share-stop'),
+    on: (cb) => ipcRenderer.on('share', (_e, m) => cb(m)),
+  },
   update: {
     check: () => ipcRenderer.invoke('upd-check'),
     download: () => ipcRenderer.invoke('upd-download'),

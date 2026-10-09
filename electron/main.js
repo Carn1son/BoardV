@@ -32,6 +32,61 @@ ipcMain.handle('upd-check', async () => {
 ipcMain.handle('upd-download', async () => {
   try { await updater.downloadUpdate(); return true; } catch (e) { upd('error', String((e && e.message) || e)); return false; }
 });
+// ---- show the open board on a phone: one-time, encrypted by the page, sent only after the user allows it ----
+const http = require('http');
+const os = require('os');
+const crypto = require('crypto');
+let share = null;
+function lanIPs() {
+  const out = [];
+  Object.values(os.networkInterfaces()).forEach((list) => (list || []).forEach((a) => { if (a.family === 'IPv4' && !a.internal) out.push(a.address); }));
+  return out;
+}
+function shareSend(type, data) { if (win) win.webContents.send('share', { type, data }); }
+function shareStop(reason) {
+  if (!share) return;
+  const s = share; share = null; clearTimeout(s.timer);
+  s.waiting.forEach((w) => { clearTimeout(w.t); try { w.res.writeHead(410); w.res.end(); } catch (e) { /* already closed */ } });
+  try { s.server.close(); } catch (e) { /* not listening */ }
+  shareSend('ended', reason || '');
+}
+ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
+  shareStop('restart');
+  const s = { token: crypto.randomBytes(16).toString('hex'), blob: Buffer.from(blob), waiting: new Map(), bad: 0, seq: 0 };
+  s.server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+    if (share !== s || req.method !== 'GET' || req.url !== '/bv/' + s.token) {
+      s.bad++; res.writeHead(404); res.end();
+      if (s.bad > 30) shareStop('too many wrong requests');
+      return;
+    }
+    const id = ++s.seq, ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+    const t = setTimeout(() => { if (s.waiting.delete(id)) { res.writeHead(408); res.end(); shareSend('timeout', { id }); } }, 90000);
+    s.waiting.set(id, { res, t });
+    res.on('close', () => { if (s.waiting.has(id)) { clearTimeout(t); s.waiting.delete(id); shareSend('gone', { id }); } });
+    shareSend('request', { id, ip });
+  });
+  s.server.on('error', (e) => { shareSend('error', String((e && e.message) || e)); reject(e); });
+  s.server.listen(0, '0.0.0.0', () => {
+    share = s;
+    s.timer = setTimeout(() => shareStop('timeout'), 10 * 60 * 1000);
+    resolve({ port: s.server.address().port, ips: lanIPs(), token: s.token });
+  });
+}));
+ipcMain.on('share-decide', (_e, m) => {
+  const s = share; if (!s || !m) return;
+  const w = s.waiting.get(m.id); if (!w) return;
+  clearTimeout(w.t); s.waiting.delete(m.id);
+  if (!m.ok) { w.res.writeHead(403); w.res.end(); return; }
+  w.res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+  w.res.end(s.blob);
+  shareSend('sent', { id: m.id });
+  setTimeout(() => shareStop('sent'), 500); // one phone, one time
+});
+ipcMain.on('share-stop', () => shareStop('stopped'));
+
 ipcMain.on('upd-install', () => { if (updater) updater.quitAndInstall(true, true); }); // silent: files are replaced in place, no installer wizard, then BoardV starts again
 
 const BOARD = /\.(pcbdoc|brd|bvr|zip|json)$/i;

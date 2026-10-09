@@ -16,6 +16,10 @@ import android.os.Bundle;
 import android.view.Window;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.view.WindowManager;
+import android.webkit.PermissionRequest;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -31,8 +35,21 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> pendingFiles;
     private String pendingSave;
 
+    private static final int CAMERA_REQUEST = 1003;
+    private PermissionRequest pendingCamera;
+
     /** Lets the page save a text file (exported settings) through the system "Save as" screen. */
     public class Bridge {
+        /** A board received from a PC is view-only: block screenshots and screen recording while it is open. */
+        @JavascriptInterface
+        public void setSecure(final boolean on) {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                    else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                }
+            });
+        }
         @JavascriptInterface
         public void saveText(final String name, final String text) {
             runOnUiThread(new Runnable() {
@@ -114,6 +131,17 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        if (requestCode == CAMERA_REQUEST && pendingCamera != null) {
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) pendingCamera.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+            else pendingCamera.deny();
+            pendingCamera = null;
+            return;
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (intent == null || !ACTION_INSTALL_STATUS.equals(intent.getAction())) return;
@@ -161,7 +189,26 @@ public class MainActivity extends Activity {
                 return true; // links open in the browser, the app stays on the board
             }
         });
+        s.setMediaPlaybackRequiresUserGesture(false);
         web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) { // camera for the QR scanner only
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        boolean wantsCamera = false;
+                        for (String r : request.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) wantsCamera = true;
+                        if (!wantsCamera) { request.deny(); return; }
+                        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                            request.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+                        } else {
+                            if (pendingCamera != null) pendingCamera.deny();
+                            pendingCamera = request;
+                            requestPermissions(new String[] { Manifest.permission.CAMERA }, CAMERA_REQUEST);
+                        }
+                    }
+                });
+            }
+
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (pendingFiles != null) pendingFiles.onReceiveValue(null);

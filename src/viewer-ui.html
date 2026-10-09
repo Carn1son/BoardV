@@ -211,6 +211,19 @@ canvas.drag { cursor: grabbing; }
 .upd .bad { color: #e06464; overflow-wrap: anywhere; }
 .upd .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .upd .bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.modal { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / .6); }
+.mcard { width: min(400px, 100%); max-height: calc(100% - 8px); overflow: auto; box-sizing: border-box; display: grid; gap: 12px; justify-items: center; text-align: center; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 50px rgb(0 0 0 / .5); }
+.mcard b { font-family: var(--f-display); font-size: 19px; }
+.mcard .note { font-size: 12px; }
+.mcard .ln { font-weight: 600; }
+.qrbox { width: 240px; height: 240px; background: #fff; border-radius: 10px; padding: 8px; box-sizing: border-box; display: grid; place-items: center; }
+.qrbox svg { width: 100%; height: 100%; display: block; }
+.cam { position: relative; width: 100%; aspect-ratio: 1; background: #000; border-radius: 10px; overflow: hidden; }
+.cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam .aim { position: absolute; inset: 18%; border: 3px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 999px rgb(0 0 0 / .35); }
+#scanEmpty { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; }
+#scanEmpty svg, #mscan svg { width: 18px; height: 18px; }
+#mscan { display: inline-grid; place-items: center; }
 .updbar { position: absolute; right: 14px; bottom: 14px; z-index: 5; width: min(340px, calc(100% - 28px)); box-sizing: border-box; padding: 12px 40px 12px 14px; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 10px 30px rgb(0 0 0 / .45); }
 .updbar b { display: block; font-family: var(--f-display); font-size: 15px; margin-bottom: 6px; }
 .updbar .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 26px; padding: 0; }
@@ -289,6 +302,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     <button class="btn ico" id="fit" type="button" title="Вписать плату" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
     <button class="btn mbtn" id="mfit" type="button" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
     <div class="fileName" id="fileName"></div>
+    <button class="iconbtn" id="shareBtn" type="button" aria-label="Показать на телефоне" title="Показать на телефоне" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
     <button class="iconbtn" id="uiBtn" type="button" aria-label="Оформление"></button>
     <button class="iconbtn" id="setBtn" type="button" aria-pressed="false" aria-controls="paneSet" aria-label="Настройки" title="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="10.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="16.5" width="18" height="3" rx="1.5" fill="currentColor"/></svg></button>
   </div>
@@ -314,6 +328,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
           <b id="emptyT">Закинь поддерживаемый файл</b>
           <div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div>
           <div class="note" id="emptyN">Перетащи файл в окно или нажми, чтобы выбрать</div>
+          <button type="button" class="btn" id="scanEmpty" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg><span>Открыть с компьютера по QR</span></button>
         </div>
       </div>
       <div class="tip" id="tip" hidden></div>
@@ -349,10 +364,26 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     <button class="mtab" type="button" role="tab" data-mt="info" aria-selected="true">Поиск</button>
     <button class="mtab" type="button" role="tab" data-mt="bom" aria-selected="false">BOM</button>
     <button class="mtab" type="button" role="tab" data-mt="set" aria-selected="false">Настройки</button>
+    <button class="btn mclose" type="button" id="mscan" aria-label="Открыть с компьютера по QR" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg></button>
     <button class="btn mclose" type="button" id="mclose" aria-label="Скрыть панель">✕</button>
   </div>
   <div class="status" id="status"><span>Файл не открыт</span></div>
 </div>
+<div class="modal" id="shareDlg" hidden><div class="mcard" role="dialog" aria-modal="true" aria-labelledby="shareTtl">
+  <b id="shareTtl">Показать на телефоне</b>
+  <div class="qrbox" id="shareQr"></div>
+  <div class="note">На телефоне в BoardV: ☰ → значок QR или «Открыть с компьютера по QR» — и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.</div>
+  <div class="ln" id="shareSt">Подготовка…</div>
+  <div class="btnrow" id="shareAsk" hidden><button type="button" class="btn primary" id="shareYes">Разрешить</button><button type="button" class="btn" id="shareNo">Отклонить</button></div>
+  <div class="note">Файл не передаётся. Телефон получает зашифрованную копию платы только для просмотра, держит её лишь в памяти и не может сохранить. Код одноразовый и действует 10 минут.</div>
+  <div class="btnrow"><button type="button" class="btn" id="shareStop">Закрыть</button></div>
+</div></div>
+<div class="modal" id="scanDlg" hidden><div class="mcard scan" role="dialog" aria-modal="true">
+  <b>Открыть с компьютера</b>
+  <div class="cam"><video id="scanVid" playsinline muted autoplay></video><i class="aim"></i></div>
+  <div class="ln" id="scanSt">Наведите камеру на QR-код в окне BoardV на компьютере</div>
+  <div class="btnrow"><button type="button" class="btn" id="scanStop">Отмена</button></div>
+</div></div>
 <div class="dropmask" id="mask" hidden><div class="dm"><i class="logo" aria-hidden="true"></i><b>Отпустите файл, чтобы открыть</b><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div></div></div>
 
 <script src="build-info.js"></script>
@@ -580,7 +611,10 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
       refreshAll(false); return;
     }
     meta.forEach(function (m) { BV.applyMeta(model.parts, m.comps); });
-    M = model; src = { files: used.concat(metaNames), valuesFrom: metaNames.join(', ') || (by.json || by.ascii || by.pcbdoc ? 'из файла платы' : ''), pinNames: pinNames };
+    setModel(model, { files: used.concat(metaNames), valuesFrom: metaNames.join(', ') || (by.json || by.ascii || by.pcbdoc ? 'из файла платы' : ''), pinNames: pinNames });
+  }
+  function setModel(model, info) {
+    M = model; src = info; setShared(!!info.shared);
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true;
     refreshAll(true);
   }
@@ -1279,6 +1313,110 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
   if (CAN_UPDATE && UPD.auto) setTimeout(function () { checkUpdates(true); }, 4000);
   if (BUILD && BUILD.label) $('verLine').textContent = 'Версия ' + BUILD.label + ' · ' + BUILD.day;
 
+  /* ---------- board on a phone: the PC shows a one-time QR, the phone gets an encrypted, view-only copy ----------
+     The QR carries the address and a fresh AES key; the key never travels over the network. The PC asks before it
+     sends anything, sends once, then closes. The phone keeps the board in memory only (no export, no screenshots). */
+  var HAS_SHARE = !!(window.bvDesktop && window.bvDesktop.share);
+  var CAN_SCAN = APP_MODE === 'android' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.crypto && crypto.subtle);
+  function b64u(u8) { var s = ''; for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64u(t) { var s = atob(t.replace(/-/g, '+').replace(/_/g, '/')); var u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+  function gz(u8, dir) { // gzip through the browser's own streams when they exist
+    var S = dir ? window.CompressionStream : window.DecompressionStream; if (!S) return Promise.resolve(null);
+    return new Response(new Blob([u8]).stream().pipeThrough(new S('gzip'))).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  function updShareBtn() { $('shareBtn').hidden = !(HAS_SHARE && M && !src.shared); }
+  var shareReq = null;
+  function shareStatus(t, ask) { $('shareSt').textContent = t; $('shareAsk').hidden = !ask; }
+  function startShare() {
+    if (!M) return;
+    var key = crypto.getRandomValues(new Uint8Array(32)), iv = crypto.getRandomValues(new Uint8Array(12));
+    var raw = new TextEncoder().encode(BV.writeJson(M, src.files.join(' + ')));
+    $('shareDlg').hidden = false; $('shareQr').innerHTML = ''; shareStatus('Подготовка…');
+    gz(raw, true).then(function (z) {
+      var flag = z ? 1 : 0, data = z || raw;
+      return crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['encrypt']).then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, data); })
+        .then(function (ct) { var b = new Uint8Array(13 + ct.byteLength); b[0] = flag; b.set(iv, 1); b.set(new Uint8Array(ct), 13); return window.bvDesktop.share.start(b); });
+    }).then(function (r) {
+      if (!r.ips.length) { shareStatus('Компьютер не подключён к сети. Подключите Wi-Fi или кабель к роутеру.'); return; }
+      var q = qrcode(0, 'M'); q.addData('BV1;' + r.ips.join(',') + ';' + r.port + ';' + r.token + ';' + b64u(key)); q.make();
+      $('shareQr').innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+      shareStatus('Ожидание телефона…');
+    }).catch(function (e) { shareStatus('Не получилось: ' + (e && e.message || e)); });
+  }
+  function stopShare() { if (HAS_SHARE) window.bvDesktop.share.stop(); $('shareDlg').hidden = true; shareReq = null; }
+  if (HAS_SHARE) window.bvDesktop.share.on(function (m) {
+    if (m.type === 'request') { shareReq = m.data.id; shareStatus('Телефон ' + m.data.ip + ' просит доступ к плате', true); }
+    else if (m.type === 'gone' || m.type === 'timeout') { if (shareReq === m.data.id) { shareReq = null; shareStatus('Ожидание телефона…'); } }
+    else if (m.type === 'sent') { shareStatus('Плата отправлена на телефон. Код больше не действует.'); $('shareQr').innerHTML = ''; }
+    else if (m.type === 'ended' && m.data === 'timeout') shareStatus('Время вышло. Закройте окно и покажите новый код.');
+    else if (m.type === 'error') shareStatus('Не получилось: ' + m.data);
+  });
+  $('shareBtn').onclick = startShare;
+  $('shareStop').onclick = stopShare;
+  $('shareYes').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, true); shareStatus('Отправляю…'); shareReq = null; } };
+  $('shareNo').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, false); shareStatus('Отклонено. Ожидание телефона…'); shareReq = null; } };
+
+  // ---- phone side
+  var scanStream = null, scanTimer = 0;
+  function scanStatus(t) { $('scanSt').textContent = t; }
+  function stopScan() { clearInterval(scanTimer); scanTimer = 0; if (scanStream) scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; $('scanVid').srcObject = null; }
+  function openScanner() {
+    if (!CAN_SCAN) return;
+    openSheet(null); $('scanDlg').hidden = false; scanStatus('Наведите камеру на QR-код в окне BoardV на компьютере');
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }).then(function (st) {
+      scanStream = st; var v = $('scanVid'); v.srcObject = st; v.play().catch(function () {});
+      var c = document.createElement('canvas'), cx = c.getContext('2d', { willReadFrequently: true });
+      scanTimer = setInterval(function () {
+        if (!v.videoWidth) return;
+        var k = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+        cx.drawImage(v, 0, 0, c.width, c.height);
+        var code = jsQR(cx.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: 'dontInvert' });
+        if (code && /^BV1;/.test(code.data)) { stopScan(); receiveBoard(code.data); }
+      }, 220);
+    }).catch(function () { scanStatus('Нет доступа к камере. Разрешите BoardV использовать камеру.'); });
+  }
+  function receiveBoard(payload) {
+    var p = payload.split(';'), ips = (p[1] || '').split(',').filter(Boolean), port = p[2], token = p[3], key;
+    try { key = unb64u(p[4] || ''); } catch (e) { key = null; }
+    if (!ips.length || !/^\d+$/.test(port) || !/^[0-9a-f]{32}$/.test(token || '') || !key || key.length !== 32) { scanStatus('Это не код BoardV'); return; }
+    scanStatus('Подключение… Подтвердите доступ на компьютере');
+    var ctrls = [], done = false;
+    var tries = ips.map(function (ip) {
+      var ac = new AbortController(); ctrls.push(ac);
+      return fetch('http://' + ip + ':' + port + '/bv/' + token, { cache: 'no-store', signal: ac.signal }).then(function (r) {
+        if (r.status === 200) return r.arrayBuffer();
+        throw new Error(r.status === 403 ? 'Компьютер отклонил подключение' : r.status === 408 ? 'Компьютер не ответил' : 'Код устарел. Покажите на компьютере новый');
+      });
+    });
+    var fails = 0, lastErr = null;
+    tries.forEach(function (t) {
+      t.then(function (buf) {
+        if (done) return; done = true; ctrls.forEach(function (c) { try { c.abort(); } catch (e) {} });
+        var b = new Uint8Array(buf), iv = b.subarray(1, 13), ct = b.subarray(13);
+        crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['decrypt']).then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, k, ct); })
+          .then(function (plain) { plain = new Uint8Array(plain); return b[0] === 1 ? gz(plain, false) : plain; })
+          .then(function (u8) {
+            var m = BV.readJson(new TextDecoder().decode(u8));
+            $('scanDlg').hidden = true;
+            setModel(m, { files: [(m.title || 'плата') + ' — с компьютера'], valuesFrom: 'из файла платы', pinNames: true, shared: true });
+            flash('Плата с компьютера: только просмотр');
+          }).catch(function () { scanStatus('Не удалось расшифровать плату. Покажите новый код'); });
+      }, function (e) {
+        if (done || (e && e.name === 'AbortError')) return;
+        lastErr = e; if (++fails === tries.length) scanStatus(lastErr && lastErr.message && !/fetch|network|Failed/i.test(lastErr.message) ? lastErr.message : 'Нет связи с компьютером. Телефон и компьютер должны быть в одной Wi-Fi сети');
+      });
+    });
+  }
+  function setShared(on) { // view-only copy: nothing leaves the phone, no screenshots
+    if (window.BoardVAndroid && window.BoardVAndroid.setSecure) try { window.BoardVAndroid.setSecure(!!on); } catch (e) {}
+    $('copyBom').hidden = !!on;
+    updShareBtn();
+  }
+  $('scanStop').onclick = function () { stopScan(); $('scanDlg').hidden = true; };
+  if (CAN_SCAN) { $('scanEmpty').hidden = false; $('mscan').hidden = false; }
+  $('scanEmpty').onclick = function (e) { e.stopPropagation(); openScanner(); };
+  $('mscan').onclick = openScanner;
+
   /* ---------- files opened from the system (double-click, "Open with") ---------- */
   if ('launchQueue' in window && window.launchQueue.setConsumer) {
     window.launchQueue.setConsumer(function (lp) {
@@ -1457,7 +1595,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
 
   function refreshAll(refit) {
     buildNetIndex();
-    $('empty').hidden = !!M; applyLayout(false);
+    $('empty').hidden = !!M; applyLayout(false); updShareBtn();
     $('fileName').textContent = src.files.join(' + ');
     if (refit) { V.rot = IS_PHONE && H > W * 1.15 && M.w > M.h * 1.15 ? 1 : 0; setSide('top', true); fit(); } // phone held upright + wide board: turn it to fill the screen
     renderCard(); renderList(); status(); req();

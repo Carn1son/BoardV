@@ -106,7 +106,7 @@ var I18N = (function () {
     'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project',
     'Телефон подключён. Сканируйте компоненты телефоном — найденные отметятся в BOM.': 'The phone is connected. Scan parts with the phone and the ones found are checked in the BOM.',
     'Телефон не на связи. Он вернётся сам, когда BoardV на телефоне снова откроется в той же сети.': 'The phone is not responding. It comes back by itself when BoardV is open on the phone again on the same network.',
-    'Телефон не на связи': 'The phone is not responding', 'Телефон снова на связи': 'The phone is back', 'Телефон отключился.': 'The phone disconnected.', 'Телефон отключился': 'The phone disconnected', 'Связь с телефоном потеряна': 'Lost the phone',
+    'Телефон не на связи': 'The phone is not responding', 'Телефон снова на связи': 'The phone is back', 'Телефон отключился.': 'The phone disconnected.', 'Телефон отключился': 'The phone disconnected', 'Связь с телефоном потеряна': 'Lost the phone', 'Компьютер не отвечает — связь закрыта': 'The PC does not answer, the link is closed',
     'Отключить телефон': 'Disconnect the phone', 'Скрыть': 'Hide', 'Телефон подключён — сканы появляются в BOM': 'Phone connected: scans show up in the BOM', 'Компьютер отключил телефон': 'The PC disconnected the phone',
     'нет в BOM': 'not in the BOM', 'номинал совпадает, но': 'value matches, but', 'Отсканировано': 'Scanned',
     'Недавние': 'Recent', 'Палитра': 'Palette', 'Готово': 'Done', 'Код цвета': 'Colour code', 'Было / стало': 'Before / after',

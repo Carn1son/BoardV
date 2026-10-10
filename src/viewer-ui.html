@@ -124,6 +124,9 @@ table.bomt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .bomt .c-r .b { color: var(--muted); text-decoration: underline dashed; text-underline-offset: 3px; }
 .bomt .c-r { color: var(--ui-grp); }
 .bomt th.c-q button { text-align: right; }
+.bomt .c-k { width: 1%; padding-right: 0; text-align: center; }
+.bomt td.c-k .chk { color: #22b35e; font-weight: 700; }
+.bomt th.c-k button { text-align: center; padding-inline: 6px; }
 .side { border-right: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; min-width: 0; }
 .search { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
 input[type=search] { font: inherit; font-family: var(--f-mono); padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--fg); width: 100%; box-sizing: border-box; }
@@ -1084,8 +1087,8 @@ html.mobile .cp-sv { height: 210px; }
   function partHit(p, q) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0 || valEq(q, partGroup(p)); }
   function bomMatch(g, q) { return !q || valEq(q, g) || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
   function bomCsv() {
-    var rows = [['Comment', 'Footprint', 'Quantity', 'Designator', 'Description']];
-    bomIndex.forEach(function (g) { rows.push([g.value, g.footprint, String(g.parts.length), g.parts.map(function (p) { return p.ref; }).join(', '), g.desc]); });
+    var sc = Object.keys(PART_OK).length > 0, rows = [['Comment', 'Footprint', 'Quantity', 'Designator', 'Description'].concat(sc ? ['Scanned'] : [])];
+    bomIndex.forEach(function (g) { rows.push([g.value, g.footprint, String(g.parts.length), g.parts.map(function (p) { return p.ref; }).join(', '), g.desc].concat(sc ? [(PART_OK[g.key] || []).join(', ')] : [])); });
     return rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
   }
   function buildNetIndex() { buildBom(); buildNetIndex2(); }
@@ -1161,19 +1164,22 @@ html.mobile .cp-sv { height: 210px; }
     var box = $('bomList'); if (!M || !bomIndex) { box.innerHTML = ''; return; }
     var q = $('bq').value.trim().toUpperCase();
     var gs = bomIndex.filter(function (g) { return bomMatch(g, q); });
-    var cmp = { ref: function (a, b) { return 0; }, value: function (a, b) { return (!a.value - !b.value) || natCmp(a.value, b.value); },
+    var anyGot = Object.keys(PART_OK).length > 0, cols = anyGot ? [['got', '✓', 'c-k']].concat(BOM_COLS) : BOM_COLS;
+    if (BS.key === 'got' && !anyGot) BS = { key: 'ref', dir: 1 };
+    var order = {}; gs.forEach(function (g, i) { order[g.key] = i; });
+    var cmp = { ref: function (a, b) { return 0; }, got: function (a, b) { return (!!PART_OK[b.key] - !!PART_OK[a.key]) || 0; }, value: function (a, b) { return (!a.value - !b.value) || natCmp(a.value, b.value); },
                 fp: function (a, b) { return natCmp(a.footprint, b.footprint) || natCmp(a.value, b.value); },
                 qty: function (a, b) { return a.parts.length - b.parts.length; } }[BS.key];
-    if (BS.key !== 'ref') gs = gs.slice().sort(function (a, b) { return cmp(a, b) * BS.dir; });
+    if (BS.key !== 'ref') gs = gs.slice().sort(function (a, b) { return cmp(a, b) * BS.dir || order[a.key] - order[b.key]; }); // ties keep the board order
     else if (BS.dir < 0) gs = gs.slice().reverse();
     var total = gs.reduce(function (a, g) { return a + g.parts.length; }, 0);
     $('bomCount').textContent = gs.length + ' поз. · ' + total + ' шт.';
     var h = '<table class="bomt"><thead><tr>';
-    BOM_COLS.forEach(function (c) { h += '<th class="' + c[2] + '"' + (BS.key === c[0] ? ' aria-sort="' + (BS.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" data-sort="' + c[0] + '">' + c[1] + (BS.key === c[0] ? (BS.dir > 0 ? ' ↑' : ' ↓') : '') + '</button></th>'; });
+    cols.forEach(function (c) { h += '<th class="' + c[2] + '"' + (BS.key === c[0] ? ' aria-sort="' + (BS.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" data-sort="' + c[0] + '">' + c[1] + (BS.key === c[0] ? (BS.dir > 0 ? ' ↑' : ' ↓') : '') + '</button></th>'; });
     h += '</tr></thead><tbody>';
     gs.forEach(function (g) {
       var got = !!PART_OK[g.key], cls = (g.key === S.group ? 'on' : '') + (got ? ' got' : '');
-      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '><td class="c-v">' + (got ? '<span class="chk" title="Отсканирован">✓</span>' : '') + esc(g.value || '—') + (got && PART_OK[g.key].length ? '<span class="spn" title="Отсканировано">' + esc(PART_OK[g.key].join(', ')) + '</span>' : '') + '</td><td class="c-f">' + esc(g.footprint || '—') +
+      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '>' + (anyGot ? '<td class="c-k">' + (got ? '<span class="chk" title="Отсканирован">✓</span>' : '') + '</td>' : '') + '<td class="c-v">' + esc(g.value || '—') + (got && PART_OK[g.key].length ? '<span class="spn" title="Отсканировано">' + esc(PART_OK[g.key].join(', ')) + '</span>' : '') + '</td><td class="c-f">' + esc(g.footprint || '—') +
            (g.desc ? '<div class="note">' + esc(g.desc) + '</div>' : '') + '</td><td class="c-q">' + g.parts.length + '</td><td class="c-r">' +
            g.parts.map(function (p) { return p.bottom ? '<span class="b">' + esc(p.ref) + '</span>' : esc(p.ref); }).join(', ') + '</td></tr>';
     });
@@ -1184,7 +1190,7 @@ html.mobile .cp-sv { height: 210px; }
   }
   $('bomList').addEventListener('click', function (e) {
     var sb = e.target.closest('button[data-sort]');
-    if (sb) { var k = sb.dataset.sort; if (BS.key === k) BS.dir = -BS.dir; else { BS.key = k; BS.dir = k === 'qty' ? -1 : 1; } renderBom(); return; }
+    if (sb) { var k = sb.dataset.sort; if (BS.key === k) BS.dir = -BS.dir; else { BS.key = k; BS.dir = k === 'qty' ? -1 : 1; } renderBom(); return; } // ✓: found first, again: not found first
     var tr = e.target.closest('tr[data-group]'); if (tr) { pickedOnPhone(); selectGroup(tr.dataset.group); }
   });
   $('bomList').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-group]'); if (tr) selectGroup(tr.dataset.group); } });
@@ -1498,7 +1504,7 @@ html.mobile .cp-sv { height: 210px; }
     else if (m.type === 'back') { if (LINKED) { setLinked(true); shareStatus('Телефон подключён. Сканируйте компоненты телефоном — найденные отметятся в BOM.'); flash('Телефон снова на связи'); } }
     else if (m.type === 'ended' && /^(bye|lost|idle)$/.test(m.data)) {
       var was = LINKED; setLinked(false); shareKey = null;
-      if (was) { shareStatus('Телефон отключился.'); flash(m.data === 'bye' ? 'Телефон отключился' : 'Связь с телефоном потеряна'); }
+      if (was) { shareStatus('Телефон отключился.'); flash('Телефон отключился'); }
     }
     else if (m.type === 'ended' && m.data === 'timeout') shareStatus('Время вышло. Закройте окно и покажите новый код.');
     else if (m.type === 'error') shareStatus('Не получилось: ' + m.data);
@@ -1614,20 +1620,22 @@ html.mobile .cp-sv { height: 210px; }
       .then(function (r) { if (r.status === 410 || r.status === 404) { LINK = null; flash('Компьютер отключил телефон'); } })
       .catch(function () {});
   }
-  var pingT = 0;
+  var pingT = 0, pingFails = 0;
+  function nativeLink(url) { if (window.BoardVAndroid && window.BoardVAndroid.setLink) try { window.BoardVAndroid.setLink(url || ''); } catch (e) {} }
+  function linkGone(msg) { LINK = null; clearInterval(pingT); nativeLink(''); flash(msg); }
   function startPing() { // tell the PC every few seconds that this phone is still here
     clearInterval(pingT);
     pingT = setInterval(function () {
       if (!LINK) { clearInterval(pingT); return; }
-      if (document.hidden) return;
       var L = LINK;
       timedFetch(L.base + '/ping?id=' + L.id, 4000).then(function (r) {
-        if ((r.status === 410 || r.status === 404) && LINK === L) { LINK = null; clearInterval(pingT); flash('Компьютер отключил телефон'); }
-      }).catch(function () {});
+        pingFails = 0;
+        if ((r.status === 410 || r.status === 404) && LINK === L) { linkGone('Компьютер отключил телефон'); }
+      }).catch(function () { if (LINK === L && ++pingFails >= 3) linkGone('Компьютер не отвечает — связь закрыта'); });
     }, 4000);
   }
   function dropLink() { // say goodbye so the PC knows at once
-    if (!LINK) return; var L = LINK; LINK = null; clearInterval(pingT);
+    if (!LINK) return; var L = LINK; LINK = null; clearInterval(pingT); nativeLink('');
     try { fetch(L.base + '/bye?id=' + L.id, { cache: 'no-store', keepalive: true }).catch(function () {}); } catch (e) {}
   }
   window.addEventListener('pagehide', dropLink);
@@ -1642,7 +1650,7 @@ html.mobile .cp-sv { height: 210px; }
         var m = BV.readJson(new TextDecoder().decode(u8));
         closeScanner();
         setModel(m, { files: [(m.title || 'плата') + ' — с компьютера'], valuesFrom: 'из файла платы', pinNames: true, shared: true });
-        if (link) { LINK = { base: link.base, id: link.id, key: key }; startPing(); }
+        if (link) { LINK = { base: link.base, id: link.id, key: key }; pingFails = 0; startPing(); nativeLink(link.base + '/bye?id=' + link.id); }
         flash('Плата с компьютера: только просмотр');
       }).catch(function () { scanView('error', 'Не удалось открыть плату', 'Данные не расшифровались. Покажите на компьютере новый код.'); });
   }

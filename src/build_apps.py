@@ -297,6 +297,26 @@ public class MainActivity extends Activity {
     private String pendingSave;
 
     private static final int CAMERA_REQUEST = 1003;
+    private volatile String byeUrl;
+
+    /** BoardV is closing: tell the PC right away that this phone is gone (the board lived only in memory). */
+    private void sayBye() {
+        final String u = byeUrl; byeUrl = null;
+        if (u == null) return;
+        Thread t = new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                    c.setConnectTimeout(1500); c.setReadTimeout(1500);
+                    c.getResponseCode(); c.disconnect();
+                } catch (Exception e) { /* the PC is gone too */ }
+            }
+        });
+        t.start();
+        try { t.join(1600); } catch (InterruptedException e) { /* closing anyway */ }
+    }
+    @Override
+    protected void onDestroy() { sayBye(); super.onDestroy(); }
     private PermissionRequest pendingCamera;
 
     /** Lets the page save a text file (exported settings) through the system "Save as" screen. */
@@ -311,6 +331,9 @@ public class MainActivity extends Activity {
                 }
             });
         }
+        /** The page tells where to say goodbye to the PC that shared the board; empty = no link. */
+        @JavascriptInterface
+        public void setLink(String url) { byeUrl = (url == null || url.isEmpty()) ? null : url; }
         @JavascriptInterface
         public void saveText(final String name, final String text) {
             runOnUiThread(new Runnable() {
@@ -707,11 +730,8 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
       // the board goes once; the link stays only for scans from this phone, until one side disconnects
       clearTimeout(s.timer); s.timer = setTimeout(() => shareStop('idle'), 12 * 3600 * 1000);
       s.seen = Date.now(); s.lost = false;
-      s.watch = setInterval(() => { // no ping: the phone is gone (closed, asleep, out of Wi-Fi); give up after 10 minutes
-        if (share !== s) return;
-        const quiet = Date.now() - s.seen;
-        if (quiet > 10 * 60 * 1000) shareStop('lost');
-        else if (quiet > 12000 && !s.lost) { s.lost = true; shareSend('lost', ''); }
+      s.watch = setInterval(() => { // no ping for 15 s: BoardV on the phone is closed (or the phone left the network) - the link is over
+        if (share === s && Date.now() - s.seen > 15000) shareStop('lost');
       }, 2000);
       return;
     }

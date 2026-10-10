@@ -106,11 +106,8 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
       // the board goes once; the link stays only for scans from this phone, until one side disconnects
       clearTimeout(s.timer); s.timer = setTimeout(() => shareStop('idle'), 12 * 3600 * 1000);
       s.seen = Date.now(); s.lost = false;
-      s.watch = setInterval(() => { // no ping: the phone is gone (closed, asleep, out of Wi-Fi); give up after 10 minutes
-        if (share !== s) return;
-        const quiet = Date.now() - s.seen;
-        if (quiet > 10 * 60 * 1000) shareStop('lost');
-        else if (quiet > 12000 && !s.lost) { s.lost = true; shareSend('lost', ''); }
+      s.watch = setInterval(() => { // no ping for 15 s: BoardV on the phone is closed (or the phone left the network) - the link is over
+        if (share === s && Date.now() - s.seen > 15000) shareStop('lost');
       }, 2000);
       return;
     }

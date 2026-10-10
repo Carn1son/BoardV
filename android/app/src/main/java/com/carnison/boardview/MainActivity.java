@@ -36,6 +36,26 @@ public class MainActivity extends Activity {
     private String pendingSave;
 
     private static final int CAMERA_REQUEST = 1003;
+    private volatile String byeUrl;
+
+    /** BoardV is closing: tell the PC right away that this phone is gone (the board lived only in memory). */
+    private void sayBye() {
+        final String u = byeUrl; byeUrl = null;
+        if (u == null) return;
+        Thread t = new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                    c.setConnectTimeout(1500); c.setReadTimeout(1500);
+                    c.getResponseCode(); c.disconnect();
+                } catch (Exception e) { /* the PC is gone too */ }
+            }
+        });
+        t.start();
+        try { t.join(1600); } catch (InterruptedException e) { /* closing anyway */ }
+    }
+    @Override
+    protected void onDestroy() { sayBye(); super.onDestroy(); }
     private PermissionRequest pendingCamera;
 
     /** Lets the page save a text file (exported settings) through the system "Save as" screen. */
@@ -50,6 +70,9 @@ public class MainActivity extends Activity {
                 }
             });
         }
+        /** The page tells where to say goodbye to the PC that shared the board; empty = no link. */
+        @JavascriptInterface
+        public void setLink(String url) { byeUrl = (url == null || url.isEmpty()) ? null : url; }
         @JavascriptInterface
         public void saveText(final String name, final String text) {
             runOnUiThread(new Runnable() {

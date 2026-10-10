@@ -1585,7 +1585,7 @@ html.mobile .cp-sv { height: 210px; }
   function shareMode(mode, text) { // 'wait': QR and how to connect; 'linked': green; 'gone': red with "connect again"
     var st = $('shareSt');
     st.className = 'ln' + (mode === 'linked' ? ' ok' : mode === 'gone' ? ' bad' : '');
-    $('shareQr').hidden = mode !== 'wait'; $('shareHow').hidden = mode !== 'wait';
+    $('shareQr').hidden = mode !== 'wait'; $('shareHow').hidden = mode !== 'wait'; $('shareTtl').hidden = mode !== 'wait';
     $('shareAgain').hidden = mode !== 'gone'; $('shareHide').hidden = mode !== 'linked';
     $('shareStop').textContent = mode === 'linked' ? 'Отключить телефон' : 'Закрыть';
     $('shareAddr').hidden = mode === 'gone';

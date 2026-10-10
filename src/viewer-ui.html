@@ -71,6 +71,15 @@ details.grp > summary:focus-visible { outline: 2px solid var(--accent); outline-
 details.grp > summary small { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 11.5px; }
 details.grp .gbody { display: grid; gap: 8px; padding: 4px 12px 12px; }
 .setfoot { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 8px; }
+.setfoot .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.setfoot .lk { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); text-decoration: none; transition: border-color .15s, transform .15s; min-width: 0; }
+.setfoot .lk:hover, .setfoot .lk:focus-visible { border-color: var(--accent); outline: none; transform: translateY(-1px); }
+.setfoot .lk svg { width: 28px; height: 28px; flex: none; }
+.setfoot .lk.gh svg { color: var(--fg); }
+.setfoot .lk span { display: grid; min-width: 0; flex: 1; line-height: 1.25; }
+.setfoot .lk b { font-size: 13.5px; }
+.setfoot .lk small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setfoot .lk i { font-style: normal; color: var(--muted); font-size: 13px; }
 .btnrow { display: flex; flex-wrap: wrap; gap: 6px; }
 .split { cursor: col-resize; background: var(--line); position: relative; touch-action: none; }
 .split::after { content: ""; position: absolute; inset: 0 -4px; }
@@ -327,9 +336,11 @@ html.mobile.sheet-open[data-mtab=bom] .rpanel { display: block !important; }
 html.mobile.set-open .rpanel { display: block !important; top: var(--topH, 50px); height: auto; bottom: 0; border-top: 0; z-index: 10; }
 html.mobile.set-open .sethead.sethd { display: flex; position: sticky; top: 0; z-index: 3; }
 /* folded sheet: a strip at the bottom, tap or pull it to unfold */
-html.mobile.sheet-open.sheet-min[data-mtab] .side, html.mobile.sheet-open.sheet-min[data-mtab] .rpanel { display: none !important; }
+html.mobile.sheet-open.sheet-min[data-mtab] .side, html.mobile.sheet-open.sheet-min[data-mtab] .rpanel { overflow: hidden; border-top-width: 0; box-shadow: none; padding-bottom: 0; }
+html.mobile .side, html.mobile .rpanel, html.mobile #msheet { transition: height .26s cubic-bezier(.2, .8, .2, 1), bottom .26s cubic-bezier(.2, .8, .2, 1); }
+html.mobile.sheet-drag .side, html.mobile.sheet-drag .rpanel, html.mobile.sheet-drag #msheet { transition: none; }
 html.mobile #msheet { user-select: none; -webkit-user-select: none; }
-html.mobile.sheet-min #msheet { bottom: 0; align-items: center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); box-shadow: 0 -10px 30px rgb(0 0 0 / .45); }
+html.mobile.sheet-min #msheet { align-items: center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); box-shadow: 0 -10px 30px rgb(0 0 0 / .45); }
 #msheet .mgrab { position: absolute; left: 50%; top: 5px; width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: var(--muted); opacity: .55; }
 html.mobile #msheet { padding-top: 16px; touch-action: none; }
 /* one scroll per sheet: inner panes grow with their content instead of scrolling separately */
@@ -469,6 +480,10 @@ html.mobile .cp-sv { height: 210px; }
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
           <div class="note" id="verLine">Версия __VLABEL__ · __VDATE__</div>
+          <div class="links">
+            <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
+            <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
+          </div>
         </div>
       </section>
     </aside>
@@ -1362,6 +1377,7 @@ html.mobile .cp-sv { height: 210px; }
     SCHEMA.forEach(function (sec, si) {
       var g = '';
       sec[1].forEach(function (it) {
+        if (IS_PHONE && (it[1] === 'zoomSpeed' || it[1] === 'wheelInvert')) return; // a phone has no mouse wheel
         var t = it[0], k = it[1], id = 'cfg-' + k;
         if (t === 'color') { var ck = k === 'canvas' ? bgKey() : k, lbl = k === 'canvas' ? it[2] + ' (' + (bgKey() === 'canvasDay' ? 'День' : 'Ночь') + ')' : it[2];
           g += '<label class="srow" for="' + id + '"><span>' + esc(lbl) + '</span><input type="color" id="' + id + '" data-color="' + ck + '" value="' + CFG.colors[ck] + '"></label>'; }
@@ -1493,12 +1509,13 @@ html.mobile .cp-sv { height: 210px; }
     var box = $('updBox'); if (box) box.innerHTML = updHtml();
     var bar = $('updBar'); if (!bar.hidden) bar.innerHTML = '<b>Обновление BoardV</b><div class="upd">' + updHtml() + '</div><button type="button" class="btn x" data-upd="later" aria-label="Позже">✕</button>';
   }
+  function verLabel(a, b) { return a >= 2 ? 'V' + (a - 1) + '.' + (b ? ('0' + b).slice(-2) : '0') : '0V' + a + '.' + b; } // 2100.2.0 = V1.0
   function updSet(st, extra) { UPD.st = st; if (extra) Object.keys(extra).forEach(function (k) { UPD[k] = extra[k]; }); updRender(); }
   function showUpdBar() { $('updBar').hidden = false; updRender(); }
   function apiCheck(cur, auto) {
     fetch(UPD_API, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('GitHub ответил ' + r.status); return r.json(); }).then(function (j) {
       var v = String(j.tag_name || '').replace(/^v/, ''), day = (String(j.name || '').match(/(\d\d\.\d\d\.\d{4})/) || [])[1] || '';
-      UPD.label = (String(j.name || '').match(/0V\d+\.\d+/) || [''])[0];
+      UPD.label = (String(j.name || '').match(/0?V\d+\.\d+/g) || ['']).pop();
       if (/^\d+(\.\d+)+$/.test(v) && verNewer(v, cur)) { updSet('available', { latest: v, day: day }); if (auto) showUpdBar(); }
       else updSet('none', { latest: v, day: day });
     }).catch(function (e) { updSet(auto ? 'idle' : 'error', { msg: e.message || 'нет связи с GitHub' }); });
@@ -1528,7 +1545,7 @@ html.mobile .cp-sv { height: 210px; }
     else if (type === 'error') updSet('error', { msg: arg });
   };
   if (HAS_DESK_UPD) window.bvDesktop.update.on(function (m) {
-    if (m.type === 'available') { var vv = String(m.data && m.data.version || '').split('.'); updSet('available', { latest: m.data && m.data.version, day: '', label: vv[0] === '2100' ? '0V' + vv[1] + '.' + vv[2] : '' }); if (updAuto) showUpdBar(); }
+    if (m.type === 'available') { var vv = String(m.data && m.data.version || '').split('.'); updSet('available', { latest: m.data && m.data.version, day: '', label: vv[0] === '2100' ? verLabel(+vv[1], +vv[2]) : '' }); if (updAuto) showUpdBar(); }
     else if (m.type === 'none') updSet('none');
     else if (m.type === 'progress') updSet('downloading', { pct: m.data || 0 });
     else if (m.type === 'downloaded') updSet('ready');
@@ -2000,7 +2017,7 @@ html.mobile .cp-sv { height: 210px; }
     if (!IS_PHONE) return;
     var L = sheetLimits(), de = document.documentElement;
     de.style.setProperty('--topH', L.tb + 'px');
-    de.style.setProperty('--sheetH', Math.max(L.min, Math.min(L.max, Math.round(SHEET.h * L.vh))) + 'px');
+    de.style.setProperty('--sheetH', (SHEET.min ? 0 : Math.max(L.min, Math.min(L.max, Math.round(SHEET.h * L.vh)))) + 'px');
   }
   function sheetApply() {
     var de = document.documentElement;
@@ -2030,24 +2047,25 @@ html.mobile .cp-sv { height: 210px; }
     el.addEventListener('pointerdown', function (e) {
       if (e.target.closest('#mclose')) return;
       if (e.pointerType === 'mouse') e.preventDefault(); // no text selection while pulling with a mouse
-      var L = sheetLimits(); d = { y: e.clientY, h: SHEET.min ? $('msheet').offsetHeight : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheetH')) || L.min, moved: false, id: e.pointerId, L: L };
+      var L = sheetLimits(); d = { y: e.clientY, h: SHEET.min ? 0 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheetH')) || L.min, moved: false, id: e.pointerId, L: L };
     });
     window.addEventListener('pointermove', function (e) {
       if (!d || e.pointerId !== d.id) return;
       var dy = d.y - e.clientY;
       if (!d.moved && Math.abs(dy) < 8) return;
       e.preventDefault(); try { window.getSelection().removeAllRanges(); } catch (er) {}
-      if (!d.moved) { d.moved = true; if (SHEET.min) { SHEET.min = false; sheetApply(); } }
-      var h = Math.max(Math.round(d.L.vh * 0.1), Math.min(d.L.max, d.h + dy));
+      if (!d.moved) { d.moved = true; document.documentElement.classList.add('sheet-drag'); if (SHEET.min) { SHEET.min = false; document.documentElement.classList.remove('sheet-min'); } }
+      var h = Math.max(0, Math.min(d.L.max, d.h + dy)); // follows the finger down to the bottom edge, no jumps
       document.documentElement.style.setProperty('--sheetH', h + 'px'); d.cur = h;
     });
     function end(e) {
       if (!d || e.pointerId !== d.id) return; var was = d; d = null;
       setTimeout(function () { ate = false; }, 350); // the click that follows a drag is swallowed, later ones are not
       if (!was.moved) { if (SHEET.min) { ate = true; SHEET.min = false; sheetApply(); } return; } // a tap on the strip unfolds it
-      ate = true;
-      if ((was.cur || was.h) < was.L.min * 0.8) SHEET.min = true;
-      else { SHEET.h = Math.max(was.L.min, Math.min(was.L.max, was.cur)) / was.L.vh; try { localStorage.setItem('bvr-sheet', String(SHEET.h)); } catch (er) {} }
+      ate = true; document.documentElement.classList.remove('sheet-drag'); // the release slides to the nearest stop
+      var cur = was.cur == null ? was.h : was.cur;
+      if (cur < was.L.min * 0.6) SHEET.min = true;
+      else { SHEET.min = false; SHEET.h = Math.max(was.L.min, Math.min(was.L.max, cur)) / was.L.vh; try { localStorage.setItem('bvr-sheet', String(SHEET.h)); } catch (er) {} }
       sheetApply();
     }
     window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);

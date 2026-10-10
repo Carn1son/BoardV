@@ -4,14 +4,15 @@ import os, re, shutil, json, subprocess
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, 'out')
 # the viewer carries only a build date (no version numbers); app version codes are derived from it
-# Version shown to people: 0V<major>.<minor> from src/VERSION (bumped with every release), plus the build date.
+# Version shown to people: V<major>.<minor> from src/VERSION (bumped with every release), plus the build date.
 # Apps compare an internal number derived from it: 2100.<major>.<minor> (Windows / tags), 2100<major:02><minor:04> (Android).
 import datetime
 VDATE = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)).strftime('%d.%m.%Y')  # Moscow date
 _VM, _Vm = (int(x) for x in open(os.path.join(ROOT, 'VERSION')).read().strip().split('.'))
-VLABEL = '0V%d.%d' % (_VM, _Vm)
-VSEM = '2100.%d.%d' % (_VM, _Vm)
-VCODE = 2100000000 + _VM * 10000 + _Vm
+# shown: V1.0, V1.01 … V1.09, V1.10; inside the major goes one up (V1.0 = 2100.2.0) so it is newer than the old 0V1.x builds
+VLABEL = 'V%d.%s' % (_VM, '0' if _Vm == 0 else '%02d' % _Vm)
+VSEM = '2100.%d.%d' % (_VM + 1, _Vm)
+VCODE = 2100000000 + (_VM + 1) * 10000 + _Vm
 
 
 def lib():
@@ -839,11 +840,12 @@ jobs:
       - uses: actions/checkout@v4
       - id: v
         run: |
-          # src/VERSION holds major.minor; people see 0V<major>.<minor>, the apps compare 2100.<major>.<minor>
+          # src/VERSION holds major.minor; people see V1.0, V1.01 … V1.10; the apps compare 2100.<major+1>.<minor>
           IFS=. read -r MA MI < src/VERSION
-          echo "ver=2100.$MA.$MI" >> "$GITHUB_OUTPUT"
-          echo "vcode=$((2100000000 + MA * 10000 + MI))" >> "$GITHUB_OUTPUT"
-          echo "label=0V$MA.$MI" >> "$GITHUB_OUTPUT"
+          MI=$((10#$MI))
+          echo "ver=2100.$((MA + 1)).$MI" >> "$GITHUB_OUTPUT"
+          echo "vcode=$((2100000000 + (MA + 1) * 10000 + MI))" >> "$GITHUB_OUTPUT"
+          if [ "$MI" -eq 0 ]; then echo "label=V$MA.0" >> "$GITHUB_OUTPUT"; else echo "label=V$MA.$(printf %02d $MI)" >> "$GITHUB_OUTPUT"; fi
           echo "day=$(TZ=Europe/Moscow date +%d.%m.%Y)" >> "$GITHUB_OUTPUT"
 
   android:

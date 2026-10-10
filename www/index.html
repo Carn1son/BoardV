@@ -86,6 +86,11 @@ details.grp > summary:focus-visible { outline: 2px solid var(--accent); outline-
 details.grp > summary small { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 11.5px; }
 details.grp .gbody { display: grid; gap: 8px; padding: 4px 12px 12px; }
 .setfoot { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 8px; }
+.verrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#verLine { user-select: none; -webkit-user-select: none; cursor: default; }
+.btn.secret { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; }
+.btn.secret[hidden] { display: none; }
+.btn.secret svg { width: 18px; height: 18px; }
 .setfoot .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
 .setfoot .lk { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); text-decoration: none; transition: border-color .15s, transform .15s; min-width: 0; }
 .setfoot .lk:hover, .setfoot .lk:focus-visible { border-color: var(--accent); outline: none; transform: translateY(-1px); }
@@ -290,6 +295,7 @@ canvas.drag { cursor: grabbing; }
 .sc-state span { color: rgb(255 255 255 / .78); font-size: 14px; overflow-wrap: anywhere; }
 .sc-state ul { text-align: left; margin: 2px 0 4px; padding-left: 20px; color: rgb(255 255 255 / .78); font-size: 13px; display: grid; gap: 6px; }
 .sc-ico { width: 72px; height: 72px; display: grid; place-items: center; }
+.sc-result .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgb(255 255 255 / .2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 .sc-ico .spin { width: 54px; height: 54px; border-radius: 50%; border: 4px solid rgb(255 255 255 / .15); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 .sc-ico .logo { width: 64px; height: 64px; }
 .sc-ico svg { width: 60px; height: 60px; }
@@ -300,6 +306,9 @@ canvas.drag { cursor: grabbing; }
 .sc-result.no .mk { background: rgb(255 255 255 / .12); color: #ddd; }
 #bomList .spn { display: block; font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; font-weight: 400; }
 #shareBtn.linked { color: #2ecc71; }
+#partScan { position: relative; }
+#partScan.linked { color: #2ecc71; }
+#partScan.linked::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #2ecc71; right: 4px; top: 4px; box-shadow: 0 0 0 2px var(--panel); }
 #shareBtn.lost { color: #e0a030; }
 #shareBtn.lost::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #e0a030; transform: translate(9px, -9px); box-shadow: 0 0 0 2px var(--panel); }
 #shareBtn.linked::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #2ecc71; transform: translate(9px, -9px); box-shadow: 0 0 0 2px var(--panel); }
@@ -441,7 +450,7 @@ html.mobile .cp-sv { height: 210px; }
     <button class="btn ico" id="fit" type="button" title="Вписать плату" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
     <button class="btn mbtn" id="mfit" type="button" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
     <div class="fileName" id="fileName"></div>
-    <button class="iconbtn" id="shareBtn" type="button" aria-label="Показать на телефоне" title="Показать на телефоне" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
+    <button class="iconbtn" id="shareBtn" type="button" aria-label="Подключить телефон-сканер" title="Подключить телефон-сканер" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
     <button class="iconbtn" id="uiBtn" type="button" aria-label="Оформление"></button>
     <button class="iconbtn" id="partScan" type="button" title="Сканировать компонент" aria-label="Сканировать компонент" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg></button>
     <button class="iconbtn" id="setBtn" type="button" aria-pressed="false" aria-controls="paneSet" aria-label="Настройки" title="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="10.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="16.5" width="18" height="3" rx="1.5" fill="currentColor"/></svg></button>
@@ -496,7 +505,7 @@ html.mobile .cp-sv { height: 210px; }
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="note" id="verLine">Версия V1.02 · 10.10.2026</div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.03 · 10.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -544,7 +553,7 @@ html.mobile .cp-sv { height: 210px; }
     <button type="button" class="btn primary" id="scanAgain" hidden>Сканировать снова</button>
   </div>
   <div class="sc-result" id="partRes" hidden></div>
-  <div class="sc-bottom"><button type="button" class="btn" id="scanStop">Отмена</button></div>
+  <div class="sc-bottom"><button type="button" class="btn" id="scanUnlink" hidden>Отключиться от ПК</button><button type="button" class="btn" id="scanStop">Отмена</button></div>
 </div>
 <div class="dropmask" id="mask" hidden><div class="dm"><i class="logo" aria-hidden="true"></i><b>Отпустите файл, чтобы открыть</b><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bdv</span><span>.bvr</span><span>.cad</span><span>.kicad_pcb</span><span>.zip</span></div></div></div>
 
@@ -1871,7 +1880,15 @@ var I18N = (function () {
     'На компьютере никто не подтвердил доступ.': 'Nobody confirmed access on the PC.', 'Отклонено': 'Declined', 'Компьютер отклонил подключение.': 'The PC declined the connection.',
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
-    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project', 'Телефон успешно подключён': 'Phone connected', 'Телефон отсоединён': 'Phone disconnected', 'Подключить снова': 'Connect again', 'Код устарел': 'The code expired', 'Телефон не на связи…': 'The phone is not responding…', 'Последние версии BoardV': 'Latest BoardV releases', 'Telegram — вопросы и идеи': 'Telegram — questions and ideas',
+    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project', 'просит подключиться как сканер': 'asks to connect as a scanner', 'Передать плату на телефон': 'Send the board to the phone', 'Подключить телефон-сканер': 'Connect a phone scanner', 'Телефон-сканер подключён': 'Phone scanner connected',
+    'Откройте на телефоне в BoardV скрытую кнопку с компьютером и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'Open the hidden button with a computer in BoardV on the phone and point the camera at the code. The phone and the PC must be on the same Wi-Fi network.',
+    'На телефоне в BoardV нажмите значок сканера справа сверху и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'On the phone in BoardV tap the scanner icon at the top right and point the camera at the code. The phone and the PC must be on the same Wi-Fi network.',
+    'Открыть плату с компьютера': 'Open a board from the PC', 'С компьютера': 'From PC', 'Сканер для компьютера': 'Scanner for the PC', 'Подключиться к компьютеру': 'Connect to the PC',
+    'Наведите камеру на QR-код из окна «Подключить телефон-сканер» на компьютере': 'Point the camera at the QR code in the «Connect a phone scanner» window on the PC',
+    'Не тот код': 'Wrong code', 'На компьютере нажмите значок телефона сверху — «Подключить телефон-сканер» — и наведите камеру на этот код.': 'On the PC click the phone icon at the top («Connect a phone scanner») and point the camera at that code.',
+    'Этот код подключает телефон как сканер. Нажмите значок сканера справа сверху.': 'This code connects the phone as a scanner. Tap the scanner icon at the top right.',
+    'Подключено к компьютеру как сканер': 'Connected to the PC as a scanner', 'Отключиться от ПК': 'Disconnect from PC', 'Отключено от компьютера': 'Disconnected from the PC',
+    'Проверяю на компьютере…': 'Checking on the PC…', 'Отправлено на компьютер': 'Sent to the PC', 'Нет в BOM на компьютере': 'Not in the PC BOM', 'Телефон успешно подключён': 'Phone connected', 'Телефон отсоединён': 'Phone disconnected', 'Подключить снова': 'Connect again', 'Код устарел': 'The code expired', 'Телефон не на связи…': 'The phone is not responding…', 'Последние версии BoardV': 'Latest BoardV releases', 'Telegram — вопросы и идеи': 'Telegram — questions and ideas',
     'Выгрузить BOM': 'Export BOM', 'Таблица Excel: фактическое наименование (что отсканировано), номинал, корпус, количество': 'Excel table: actual part (what was scanned), value, package, quantity',
     'Ошибочный компонент — снять отметку': 'Wrong part — remove the mark', 'Подходит — отметить зелёным': 'It fits — mark green', 'Отметить как найденный': 'Mark as found',
     'Подходит частично:': 'Fits partly:', 'Отмечен жёлтым — заменится, если найдётся подходящий.': 'Marked yellow — replaced when a matching one is scanned.',
@@ -2417,7 +2434,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     setModel(model, { files: used.concat(metaNames), valuesFrom: metaNames.join(', ') || (by.json || by.ascii || by.pcbdoc ? 'из файла платы' : ''), pinNames: pinNames });
   }
   function setModel(model, info) {
-    M = model; src = info; PART_OK = {}; setShared(!!info.shared); if (typeof LINK !== 'undefined' && LINK) dropLink();
+    M = model; src = info; PART_OK = {}; setShared(!!info.shared); if (typeof LINK !== 'undefined' && LINK && !LINK.scan) dropLink();
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true;
     refreshAll(true);
   }
@@ -3226,7 +3243,25 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var S = dir ? window.CompressionStream : window.DecompressionStream; if (!S) return Promise.resolve(null);
     return new Response(new Blob([u8]).stream().pipeThrough(new S('gzip'))).arrayBuffer().then(function (b) { return new Uint8Array(b); });
   }
-  function updShareBtn() { $('shareBtn').hidden = !(HAS_SHARE && M && !src.shared); }
+  /* ---------- hidden: 10 taps on the version line show "pass the board" (PC: Pair, phone: open from PC) until restart ---------- */
+  var SECRET = false, verTaps = [];
+  var ICO_PAIR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Pair</span>';
+  var ICO_FROMPC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M21 17v2.5a1.5 1.5 0 0 1-1.5 1.5H17M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17"/><rect x="7" y="7.5" width="10" height="6.5" rx="1"/><path d="M10 17h4M12 14v3"/></svg><span>С компьютера</span>';
+  function updSecret() {
+    var b = $('secretBtn'), can = IS_PHONE ? CAN_SCAN : (HAS_SHARE && !!M);
+    b.hidden = !(SECRET && can);
+    b.innerHTML = IS_PHONE ? ICO_FROMPC : ICO_PAIR;
+    b.title = IS_PHONE ? 'Открыть плату с компьютера' : 'Передать плату на телефон';
+  }
+  $('verLine').addEventListener('click', function () {
+    var now = Date.now(); verTaps = verTaps.filter(function (t) { return now - t < 4000; }); verTaps.push(now);
+    if (verTaps.length >= 10) { verTaps = []; SECRET = !SECRET; updSecret(); if (navigator.vibrate) try { navigator.vibrate(SECRET ? [20, 40, 20] : 20); } catch (e) {} }
+  });
+  $('secretBtn').onclick = function () {
+    if (IS_PHONE) { openSheet(null); openScanner('board'); return; }
+    setSettings(false); if (LINKED) { $('shareDlg').hidden = false; return; } startShare('board');
+  };
+  function updShareBtn() { $('shareBtn').hidden = !(HAS_SHARE && M && !src.shared); $('shareBtn').title = LINKED ? $('shareBtn').title : 'Подключить телефон-сканер'; if (typeof updSecret === 'function') updSecret(); }
   var shareReq = null;
   function shareStatus(t, ask) { $('shareSt').textContent = t; $('shareAsk').hidden = !ask; }
   function shareMode(mode, text) { // 'wait': QR and how to connect; 'linked': green; 'gone': red with "connect again"
@@ -3238,10 +3273,14 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     $('shareAddr').hidden = mode === 'gone';
     if (text != null) shareStatus(text);
   }
-  function startShare() {
+  var SHARE_KIND = 'scan';
+  function startShare(kind) { // 'scan': the phone becomes a scanner for this BOM; 'board': the phone gets a view-only copy (hidden Pair)
     if (!M) return;
+    SHARE_KIND = kind === 'board' ? 'board' : 'scan';
     var key = crypto.getRandomValues(new Uint8Array(32)), iv = crypto.getRandomValues(new Uint8Array(12));
-    var raw = new TextEncoder().encode(BV.writeJson(M, src.files.join(' + ')));
+    var raw = new TextEncoder().encode(SHARE_KIND === 'board' ? BV.writeJson(M, src.files.join(' + ')) : JSON.stringify({ bvScan: 1, title: src.files.join(' + ') }));
+    $('shareTtl').textContent = SHARE_KIND === 'board' ? 'Передать плату на телефон' : 'Подключить телефон-сканер';
+    $('shareHow').textContent = SHARE_KIND === 'board' ? 'Откройте на телефоне в BoardV скрытую кнопку с компьютером и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.' : 'На телефоне в BoardV нажмите значок сканера справа сверху и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.';
     $('shareDlg').hidden = false; $('shareQr').innerHTML = ''; $('shareAddr').textContent = ''; shareMode('wait', 'Подготовка…');
     gz(raw, true).then(function (z) {
       var flag = z ? 1 : 0, data = z || raw;
@@ -3250,7 +3289,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     }).then(function (r) {
       if (!r.ips.length) { shareStatus('Компьютер не подключён к сети. Подключите Wi-Fi или кабель к роутеру.'); return; }
       shareKey = key; setLinked(false);
-      var q = qrcode(0, 'M'); q.addData('BV2;' + r.ips.join(',') + ';' + r.port + ';' + r.token + ';' + b64u(key)); q.make();
+      var q = qrcode(0, 'M'); q.addData('BV2;' + r.ips.join(',') + ';' + r.port + ';' + r.token + ';' + b64u(key) + ';' + (SHARE_KIND === 'board' ? 'b' : 's')); q.make();
       $('shareQr').innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
       shareStatus('Ожидание телефона…'); $('shareAddr').textContent = 'Адрес компьютера: ' + r.ips.join(', ');
     }).catch(function (e) { shareStatus('Не получилось: ' + (e && e.message || e)); });
@@ -3259,9 +3298,15 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   var shareKey = null, LINKED = false;
   function setLinked(on, lost) { // the phone that got the board is still connected and sends what it scans
     LINKED = !!on; $('shareBtn').classList.toggle('linked', LINKED && !lost); $('shareBtn').classList.toggle('lost', LINKED && !!lost);
-    $('shareBtn').title = !LINKED ? 'Показать на телефоне' : lost ? 'Телефон не на связи' : 'Телефон подключён — сканы появляются в BOM';
+    $('shareBtn').title = !LINKED ? 'Подключить телефон-сканер' : lost ? 'Телефон не на связи' : 'Телефон подключён — сканы появляются в BOM';
   }
-  function scanFromPhone(body) { // decrypt with the key that only this PC and the phone know
+  function replyPhone(rid, obj) { // the answer goes back encrypted with the same key
+    if (rid == null || !shareKey || !window.bvDesktop.share.reply) return;
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    crypto.subtle.importKey('raw', shareKey, 'AES-GCM', false, ['encrypt']).then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify(obj))); })
+      .then(function (ct) { var o = new Uint8Array(12 + ct.byteLength); o.set(iv); o.set(new Uint8Array(ct), 12); window.bvDesktop.share.reply(rid, b64u(o)); }).catch(function () {});
+  }
+  function scanFromPhone(body, rid) { // decrypt with the key that only this PC and the phone know
     if (!shareKey) return;
     var b; try { b = unb64u(body.trim()); } catch (e) { return; }
     if (b.length < 29) return;
@@ -3273,17 +3318,19 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
         if (typeof m.text !== 'string') return;
         var r = matchPart(m.text); if (!r) return;
         markScanned(r);
+        var gg = r.best ? r.best.g : r.near ? r.near.g : null;
+        replyPhone(rid, gg ? { s: r.best ? 'ok' : 'part', v: gg.value, f: gg.footprint, n: gg.parts.length, refs: gg.parts.slice(0, 12).map(function (p) { return p.ref; }), warn: r.near ? r.near.warn : [] } : { s: 'none' });
         if (r.best) flash('Телефон: ✓ ' + (r.best.g.value || '—') + (r.best.g.footprint ? ' · ' + r.best.g.footprint : '') + ' — ' + scannedPn(r));
         else flash('Телефон: ' + scannedPn(r) + (r.near ? ' — номинал совпадает, но ' + r.near.warn.join(', ') : ' — нет в BOM'));
       }).catch(function () {});
   }
   if (HAS_SHARE) window.bvDesktop.share.on(function (m) {
-    if (m.type === 'request') { shareReq = m.data.id; shareStatus('Телефон ' + m.data.ip + ' просит доступ к плате', true); }
+    if (m.type === 'request') { shareReq = m.data.id; shareStatus('Телефон ' + m.data.ip + (SHARE_KIND === 'board' ? ' просит доступ к плате' : ' просит подключиться как сканер'), true); }
     else if (m.type === 'gone' || m.type === 'timeout') { if (shareReq === m.data.id) { shareReq = null; shareStatus('Ожидание телефона…'); } }
-    else if (m.type === 'sent') { shareMode('linked', 'Телефон успешно подключён'); $('shareQr').innerHTML = ''; setLinked(true); }
-    else if (m.type === 'scan') scanFromPhone(m.data);
+    else if (m.type === 'sent') { shareMode('linked', SHARE_KIND === 'board' ? 'Телефон успешно подключён' : 'Телефон-сканер подключён'); $('shareQr').innerHTML = ''; setLinked(true); }
+    else if (m.type === 'scan') { if (m.data && typeof m.data === 'object') scanFromPhone(m.data.body, m.data.rid); else scanFromPhone(m.data); }
     else if (m.type === 'lost') { if (LINKED) { setLinked(true, true); shareMode('linked', 'Телефон не на связи…'); $('shareSt').className = 'ln'; flash('Телефон не на связи'); } }
-    else if (m.type === 'back') { if (LINKED) { setLinked(true); shareMode('linked', 'Телефон успешно подключён'); flash('Телефон снова на связи'); } }
+    else if (m.type === 'back') { if (LINKED) { setLinked(true); shareMode('linked', SHARE_KIND === 'board' ? 'Телефон успешно подключён' : 'Телефон-сканер подключён'); flash('Телефон снова на связи'); } }
     else if (m.type === 'ended' && /^(bye|lost|idle)$/.test(m.data)) {
       var was = LINKED; setLinked(false); shareKey = null;
       if (was) { shareMode('gone', 'Телефон отсоединён'); flash('Телефон отсоединён'); }
@@ -3291,9 +3338,9 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     else if (m.type === 'ended' && m.data === 'timeout') shareMode('gone', 'Код устарел');
     else if (m.type === 'error') shareStatus('Не получилось: ' + m.data);
   });
-  $('shareBtn').onclick = function () { if (LINKED) { $('shareDlg').hidden = false; return; } startShare(); };
+  $('shareBtn').onclick = function () { if (LINKED) { $('shareDlg').hidden = false; return; } startShare('scan'); };
   $('shareHide').onclick = function () { $('shareDlg').hidden = true; };
-  $('shareAgain').onclick = function () { if (HAS_SHARE) window.bvDesktop.share.stop(); setLinked(false); startShare(); }; // a fresh one-time code
+  $('shareAgain').onclick = function () { if (HAS_SHARE) window.bvDesktop.share.stop(); setLinked(false); startShare(SHARE_KIND); }; // a fresh one-time code
   $('shareStop').onclick = stopShare;
   $('shareYes').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, true); shareStatus('Отправляю…'); shareReq = null; } };
   $('shareNo').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, false); shareStatus('Отклонено. Ожидание телефона…'); shareReq = null; } };
@@ -3304,7 +3351,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function scanView(kind, title, text, tips) { // kind: 'camera' | 'wait' | 'error'
     var d = $('scanDlg'); d.classList.toggle('busy', kind !== 'camera');
     $('scanState').hidden = kind === 'camera'; $('scanFrame').hidden = kind !== 'camera';
-    $('scanHint').textContent = SCAN_MODE === 'part' ? 'Наведите камеру на QR или DataMatrix на катушке или пакете компонента' : 'Наведите камеру на QR-код в окне BoardV на компьютере';
+    $('scanHint').textContent = SCAN_MODE === 'part' ? 'Наведите камеру на QR или DataMatrix на катушке или пакете компонента' : SCAN_MODE === 'pair' ? 'Наведите камеру на QR-код из окна «Подключить телефон-сканер» на компьютере' : 'Наведите камеру на QR-код в окне BoardV на компьютере';
     if (kind === 'camera') return;
     $('scanIco').innerHTML = kind === 'wait' ? '<div class="spin"></div>' : ICO_ERR;
     $('scanTitle').textContent = title || ''; $('scanText').textContent = text || '';
@@ -3314,10 +3361,11 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function closeScanner() { scanJob++; stopScan(); $('scanDlg').hidden = true; }
   var SCAN_MODE = 'board';
   function openScanner(mode) {
-    SCAN_MODE = mode === 'part' ? 'part' : 'board';
-    if (SCAN_MODE === 'board' ? !CAN_SCAN : !CAN_CAM) return;
+    SCAN_MODE = mode === 'part' ? 'part' : mode === 'pair' ? 'pair' : 'board';
+    if (SCAN_MODE === 'part' ? !CAN_CAM : !CAN_SCAN) return;
     openSheet(null); scanJob++; $('scanDlg').hidden = false; scanView('camera'); partResult(null);
-    $('scanTtl').textContent = SCAN_MODE === 'part' ? 'Сканирование компонентов' : 'Открыть с компьютера';
+    $('scanTtl').textContent = SCAN_MODE === 'part' ? (LINK && LINK.scan && !M ? 'Сканер для компьютера' : 'Сканирование компонентов') : SCAN_MODE === 'pair' ? 'Подключиться к компьютеру' : 'Открыть с компьютера';
+    $('scanUnlink').hidden = !(SCAN_MODE === 'part' && LINK && LINK.scan);
     // a sharp picture: ask for a big frame and continuous focus; only the square in the frame is read
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }).then(function (st) {
       if ($('scanDlg').hidden) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
@@ -3339,7 +3387,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       function got(text) {
         if (!text) return;
         if (SCAN_MODE === 'part') onPartCode(text);
-        else if (/^BV\d;/.test(text)) { stopScan(); receiveBoard(text); }
+        else if (/^BV\d;/.test(text)) { stopScan(); receiveBoard(text, SCAN_MODE); }
       }
       function crop() { // the part of the camera picture under the frame (plus a small margin), at full camera resolution
         var vw = v.videoWidth, vh = v.videoHeight, er = v.getBoundingClientRect(), fr = $('scanFrame').getBoundingClientRect();
@@ -3368,9 +3416,11 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, ms);
     return fetch(url, { cache: 'no-store', signal: ac.signal }).finally(function () { clearTimeout(t); });
   }
-  function receiveBoard(payload) {
+  function receiveBoard(payload, want) {
     var job = ++scanJob, p = payload.split(';');
     if (p[0] !== 'BV2') { scanView('error', 'Разные версии BoardV', 'Обновите BoardV на компьютере и на телефоне до одной версии.'); return; }
+    var kind = p[5] === 's' ? 'pair' : 'board';
+    if (want && kind !== want) { scanView('error', 'Не тот код', want === 'pair' ? 'На компьютере нажмите значок телефона сверху — «Подключить телефон-сканер» — и наведите камеру на этот код.' : 'Этот код подключает телефон как сканер. Нажмите значок сканера справа сверху.'); return; }
     var ips = (p[1] || '').split(',').filter(Boolean), port = p[2], token = p[3], key;
     try { key = unb64u(p[4] || ''); } catch (e) { key = null; }
     if (!ips.length || !/^\d+$/.test(port) || !/^[0-9a-f]{32}$/.test(token || '') || !key || key.length !== 32) { scanView('error', 'Это не код BoardV', 'Отсканируйте QR-код из окна «Показать на телефоне».'); return; }
@@ -3408,18 +3458,27 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     }
   }
   var LINK = null; // phone: where to send scans for the PC that shared this board
-  function sendLink(msg) { // scans and row edits go to the PC that shared the board
-    if (!LINK) return;
+  function sendLink(msg, answer) { // scans and row edits go to the PC; for a scan the PC may answer with what it found
+    if (!LINK) { if (answer) answer(null); return; }
     var iv = crypto.getRandomValues(new Uint8Array(12)), L = LINK;
     crypto.subtle.importKey('raw', L.key, 'AES-GCM', false, ['encrypt'])
       .then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify(msg))); })
       .then(function (ct) { var o = new Uint8Array(12 + ct.byteLength); o.set(iv); o.set(new Uint8Array(ct), 12); return timedFetch2(L.base + '/scan?id=' + L.id, b64u(o)); })
-      .then(function (r) { if (r.status === 410 || r.status === 404) { LINK = null; flash('Компьютер отключил телефон'); } })
-      .catch(function () {});
+      .then(function (r) {
+        if (r.status === 410 || r.status === 404) { linkGone('Компьютер отключил телефон'); if (answer) answer(null); return; }
+        if (!answer) return;
+        if (r.status !== 200) { answer(null); return; }
+        return r.text().then(function (t) {
+          var b = unb64u(t.trim());
+          return crypto.subtle.importKey('raw', L.key, 'AES-GCM', false, ['decrypt']).then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.subarray(0, 12) }, k, b.subarray(12)); })
+            .then(function (pl) { answer(JSON.parse(new TextDecoder().decode(pl))); });
+        });
+      })
+      .catch(function () { if (answer) answer(null); });
   }
   var pingT = 0, pingFails = 0;
   function nativeLink(url) { if (window.BoardVAndroid && window.BoardVAndroid.setLink) try { window.BoardVAndroid.setLink(url || ''); } catch (e) {} }
-  function linkGone(msg) { LINK = null; clearInterval(pingT); nativeLink(''); flash(msg); }
+  function linkGone(msg) { LINK = null; clearInterval(pingT); nativeLink(''); flash(msg); if (typeof updPartScan === 'function') updPartScan(); }
   function startPing() { // tell the PC every few seconds that this phone is still here
     clearInterval(pingT);
     pingT = setInterval(function () {
@@ -3444,10 +3503,17 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       .then(function (plain) { plain = new Uint8Array(plain); return b[0] === 1 ? gz(plain, false) : plain; })
       .then(function (u8) {
         if (job !== scanJob) return;
-        var m = BV.readJson(new TextDecoder().decode(u8));
+        var txt = new TextDecoder().decode(u8), sc = null;
+        try { sc = /^\{"bvScan"/.test(txt) ? JSON.parse(txt) : null; } catch (e) {}
+        if (sc) { // scanner only: no board comes over, the PC checks each scan against its BOM and answers
+          if (LINK) dropLink();
+          LINK = { base: link.base, id: link.id, key: key, scan: true, title: String(sc.title || '') }; pingFails = 0; startPing(); nativeLink(link.base + '/bye?id=' + link.id);
+          updPartScan(); flash('Подключено к компьютеру как сканер'); openScanner('part'); return;
+        }
+        var m = BV.readJson(txt);
         closeScanner();
         setModel(m, { files: [(m.title || 'плата') + ' — с компьютера'], valuesFrom: 'из файла платы', pinNames: true, shared: true });
-        if (link) { LINK = { base: link.base, id: link.id, key: key }; pingFails = 0; startPing(); nativeLink(link.base + '/bye?id=' + link.id); }
+        if (link) { if (LINK) dropLink(); LINK = { base: link.base, id: link.id, key: key }; pingFails = 0; startPing(); nativeLink(link.base + '/bye?id=' + link.id); updPartScan(); }
         flash('Плата с компьютера: только просмотр');
       }).catch(function () { scanView('error', 'Не удалось открыть плату', 'Данные не расшифровались. Покажите на компьютере новый код.'); });
   }
@@ -3508,6 +3574,14 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var el = $('partRes');
     if (!r) { el.hidden = true; el.innerHTML = ''; el.onclick = null; return; }
     el.hidden = false;
+    if (r.wait || r.sent) { // scanner for a PC: waiting for its answer, or it did not answer
+      el.className = 'sc-result no'; el.innerHTML = '<div class="mk"></div><b></b><span></span>' + (r.dec ? '<i></i>' : ''); el.onclick = null;
+      el.querySelector('.mk').innerHTML = r.wait ? '<div class="spin"></div>' : '↗';
+      el.querySelector('b').textContent = r.wait ? 'Проверяю на компьютере…' : 'Отправлено на компьютер';
+      el.querySelector('span').textContent = (r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '—' }).raw;
+      if (r.dec) el.querySelector('i').textContent = ((r.dec.mfr + ' ' + r.dec.pn).trim() ? (r.dec.mfr + ' ' + r.dec.pn).trim() + ' → ' : '') + PARTS.fmt(r.dec);
+      return;
+    }
     var g = r.best ? r.best.g : r.near ? r.near.g : null;
     el.className = 'sc-result ' + (r.best ? 'ok' : r.near ? 'warn' : 'no');
     el.innerHTML = '<div class="mk"></div><b></b><span></span>' + (r.dec ? '<i></i>' : '');
@@ -3517,13 +3591,24 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       el.querySelector('span').textContent = r.best
         ? 'Есть в BOM: ' + g.parts.length + ' шт. — ' + g.parts.slice(0, 12).map(function (p) { return p.ref; }).join(', ') + (g.parts.length > 12 ? '…' : '')
         : 'Номинал совпадает, но ' + r.near.warn.join(', ') + '. Отмечен жёлтым — заменится, если найдётся подходящий.';
-      el.onclick = function () { closeScanner(); selectGroup(g.key); };
+      el.onclick = g.key != null && bomByKey[g.key] ? function () { closeScanner(); selectGroup(g.key); } : null;
     } else {
       el.querySelector('b').textContent = 'Нет в BOM этой платы';
       el.querySelector('span').textContent = (r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '—' }).raw;
       el.onclick = null;
     }
     if (r.dec) el.querySelector('i').textContent = ((r.dec.mfr + ' ' + r.dec.pn).trim() ? (r.dec.mfr + ' ' + r.dec.pn).trim() + ' → ' : '') + PARTS.fmt(r.dec);
+  }
+  function localDec(text) { var d = null; partCandidates(text).slice().sort(function (a, b) { return b.key - a.key; }).some(function (c) { return (d = PARTS.decode(c.raw) || PARTS.decode(c.n)); }); return d || PARTS.fromLabel(text); }
+  function remoteScan(text) {
+    var cands = partCandidates(text), dec = localDec(text);
+    partResult({ wait: true, cands: cands, dec: dec });
+    sendLink({ text: text }, function (a) {
+      if (!a) { partResult({ cands: cands, dec: dec, sent: true }); return; }
+      var g = a.s === 'none' ? null : { value: a.v, footprint: a.f, key: null, parts: (a.refs || []).map(function (x) { return { ref: x }; }).concat(new Array(Math.max(0, (a.n || 0) - (a.refs || []).length)).fill({ ref: '' })) };
+      partResult({ best: a.s === 'ok' ? { g: g } : null, near: a.s === 'part' ? { g: g, warn: a.warn || [] } : null, cands: cands, dec: dec });
+      if (a.s !== 'none' && navigator.vibrate) try { navigator.vibrate(a.s === 'ok' ? 35 : [20, 60, 20]); } catch (e) {}
+    });
   }
   function scannedPn(r) { return (r.dec && r.dec.pn) || (r.best && r.best.hit) || ((r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '' }).raw); }
   function markScanned(r) { // BOM row gets ✓ (green: fits, yellow: value fits but not all) and the part number from the reel
@@ -3550,13 +3635,18 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (/^BV\d;/.test(text)) return; // the PC's own sharing code is not a part
     var now = Date.now(); if (text === partLast.text && now - partLast.at < 2500) return; // same label still in view
     partLast = { text: text, at: now };
+    if (!M && LINK && LINK.scan) { remoteScan(text); return; } // scanner for a PC: the PC answers
     var r = matchPart(text); if (!r) return;
     partResult(r);
     if (r.best || r.near) { markScanned(r); if (navigator.vibrate) try { navigator.vibrate(r.best ? 35 : [20, 60, 20]); } catch (e) {} }
     sendLink({ text: text });
   }
-  $('partScan').onclick = function () { openScanner('part'); };
-  function updPartScan() { $('partScan').hidden = !(IS_PHONE && CAN_CAM && M); } // reels are scanned with the phone; the PC has no use for it
+  $('partScan').onclick = function () { openScanner(M || (LINK && LINK.scan) ? 'part' : (CAN_SCAN ? 'pair' : 'part')); };
+  function updPartScan() { // reels are scanned with the phone; the PC has no use for it
+    $('partScan').hidden = !(IS_PHONE && CAN_CAM);
+    $('partScan').classList.toggle('linked', !!(LINK && LINK.scan));
+  }
+  $('scanUnlink').onclick = function () { dropLink(); updPartScan(); closeScanner(); flash('Отключено от компьютера'); };
 
   function setShared(on) { // view-only copy: nothing leaves the phone, no screenshots
     if (window.BoardVAndroid && window.BoardVAndroid.setSecure) try { window.BoardVAndroid.setSecure(!!on); } catch (e) {}
@@ -3564,7 +3654,8 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   }
   $('scanStop').onclick = closeScanner;
   $('scanAgain').onclick = function () { openScanner(SCAN_MODE); };
-  if (CAN_SCAN) $('scanEmpty').hidden = false;
+  // the empty screen has no "open from PC" button: that is hidden behind 10 taps on the version
+  updPartScan();
   $('scanEmpty').onclick = function (e) { e.stopPropagation(); openScanner('board'); };
 
 
@@ -3875,7 +3966,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function closeProject() { // back to the empty field, on the PC and on the phone
     if (!M) return;
     if (HAS_SHARE && (LINKED || !$('shareDlg').hidden)) stopShare();
-    dropLink();
+    if (LINK && !LINK.scan) dropLink();
     M = null; src = { files: [], valuesFrom: '', pinNames: true }; PART_OK = {}; netIndex = null; bomIndex = null; bomByKey = {};
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true; setShared(false);
     $('q').value = ''; $('bq').value = ''; try { $('file').value = ''; } catch (e) {}

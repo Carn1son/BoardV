@@ -80,7 +80,11 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
           if (big || share !== s) return;
           clearTimeout(s.timer); s.timer = setTimeout(() => shareStop('idle'), 12 * 3600 * 1000);
           s.seen = Date.now(); if (s.lost) { s.lost = false; shareSend('back', ''); }
-          shareSend('scan', body); res.writeHead(204); res.end();
+          // the page checks the part against its BOM and answers (encrypted); no answer in 4 s -> just "received"
+          const rid = (s.rseq = (s.rseq || 0) + 1); s.pend = s.pend || new Map();
+          const t = setTimeout(() => { if (s.pend.delete(rid)) { res.writeHead(204); res.end(); } }, 4000);
+          s.pend.set(rid, { res, t });
+          shareSend('scan', { rid, body });
         });
         return;
       }
@@ -125,6 +129,12 @@ ipcMain.on('share-decide', (_e, m) => {
   const r = s.reqs.get(m.id); if (r && r.ok === null) r.ok = !!m.ok;
 });
 ipcMain.on('share-stop', () => shareStop('stopped'));
+ipcMain.on('share-reply', (_e, m) => {
+  const s = share; if (!s || !s.pend || !m) return;
+  const p = s.pend.get(m.rid); if (!p) return;
+  s.pend.delete(m.rid); clearTimeout(p.t);
+  p.res.writeHead(200, { 'Content-Type': 'text/plain' }); p.res.end(String(m.body || '').slice(0, 8192));
+});
 
 ipcMain.on('upd-install', () => { if (updater) updater.quitAndInstall(true, true); }); // silent: files are replaced in place, no installer wizard, then BoardV starts again
 

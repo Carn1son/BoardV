@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('bvDesktop', {
     start: (blob) => ipcRenderer.invoke('share-start', blob),
     decide: (id, ok) => ipcRenderer.send('share-decide', { id, ok }),
     stop: () => ipcRenderer.send('share-stop'),
+    reply: (rid, body) => ipcRenderer.send('share-reply', { rid, body }),
     on: (cb) => ipcRenderer.on('share', (_e, m) => cb(m)),
   },
   update: {

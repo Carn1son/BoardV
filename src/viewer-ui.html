@@ -304,8 +304,12 @@ canvas.drag { cursor: grabbing; }
 .sc-result span { font-size: 12.5px; color: rgb(255 255 255 / .75); overflow-wrap: anywhere; }
 .bomt td.c-v .chk { color: #22b35e; font-weight: 700; margin-right: 6px; }
 .bomt tbody tr.got td.c-v { color: #22b35e; }
-.sc-bottom { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 40px 24px calc(env(safe-area-inset-bottom, 0px) + 26px); display: flex; justify-content: center; background: linear-gradient(transparent, rgb(0 0 0 / .75)); }
-.sc-bottom .btn { min-width: 160px; min-height: 44px; border-radius: 22px; background: rgb(255 255 255 / .12); border-color: rgb(255 255 255 / .25); color: #fff; }
+.sc-bottom { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 40px 20px calc(env(safe-area-inset-bottom, 0px) + 26px); display: flex; justify-content: center; gap: 14px; flex-wrap: nowrap; background: linear-gradient(transparent, rgb(0 0 0 / .75)); }
+.sc-bottom .btn { flex: 0 1 180px; min-width: 0; min-height: 46px; padding: 0 14px; white-space: nowrap; border-radius: 23px; background: rgb(240 160 32 / .16); border: 1.5px solid #f0a020; color: #ffc65c; font-weight: 600; }
+.sc-bottom .btn:active { background: rgb(240 160 32 / .3); }
+.sc-bottom #scanStop { background: #f0a020; color: #1a1205; }
+.ttoast { position: fixed; z-index: 60; left: 50%; top: calc(var(--topH, 52px) + 10px); white-space: nowrap; transform: translate(-50%, -20px); opacity: 0; pointer-events: none; padding: 10px 16px; border-radius: 12px; background: #3a1414; color: #ffd7d2; border: 1px solid #a33a32; box-shadow: 0 10px 30px rgb(0 0 0 / .45); font-weight: 600; font-size: 14px; transition: opacity .2s, transform .2s; max-width: calc(100vw - 32px); text-align: center; }
+.ttoast.on { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { .sc-frame em, .sc-ico .spin { animation: none; } }
 #scanEmpty { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; }
 #scanEmpty svg { width: 18px; height: 18px; }
@@ -508,6 +512,7 @@ html.mobile .cp-sv { height: 210px; }
   <div class="status" id="status"><span>Файл не открыт</span></div>
 </div>
 <div class="ctxmenu" id="ctxMenu" role="menu" hidden></div>
+<div class="ttoast" id="ttoast" role="status" aria-live="polite"></div>
 <div class="cpick" id="cpick" hidden><div class="cp-card" role="dialog" aria-modal="true" aria-labelledby="cpTtl">
   <div class="cp-grab"></div>
   <div class="cp-head"><div class="cp-prev" title="Было / стало"><i id="cpNew"></i></div><b id="cpTtl">Цвет</b></div>
@@ -1132,12 +1137,13 @@ html.mobile .cp-sv { height: 210px; }
   var qpCache = { q: null, p: null };
   function valEq(q, g) {
     if (!q || !g) return false;
-    if (qpCache.q !== q) qpCache = { q: q, p: PARTS.fromBom(q) };
+    if (qpCache.q !== q) qpCache = { q: q, p: PARTS.fromBom(q) || PARTS.decode(q) };
     var qp = qpCache.p; return !!(qp && PARTS.match(qp, bomParams(g)).score);
   }
   function partGroup(p) { return bomByKey[(p.value || '').trim() + '\u0001' + (p.footprint || '').trim()]; }
-  function partHit(p, q) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0 || valEq(q, partGroup(p)); }
-  function bomMatch(g, q) { return !q || valEq(q, g) || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
+  function partHit(p, q) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0 || valEq(q, partGroup(p)) || (partGroup(p) ? scannedHit(partGroup(p), q) : false); }
+  function scannedHit(g, q) { var mk = PART_OK[g.key], nq = normPN(q); return !!(mk && nq.length >= 3 && mk.pns.some(function (p) { return normPN(p).indexOf(nq) >= 0; })); }
+  function bomMatch(g, q) { return !q || scannedHit(g, q) || valEq(q, g) || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
   function xmlEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ''); }
   function xlsx(head, rows, styles, widths) { // a small .xlsx built here: one sheet, a bold header, green / yellow rows
     function col(i) { var s = ''; i++; while (i) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; } return s; }
@@ -1810,7 +1816,7 @@ html.mobile .cp-sv { height: 210px; }
       .then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify(msg))); })
       .then(function (ct) { var o = new Uint8Array(12 + ct.byteLength); o.set(iv); o.set(new Uint8Array(ct), 12); return timedFetch2(L.base + '/scan?id=' + L.id, b64u(o)); })
       .then(function (r) {
-        if (r.status === 410 || r.status === 404) { linkGone('Компьютер отключил телефон'); if (answer) answer(null); return; }
+        if (r.status === 410 || r.status === 404) { if (LINK === L) linkGone(); if (answer) answer(null); return; }
         if (!answer) return;
         if (r.status !== 200) { answer(null); return; }
         return r.text().then(function (t) {
@@ -1823,17 +1829,24 @@ html.mobile .cp-sv { height: 210px; }
   }
   var pingT = 0, pingFails = 0;
   function nativeLink(url) { if (window.BoardVAndroid && window.BoardVAndroid.setLink) try { window.BoardVAndroid.setLink(url || ''); } catch (e) {} }
-  function linkGone(msg) { LINK = null; clearInterval(pingT); nativeLink(''); flash(msg); if (typeof updPartScan === 'function') updPartScan(); }
+  var ttoastT = 0;
+  function topToast(t) { var el = $('ttoast'); el.textContent = t; el.classList.add('on'); clearTimeout(ttoastT); ttoastT = setTimeout(function () { el.classList.remove('on'); }, 3500); }
+  function linkGone() { // the PC said "disconnected" (not just silence): stop scanning, and a board from that PC goes away
+    var L = LINK; LINK = null; clearInterval(pingT); nativeLink('');
+    if (!$('scanDlg').hidden) closeScanner();
+    if (L && !L.scan && M && src && src.shared) closeProject();
+    if (typeof updPartScan === 'function') updPartScan();
+    topToast('Связь с ПК разорвана');
+  }
   function startPing() { // tell the PC every few seconds that this phone is still here
     clearInterval(pingT);
     pingT = setInterval(function () {
       if (!LINK) { clearInterval(pingT); return; }
       var L = LINK;
-      timedFetch(L.base + '/ping?id=' + L.id, 4000).then(function (r) {
-        pingFails = 0;
-        if ((r.status === 410 || r.status === 404) && LINK === L) { linkGone('Компьютер отключил телефон'); }
-      }).catch(function () { if (LINK === L && ++pingFails >= 3) linkGone('Компьютер не отвечает — связь закрыта'); });
-    }, 4000);
+      timedFetch(L.base + '/ping?id=' + L.id, 3000).then(function (r) {
+        if ((r.status === 410 || r.status === 404) && LINK === L) linkGone();
+      }).catch(function () { /* no answer: the PC may be asleep or out of Wi-Fi - keep everything as it is */ });
+    }, 3000);
   }
   function dropLink() { // say goodbye so the PC knows at once
     if (!LINK) return; var L = LINK; LINK = null; clearInterval(pingT); nativeLink('');

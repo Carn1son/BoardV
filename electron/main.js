@@ -43,10 +43,16 @@ function lanIPs() {
   return out;
 }
 function shareSend(type, data) { if (win) win.webContents.send('share', { type, data }); }
+let closing = null; // a link this PC ended: the server stays a few seconds to tell the phone "disconnected"
 function shareStop(reason) {
   if (!share) return;
   const s = share; share = null; clearTimeout(s.timer); clearInterval(s.watch);
-  try { s.server.close(); } catch (e) { /* not listening */ }
+  if (s.pend) s.pend.forEach((p) => { clearTimeout(p.t); try { p.res.writeHead(410); p.res.end(); } catch (e) { /* gone */ } });
+  if (s.sent && !/^(bye|lost|idle)$/.test(reason || '')) { // the PC hung up: answer the phone's next ping with 410, then close
+    s.closing = true; closing = s;
+    s.finish = () => { if (s.closed) return; s.closed = true; clearTimeout(s.ct); if (closing === s) closing = null; try { s.server.close(); } catch (e) { /* not listening */ } };
+    s.ct = setTimeout(s.finish, 12000);
+  } else try { s.server.close(); } catch (e) { /* not listening */ }
   shareSend('ended', reason || '');
 }
 ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
@@ -59,6 +65,11 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
     const u = new URL(req.url, 'http://x'), base = '/bv/' + s.token;
+    if (s.closing) { // tell the phone it was disconnected by this PC
+      res.writeHead(410); res.end();
+      if (String(req.socket.remoteAddress || '').replace(/^::ffff:/, '') === s.linkIp) setTimeout(s.finish, 300);
+      return;
+    }
     if (share !== s || (req.method !== 'GET' && req.method !== 'POST') || !u.pathname.startsWith(base + '/')) {
       s.bad++; res.writeHead(404); res.end();
       if (s.bad > 30) shareStop('too many wrong requests');
@@ -180,4 +191,12 @@ if (!app.requestSingleInstanceLock()) {
   });
   ipcMain.on('renderer-ready', () => { rendererReady = true; if (pending.length) { sendFiles(pending); pending = []; } });
   app.on('window-all-closed', () => app.quit());
+  let quitting = false;
+  app.on('before-quit', (e) => { // a connected phone first hears that BoardV on the PC is closing
+    if (quitting || !(share && share.sent)) return;
+    e.preventDefault(); quitting = true;
+    shareStop('quit');
+    const s = closing, t0 = Date.now();
+    const wait = setInterval(() => { if (!s || s.closed || Date.now() - t0 > 6000) { clearInterval(wait); if (s) s.finish(); app.quit(); } }, 100);
+  });
 }

@@ -103,7 +103,7 @@ var I18N = (function () {
     'На компьютере никто не подтвердил доступ.': 'Nobody confirmed access on the PC.', 'Отклонено': 'Declined', 'Компьютер отклонил подключение.': 'The PC declined the connection.',
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
-    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project', 'Последние версии BoardV': 'Latest BoardV releases', 'Telegram — вопросы и идеи': 'Telegram — questions and ideas',
+    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project', 'Телефон успешно подключён': 'Phone connected', 'Телефон отсоединён': 'Phone disconnected', 'Подключить снова': 'Connect again', 'Код устарел': 'The code expired', 'Телефон не на связи…': 'The phone is not responding…', 'Последние версии BoardV': 'Latest BoardV releases', 'Telegram — вопросы и идеи': 'Telegram — questions and ideas',
     'Выгрузить BOM': 'Export BOM', 'Таблица Excel: фактическое наименование (что отсканировано), номинал, корпус, количество': 'Excel table: actual part (what was scanned), value, package, quantity',
     'Ошибочный компонент — снять отметку': 'Wrong part — remove the mark', 'Подходит — отметить зелёным': 'It fits — mark green', 'Отметить как найденный': 'Mark as found',
     'Подходит частично:': 'Fits partly:', 'Отмечен жёлтым — заменится, если найдётся подходящий.': 'Marked yellow — replaced when a matching one is scanned.',

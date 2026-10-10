@@ -247,6 +247,8 @@ canvas.drag { cursor: grabbing; }
 .upd .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .upd .bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
 .modal { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / .6); }
+.mcard .ln.ok { color: #2ecc71; font-size: 16px; }
+.mcard .ln.bad { color: #ff5a4f; font-size: 16px; }
 .mcard { width: min(400px, 100%); max-height: calc(100% - 8px); overflow: auto; box-sizing: border-box; display: grid; gap: 12px; justify-items: center; text-align: center; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 50px rgb(0 0 0 / .5); }
 .mcard b { font-family: var(--f-display); font-size: 19px; }
 .mcard .note { font-size: 12px; }
@@ -509,12 +511,11 @@ html.mobile .cp-sv { height: 210px; }
 <div class="modal" id="shareDlg" hidden><div class="mcard" role="dialog" aria-modal="true" aria-labelledby="shareTtl">
   <b id="shareTtl">Показать на телефоне</b>
   <div class="qrbox" id="shareQr"></div>
-  <div class="note">На телефоне в BoardV нажмите «Открыть с компьютера по QR» на стартовом экране и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.</div>
+  <div class="note" id="shareHow">На телефоне в BoardV нажмите «Открыть с компьютера по QR» на стартовом экране и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.</div>
   <div class="ln" id="shareSt">Подготовка…</div>
   <div class="note" id="shareAddr"></div>
   <div class="btnrow" id="shareAsk" hidden><button type="button" class="btn primary" id="shareYes">Разрешить</button><button type="button" class="btn" id="shareNo">Отклонить</button></div>
-  <div class="note">Файл не передаётся. Телефон получает зашифрованную копию платы только для просмотра, держит её лишь в памяти и не может сохранить. Код одноразовый и действует 10 минут.</div>
-  <div class="btnrow"><button class="btn" type="button" id="shareHide" hidden>Скрыть</button><button type="button" class="btn" id="shareStop">Закрыть</button></div>
+  <div class="btnrow"><button class="btn primary" type="button" id="shareAgain" hidden>Подключить снова</button><button class="btn" type="button" id="shareHide" hidden>Скрыть</button><button type="button" class="btn" id="shareStop">Закрыть</button></div>
 </div></div>
 <div class="scanner" id="scanDlg" hidden role="dialog" aria-modal="true" aria-label="Открыть с компьютера">
   <video id="scanVid" playsinline muted autoplay poster="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="></video>
@@ -1581,11 +1582,20 @@ html.mobile .cp-sv { height: 210px; }
   function updShareBtn() { $('shareBtn').hidden = !(HAS_SHARE && M && !src.shared); }
   var shareReq = null;
   function shareStatus(t, ask) { $('shareSt').textContent = t; $('shareAsk').hidden = !ask; }
+  function shareMode(mode, text) { // 'wait': QR and how to connect; 'linked': green; 'gone': red with "connect again"
+    var st = $('shareSt');
+    st.className = 'ln' + (mode === 'linked' ? ' ok' : mode === 'gone' ? ' bad' : '');
+    $('shareQr').hidden = mode !== 'wait'; $('shareHow').hidden = mode !== 'wait';
+    $('shareAgain').hidden = mode !== 'gone'; $('shareHide').hidden = mode !== 'linked';
+    $('shareStop').textContent = mode === 'linked' ? 'Отключить телефон' : 'Закрыть';
+    $('shareAddr').hidden = mode === 'gone';
+    if (text != null) shareStatus(text);
+  }
   function startShare() {
     if (!M) return;
     var key = crypto.getRandomValues(new Uint8Array(32)), iv = crypto.getRandomValues(new Uint8Array(12));
     var raw = new TextEncoder().encode(BV.writeJson(M, src.files.join(' + ')));
-    $('shareDlg').hidden = false; $('shareQr').innerHTML = ''; $('shareAddr').textContent = ''; shareStatus('Подготовка…');
+    $('shareDlg').hidden = false; $('shareQr').innerHTML = ''; $('shareAddr').textContent = ''; shareMode('wait', 'Подготовка…');
     gz(raw, true).then(function (z) {
       var flag = z ? 1 : 0, data = z || raw;
       return crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['encrypt']).then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, data); })
@@ -1603,8 +1613,6 @@ html.mobile .cp-sv { height: 210px; }
   function setLinked(on, lost) { // the phone that got the board is still connected and sends what it scans
     LINKED = !!on; $('shareBtn').classList.toggle('linked', LINKED && !lost); $('shareBtn').classList.toggle('lost', LINKED && !!lost);
     $('shareBtn').title = !LINKED ? 'Показать на телефоне' : lost ? 'Телефон не на связи' : 'Телефон подключён — сканы появляются в BOM';
-    $('shareStop').textContent = LINKED ? 'Отключить телефон' : 'Закрыть';
-    $('shareHide').hidden = !LINKED; $('shareQr').hidden = LINKED;
   }
   function scanFromPhone(body) { // decrypt with the key that only this PC and the phone know
     if (!shareKey) return;
@@ -1625,19 +1633,20 @@ html.mobile .cp-sv { height: 210px; }
   if (HAS_SHARE) window.bvDesktop.share.on(function (m) {
     if (m.type === 'request') { shareReq = m.data.id; shareStatus('Телефон ' + m.data.ip + ' просит доступ к плате', true); }
     else if (m.type === 'gone' || m.type === 'timeout') { if (shareReq === m.data.id) { shareReq = null; shareStatus('Ожидание телефона…'); } }
-    else if (m.type === 'sent') { shareStatus('Телефон подключён. Сканируйте компоненты телефоном — найденные отметятся в BOM.'); $('shareQr').innerHTML = ''; setLinked(true); }
+    else if (m.type === 'sent') { shareMode('linked', 'Телефон успешно подключён'); $('shareQr').innerHTML = ''; setLinked(true); }
     else if (m.type === 'scan') scanFromPhone(m.data);
-    else if (m.type === 'lost') { if (LINKED) { setLinked(true, true); shareStatus('Телефон не на связи. Он вернётся сам, когда BoardV на телефоне снова откроется в той же сети.'); flash('Телефон не на связи'); } }
-    else if (m.type === 'back') { if (LINKED) { setLinked(true); shareStatus('Телефон подключён. Сканируйте компоненты телефоном — найденные отметятся в BOM.'); flash('Телефон снова на связи'); } }
+    else if (m.type === 'lost') { if (LINKED) { setLinked(true, true); shareMode('linked', 'Телефон не на связи…'); $('shareSt').className = 'ln'; flash('Телефон не на связи'); } }
+    else if (m.type === 'back') { if (LINKED) { setLinked(true); shareMode('linked', 'Телефон успешно подключён'); flash('Телефон снова на связи'); } }
     else if (m.type === 'ended' && /^(bye|lost|idle)$/.test(m.data)) {
       var was = LINKED; setLinked(false); shareKey = null;
-      if (was) { shareStatus('Телефон отключился.'); flash('Телефон отключился'); }
+      if (was) { shareMode('gone', 'Телефон отсоединён'); flash('Телефон отсоединён'); }
     }
-    else if (m.type === 'ended' && m.data === 'timeout') shareStatus('Время вышло. Закройте окно и покажите новый код.');
+    else if (m.type === 'ended' && m.data === 'timeout') shareMode('gone', 'Код устарел');
     else if (m.type === 'error') shareStatus('Не получилось: ' + m.data);
   });
   $('shareBtn').onclick = function () { if (LINKED) { $('shareDlg').hidden = false; return; } startShare(); };
   $('shareHide').onclick = function () { $('shareDlg').hidden = true; };
+  $('shareAgain').onclick = function () { if (HAS_SHARE) window.bvDesktop.share.stop(); setLinked(false); startShare(); }; // a fresh one-time code
   $('shareStop').onclick = stopShare;
   $('shareYes').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, true); shareStatus('Отправляю…'); shareReq = null; } };
   $('shareNo').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, false); shareStatus('Отклонено. Ожидание телефона…'); shareReq = null; } };

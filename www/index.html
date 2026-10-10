@@ -268,14 +268,11 @@ canvas.drag { cursor: grabbing; }
 .sc-result span { font-size: 12.5px; color: rgb(255 255 255 / .75); overflow-wrap: anywhere; }
 .bomt td.c-v .chk { color: #22b35e; font-weight: 700; margin-right: 6px; }
 .bomt tbody tr.got td.c-v { color: #22b35e; }
-#partScan { display: inline-grid; place-items: center; width: 32px; height: 30px; padding: 0; }
-#partScan svg { width: 17px; height: 17px; }
 .sc-bottom { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 40px 24px calc(env(safe-area-inset-bottom, 0px) + 26px); display: flex; justify-content: center; background: linear-gradient(transparent, rgb(0 0 0 / .75)); }
 .sc-bottom .btn { min-width: 160px; min-height: 44px; border-radius: 22px; background: rgb(255 255 255 / .12); border-color: rgb(255 255 255 / .25); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .sc-frame em, .sc-ico .spin { animation: none; } }
 #scanEmpty { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; }
-#scanEmpty svg, #mscan svg { width: 18px; height: 18px; }
-#mscan { display: inline-grid; place-items: center; }
+#scanEmpty svg { width: 18px; height: 18px; }
 .updbar { position: absolute; right: 14px; bottom: 14px; z-index: 5; width: min(340px, calc(100% - 28px)); box-sizing: border-box; padding: 12px 40px 12px 14px; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 10px 30px rgb(0 0 0 / .45); }
 .updbar b { display: block; font-family: var(--f-display); font-size: 15px; margin-bottom: 6px; }
 .updbar .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 26px; padding: 0; }
@@ -300,7 +297,7 @@ html.mobile .app { height: 100%; }
 html.mobile .top { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-inline: 10px; padding-block: 6px; scrollbar-width: none; }
 html.mobile .top::-webkit-scrollbar { display: none; }
 html.mobile .brand { display: none; }
-html.mobile #bomToggle, html.mobile #setBtn, html.mobile .fileName, html.mobile #fit { display: none; }
+html.mobile #bomToggle, html.mobile .fileName, html.mobile #fit { display: none; }
 html.mobile .mbtn { display: inline-flex; align-items: center; justify-content: center; }
 html.mobile .btn, html.mobile .seg button, html.mobile .sidesel { min-height: 36px; }
 html.mobile .main, html.mobile .main.nobom { grid-template-columns: minmax(0, 1fr); }
@@ -337,13 +334,21 @@ html.mobile .top > * { flex: none; }
 html.mobile #uiBtn { margin-left: auto; }
 html.mobile .sidesel { padding: 0 20px 0 8px; }
 html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico { width: 38px; min-width: 38px; padding: 0; }
+html.mobile .top .iconbtn { width: 36px; }
+@media (max-width: 400px) {
+  html.mobile .top { gap: 2px; padding-inline: 6px; }
+  html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico { width: 35px; min-width: 35px; }
+  html.mobile .top .iconbtn { width: 33px; }
+  html.mobile .top .iconbtn svg { width: 20px; height: 20px; }
+  html.mobile .sidesel { padding: 0 16px 0 6px; background-position: right 3px center; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
 <div class="app">
   <div class="top">
     <div class="brand"><i class="logo" aria-hidden="true"></i>BoardV</div>
-    <button class="btn mbtn" id="mmenu" type="button" aria-expanded="false" aria-label="Панели: поиск, BOM, настройки">☰</button>
+    <button class="btn mbtn" id="mmenu" type="button" aria-expanded="false" aria-label="Поиск и BOM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:19px;height:19px"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     <button class="btn primary" id="open" type="button">Открыть файлы</button>
     <input type="file" id="file" multiple hidden>
     <button class="btn" id="bomToggle" type="button" aria-pressed="true" title="Показать или скрыть BOM справа">BOM</button>
@@ -356,6 +361,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     <div class="fileName" id="fileName"></div>
     <button class="iconbtn" id="shareBtn" type="button" aria-label="Показать на телефоне" title="Показать на телефоне" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
     <button class="iconbtn" id="uiBtn" type="button" aria-label="Оформление"></button>
+    <button class="iconbtn" id="partScan" type="button" title="Сканировать компонент" aria-label="Сканировать компонент" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg></button>
     <button class="iconbtn" id="setBtn" type="button" aria-pressed="false" aria-controls="paneSet" aria-label="Настройки" title="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="10.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="3" y="16.5" width="18" height="3" rx="1.5" fill="currentColor"/></svg></button>
   </div>
 
@@ -390,7 +396,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     <div class="split" id="splitR" role="separator" aria-orientation="vertical" aria-label="Ширина правой панели" tabindex="0" title="Потяните, чтобы изменить ширину. Двойной клик — по умолчанию"></div>
     <aside class="rpanel" aria-label="BOM и настройки">
       <section class="rbody" id="paneBom" aria-label="BOM">
-      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn" type="button" id="partScan" title="Сканировать QR компонента" aria-label="Сканировать QR компонента" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg></button><button class="btn sm" type="button" id="copyBom">Копировать CSV</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
+      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn sm" type="button" id="copyBom">Копировать CSV</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
       <div class="bomhead">
         <input type="search" id="bq" placeholder="Фильтр: 100n, 0402, LM…" aria-label="Фильтр BOM" autocomplete="off" spellcheck="false">
       </div>
@@ -406,7 +412,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="note" id="verLine">Версия 0V1.6 · 10.10.2026</div>
+          <div class="note" id="verLine">Версия 0V1.7 · 10.10.2026</div>
         </div>
       </section>
     </aside>
@@ -416,7 +422,6 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
     <button class="mtab" type="button" role="tab" data-mt="info" aria-selected="true">Поиск</button>
     <button class="mtab" type="button" role="tab" data-mt="bom" aria-selected="false">BOM</button>
     <button class="mtab" type="button" role="tab" data-mt="set" aria-selected="false">Настройки</button>
-    <button class="btn mclose" type="button" id="mscan" aria-label="Открыть с компьютера по QR" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg></button>
     <button class="btn mclose" type="button" id="mclose" aria-label="Скрыть панель">✕</button>
   </div>
   <div class="status" id="status"><span>Файл не открыт</span></div>
@@ -424,7 +429,7 @@ html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico
 <div class="modal" id="shareDlg" hidden><div class="mcard" role="dialog" aria-modal="true" aria-labelledby="shareTtl">
   <b id="shareTtl">Показать на телефоне</b>
   <div class="qrbox" id="shareQr"></div>
-  <div class="note">На телефоне в BoardV: ☰ → значок QR или «Открыть с компьютера по QR» — и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.</div>
+  <div class="note">На телефоне в BoardV нажмите «Открыть с компьютера по QR» на стартовом экране и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.</div>
   <div class="ln" id="shareSt">Подготовка…</div>
   <div class="note" id="shareAddr"></div>
   <div class="btnrow" id="shareAsk" hidden><button type="button" class="btn primary" id="shareYes">Разрешить</button><button type="button" class="btn" id="shareNo">Отклонить</button></div>
@@ -1345,7 +1350,7 @@ var I18N = (function () {
     'Не удалось открыть установщик': 'Could not open the installer', 'установка не удалась': 'installation failed', 'сервер ответил': 'server replied',
     // ---- phone viewing
     'Показать на телефоне': 'Show on phone', 'Открыть с компьютера по QR': 'Open from PC via QR', 'Открыть с компьютера': 'Open from PC',
-    'На телефоне в BoardV: ☰ → значок QR или «Открыть с компьютера по QR» — и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'On the phone in BoardV: ☰ → QR icon or «Open from PC via QR», then point the camera. The phone and the PC must be on the same Wi-Fi network.',
+    'На телефоне в BoardV нажмите «Открыть с компьютера по QR» на стартовом экране и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'On the phone in BoardV tap «Open from PC via QR» on the start screen and point the camera. The phone and the PC must be on the same Wi-Fi network.',
     'Подготовка…': 'Preparing…', 'Разрешить': 'Allow', 'Отклонить': 'Decline', 'Отмена': 'Cancel',
     'Файл не передаётся. Телефон получает зашифрованную копию платы только для просмотра, держит её лишь в памяти и не может сохранить. Код одноразовый и действует 10 минут.': 'The file is not sent. The phone gets an encrypted, view-only copy of the board, keeps it in memory only and cannot save it. The code works once, for 10 minutes.',
     'Компьютер не подключён к сети. Подключите Wi-Fi или кабель к роутеру.': 'This PC is not on a network. Connect Wi-Fi or a cable to the router.',
@@ -1369,7 +1374,7 @@ var I18N = (function () {
     'На компьютере никто не подтвердил доступ.': 'Nobody confirmed access on the PC.', 'Отклонено': 'Declined', 'Компьютер отклонил подключение.': 'The PC declined the connection.',
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
-    'Сканирование компонентов': 'Scanning parts', 'Наведите камеру на QR или DataMatrix на катушке или пакете компонента': 'Point the camera at the QR or DataMatrix code on the reel or bag',
+    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Поиск и BOM': 'Search and BOM', 'Наведите камеру на QR или DataMatrix на катушке или пакете компонента': 'Point the camera at the QR or DataMatrix code on the reel or bag',
     'Сканировать QR компонента': 'Scan a part QR code', 'Есть в BOM:': 'In the BOM:', 'Нет в BOM этой платы': 'Not in this board BOM', 'Отсканирован': 'Scanned',
     'Номинал совпадает, но': 'Value matches, but', 'а нужен': 'needed', 'а нужно': 'needed', 'корпус': 'package', 'напряжение': 'voltage', 'диэлектрик': 'dielectric', 'допуск': 'tolerance',
     'мкФ': 'µF', 'нФ': 'nF', 'пФ': 'pF', 'МОм': 'MΩ', 'кОм': 'kΩ', 'Ом': 'Ω',
@@ -1578,6 +1583,9 @@ var PARTS = (function () {
   function num(t) { return parseFloat(String(t).replace(',', '.')); }
   function fromBom(text, refPrefix) {
     var t = ' ' + String(text || '') + ' ', o = {}, m;
+    t = t.replace(/(^|[^\d.,])(\d{1,3})[  ](\d{3})(?=\s*(?:мк|[pnuµμmпнм])\s*[FФ])/gi, '$1$2$3') // 1 000 мкФ
+         .replace(/([FФ])\s*[xXхХ*×]\s*(?=\d)/g, '$1 ')                                              // 10uFx16V
+         .replace(/(^|[^\d])[.,](\d)/g, function (a, b, c) { return b + '0.' + c; });              // .1uF
     var size = /(?:^|[^0-9])(01005|0201|0402|0603|0805|1206|1210|1812|2010|2220|2512)(?![0-9])/.exec(t); if (size) o.size = size[1];
     var ipc = /(?:CAP|RES)[CM]?(0603|1005|1608|2012|3216|3225|4532|5750|6432)/i.exec(t); if (ipc) o.size = METRIC[ipc[1]]; // IPC-7351 names: CAPC1005X55N
     var d = /\b(X7R|X5R|X7S|X6S|X7T|X8R|C0G|NP0|NPO|COG|Y5V|Z5U)\b/i.exec(t); if (d) o.diel = d[1].toUpperCase().replace(/NP0|NPO|COG/, 'C0G');
@@ -1586,7 +1594,18 @@ var PARTS = (function () {
     // capacitance: 100nF, 0.1uF, 100 нФ, 4u7, 4n7 (also without F when the line is a capacitor)
     var cf = /(?:^|[^0-9A-Za-z.,])(\d+(?:[.,]\d+)?)\s*(мк|[pnuµμmпнм])\s*(?:F|Ф)(?![A-Za-zА-Яа-я])/i.exec(t)
           || /(?:^|[^0-9A-Za-z.,])(\d+)(мк|[pnuµμпн])(\d+)(?:F|Ф)?(?![A-Za-zА-Яа-я0-9])/i.exec(t)
-          || (refPrefix === 'C' ? /(?:^|[^0-9A-Za-z.,])(\d+(?:[.,]\d+)?)\s*(мк|[pnuµμпн])(?![A-Za-zА-Яа-я0-9])/i.exec(t) : null);
+          || (refPrefix !== 'R' ? /(?:^|[^0-9A-Za-z.,])(\d+(?:[.,]\d+)?)\s*(мк|[pnuµμпн])(?![A-Za-zА-Яа-я0-9])/i.exec(t) : null);
+    if (!cf && refPrefix === 'C') { // a bare number on a capacitor line
+      var bare = /^\s*(\d+(?:[.,]\d+)?)\s*([FФ])?(?=\s|$|\/)/.exec(t);
+      if (bare && /^(?:01005|0201|0402|0603|0805|1206|1210|1812|2010|2220|2512)$/.test(bare[1])) bare = null; // that is the package
+      if (bare) {
+        o.kind = 'C';
+        if (bare[2]) o.val = num(bare[1]);                                                   // 1F supercap
+        else if (/^\d{3}$/.test(bare[1]) && !/0$/.test(bare[1])) o.val = cap3(bare[1]);     // EIA code: 104 = 100 nF
+        else if (/[.,]/.test(bare[1])) o.val = num(bare[1]) * 1e-6;                          // ГОСТ: 0,1 = 0,1 мкФ
+        else o.val = num(bare[1]) * 1e-12;                                                   // ГОСТ: 100 = 100 пФ
+      }
+    }
     if (cf) {
       var k = PFX[cf[2].toLowerCase()] || PFX[cf[2]];
       var val = cf.length > 3 && cf[3] !== undefined && /^\d+$/.test(cf[3] || '') ? num(cf[1] + '.' + cf[3]) : num(cf[1]);
@@ -1624,7 +1643,7 @@ var PARTS = (function () {
   function V() { return typeof I18N !== 'undefined' && I18N.get && I18N.get() === 'en' ? 'V' : 'В'; }
   function fmtVal(o) {
     if (!o) return '';
-    var v = o.val, u, units = o.kind === 'C' ? [[1e-6, 'мкФ'], [1e-9, 'нФ'], [1e-12, 'пФ']] : [[1e6, 'МОм'], [1e3, 'кОм'], [1, 'Ом']];
+    var v = o.val, u, units = o.kind === 'C' ? [[1, 'Ф'], [1e-6, 'мкФ'], [1e-9, 'нФ'], [1e-12, 'пФ']] : [[1e6, 'МОм'], [1e3, 'кОм'], [1, 'Ом']];
     for (var i = 0; i < units.length; i++) if (v >= units[i][0] * 0.999 || i === units.length - 1) { u = units[i]; break; }
     var n = v / u[0]; n = Math.round(n * 100) / 100;
     return [String(n).replace('.', DS()) + '\u00a0' + u[1], o.volt ? String(o.volt).replace('.', DS()) + '\u00a0' + V() : '', o.size || '', o.diel || '', o.tol ? '±' + String(o.tol).replace('.', DS()) + '%' : ''].filter(Boolean).join(' · ');
@@ -2222,7 +2241,16 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     bomIndex.sort(function (a, b) { return (a.prefix < b.prefix ? -1 : a.prefix > b.prefix ? 1 : 0) || (!a.value - !b.value) || natCmp(a.value, b.value) || natCmp(a.footprint, b.footprint); });
   }
   function groupByKey(k) { return bomByKey[k] || null; }
-  function bomMatch(g, q) { return !q || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
+  // "100n" finds 0.1uF, 100nF, 0,1 мкФ and 104 alike; "4k7" finds 4.7k and 4,7 кОм
+  var qpCache = { q: null, p: null };
+  function valEq(q, g) {
+    if (!q || !g) return false;
+    if (qpCache.q !== q) qpCache = { q: q, p: PARTS.fromBom(q) };
+    var qp = qpCache.p; return !!(qp && PARTS.match(qp, bomParams(g)).score);
+  }
+  function partGroup(p) { return bomByKey[(p.value || '').trim() + '\u0001' + (p.footprint || '').trim()]; }
+  function partHit(p, q) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0 || valEq(q, partGroup(p)); }
+  function bomMatch(g, q) { return !q || valEq(q, g) || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
   function bomCsv() {
     var rows = [['Comment', 'Footprint', 'Quantity', 'Designator', 'Description']];
     bomIndex.forEach(function (g) { rows.push([g.value, g.footprint, String(g.parts.length), g.parts.map(function (p) { return p.ref; }).join(', '), g.desc]); });
@@ -2235,7 +2263,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var box = $('list'), q = $('q').value.trim().toUpperCase(), out = [], LIM = 300;
     $('tabParts').setAttribute('aria-selected', String(S.tab === 'parts')); $('tabNets').setAttribute('aria-selected', String(S.tab === 'nets'))
     if (!M) { box.innerHTML = ''; return; }
-    var partMatch = function (p) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0; };
+    var partMatch = function (p) { return partHit(p, q); };
     $('tabParts').textContent = 'Детали ' + M.parts.filter(partMatch).length;
     $('tabNets').textContent = 'Цепи ' + netIndex.filter(function (n) { return !q || n.n.toUpperCase().indexOf(q) >= 0; }).length;
     if (S.tab === 'bom') {
@@ -2250,7 +2278,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       box.innerHTML = out.join(''); return;
     }
     if (S.tab === 'parts') {
-      var ps = M.parts.filter(function (p) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0; });
+      var ps = M.parts.filter(function (p) { return partHit(p, q); });
       ps.sort(function (a, b) { var ea = a.ref.toUpperCase() === q, eb = b.ref.toUpperCase() === q; return (eb - ea) || natCmp(a.ref, b.ref); });
       ps.slice(0, LIM).forEach(function (p) { out.push('<div class="row' + (p === S.part ? ' on' : '') + '" role="option" tabindex="0" data-part="' + esc(p.ref) + '"><b>' + esc(p.ref) + '</b><span>' + esc(p.value || p.footprint || '') + '</span><i>' + (p.bottom ? '↓ ' : '') + p.pins.length + '</i></div>'); });
       if (ps.length > LIM) out.push('<div class="more">Ещё ' + (ps.length - LIM) + '. Уточните поиск.</div>');
@@ -2264,7 +2292,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       if (ns.length > LIM) out.push('<div class="more">Ещё ' + (ns.length - LIM) + '. Уточните поиск.</div>');
       if (!ns.length) out.push('<div class="more">Ничего не найдено.</div>');
       $('tabNets').textContent = 'Цепи ' + ns.length;
-      $('tabParts').textContent = 'Детали ' + M.parts.filter(function (p) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0; }).length;
+      $('tabParts').textContent = 'Детали ' + M.parts.filter(function (p) { return partHit(p, q); }).length;
     }
     box.innerHTML = out.join('');
   }
@@ -2366,7 +2394,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   splitter($('splitL'), 'lw', 1); splitter($('splitR'), 'rw', -1);
   function setSettings(open) { SETOPEN = !!open; KEYCAP = null; if (SETOPEN) { GROUPS_OPEN = {}; buildSettings(); } applyLayout(false); } // closing brings the BOM back exactly as it was
   $('bomToggle').onclick = function () { if (SETOPEN) { SETOPEN = false; LAY.bom = true; } else LAY.bom = !LAY.bom; applyLayout(true); };
-  $('setBtn').onclick = function () { setSettings(!SETOPEN); };
+  $('setBtn').onclick = function () { if (IS_PHONE) { var de = document.documentElement; openSheet(de.classList.contains('sheet-open') && de.dataset.mtab === 'set' ? null : 'set'); return; } setSettings(!SETOPEN); };
   $('setClose').onclick = function () { setSettings(false); $('setBtn').focus(); };
   $('bomClose').onclick = function () { LAY.bom = false; applyLayout(true); $('bomToggle').focus(); };
   window.addEventListener('resize', function () { applyLayout(false); });
@@ -2808,7 +2836,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (r.best) { PART_OK[r.best.g.key] = 1; renderBom(); if (navigator.vibrate) try { navigator.vibrate(35); } catch (e) {} }
   }
   $('partScan').onclick = function () { openScanner('part'); };
-  function updPartScan() { $('partScan').hidden = !(CAN_CAM && M); }
+  function updPartScan() { $('partScan').hidden = !(IS_PHONE && CAN_CAM && M); } // reels are scanned with the phone; the PC has no use for it
 
   function setShared(on) { // view-only copy: nothing leaves the phone, no screenshots
     if (window.BoardVAndroid && window.BoardVAndroid.setSecure) try { window.BoardVAndroid.setSecure(!!on); } catch (e) {}
@@ -2817,9 +2845,8 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   }
   $('scanStop').onclick = closeScanner;
   $('scanAgain').onclick = function () { openScanner(SCAN_MODE); };
-  if (CAN_SCAN) { $('scanEmpty').hidden = false; $('mscan').hidden = false; }
+  if (CAN_SCAN) $('scanEmpty').hidden = false;
   $('scanEmpty').onclick = function (e) { e.stopPropagation(); openScanner('board'); };
-  $('mscan').onclick = function () { openScanner('board'); };
 
   /* ---------- files opened from the system (double-click, "Open with") ---------- */
   if ('launchQueue' in window && window.launchQueue.setConsumer) {
@@ -2850,7 +2877,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (t === 'bom' || t === 'set') { var was = SETOPEN; SETOPEN = t === 'set'; if (SETOPEN) { if (!was) GROUPS_OPEN = {}; buildSettings(); } applyLayout(false); }
   }
   function pickedOnPhone() { if (IS_PHONE) openSheet(null); }
-  $('mmenu').onclick = function () { openSheet(document.documentElement.classList.contains('sheet-open') ? null : (document.documentElement.dataset.mtab || 'info')); };
+  $('mmenu').onclick = function () { var de = document.documentElement, t = de.dataset.mtab; openSheet(de.classList.contains('sheet-open') && t !== 'set' ? null : (t && t !== 'set' ? t : 'info')); }; // settings live behind the three bars on the right
   $('mclose').onclick = function () { openSheet(null); };
   document.querySelectorAll('#msheet .mtab').forEach(function (b) { b.onclick = function () { openSheet(b.dataset.mt); }; });
   $('mfit').onclick = function () { fit(); req(); };

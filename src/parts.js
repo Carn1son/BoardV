@@ -153,6 +153,9 @@ var PARTS = (function () {
   function num(t) { return parseFloat(String(t).replace(',', '.')); }
   function fromBom(text, refPrefix) {
     var t = ' ' + String(text || '') + ' ', o = {}, m;
+    t = t.replace(/(^|[^\d.,])(\d{1,3})[  ](\d{3})(?=\s*(?:мк|[pnuµμmпнм])\s*[FФ])/gi, '$1$2$3') // 1 000 мкФ
+         .replace(/([FФ])\s*[xXхХ*×]\s*(?=\d)/g, '$1 ')                                              // 10uFx16V
+         .replace(/(^|[^\d])[.,](\d)/g, function (a, b, c) { return b + '0.' + c; });              // .1uF
     var size = /(?:^|[^0-9])(01005|0201|0402|0603|0805|1206|1210|1812|2010|2220|2512)(?![0-9])/.exec(t); if (size) o.size = size[1];
     var ipc = /(?:CAP|RES)[CM]?(0603|1005|1608|2012|3216|3225|4532|5750|6432)/i.exec(t); if (ipc) o.size = METRIC[ipc[1]]; // IPC-7351 names: CAPC1005X55N
     var d = /\b(X7R|X5R|X7S|X6S|X7T|X8R|C0G|NP0|NPO|COG|Y5V|Z5U)\b/i.exec(t); if (d) o.diel = d[1].toUpperCase().replace(/NP0|NPO|COG/, 'C0G');
@@ -161,7 +164,18 @@ var PARTS = (function () {
     // capacitance: 100nF, 0.1uF, 100 нФ, 4u7, 4n7 (also without F when the line is a capacitor)
     var cf = /(?:^|[^0-9A-Za-z.,])(\d+(?:[.,]\d+)?)\s*(мк|[pnuµμmпнм])\s*(?:F|Ф)(?![A-Za-zА-Яа-я])/i.exec(t)
           || /(?:^|[^0-9A-Za-z.,])(\d+)(мк|[pnuµμпн])(\d+)(?:F|Ф)?(?![A-Za-zА-Яа-я0-9])/i.exec(t)
-          || (refPrefix === 'C' ? /(?:^|[^0-9A-Za-z.,])(\d+(?:[.,]\d+)?)\s*(мк|[pnuµμпн])(?![A-Za-zА-Яа-я0-9])/i.exec(t) : null);
+          || (refPrefix !== 'R' ? /(?:^|[^0-9A-Za-z.,])(\d+(?:[.,]\d+)?)\s*(мк|[pnuµμпн])(?![A-Za-zА-Яа-я0-9])/i.exec(t) : null);
+    if (!cf && refPrefix === 'C') { // a bare number on a capacitor line
+      var bare = /^\s*(\d+(?:[.,]\d+)?)\s*([FФ])?(?=\s|$|\/)/.exec(t);
+      if (bare && /^(?:01005|0201|0402|0603|0805|1206|1210|1812|2010|2220|2512)$/.test(bare[1])) bare = null; // that is the package
+      if (bare) {
+        o.kind = 'C';
+        if (bare[2]) o.val = num(bare[1]);                                                   // 1F supercap
+        else if (/^\d{3}$/.test(bare[1]) && !/0$/.test(bare[1])) o.val = cap3(bare[1]);     // EIA code: 104 = 100 nF
+        else if (/[.,]/.test(bare[1])) o.val = num(bare[1]) * 1e-6;                          // ГОСТ: 0,1 = 0,1 мкФ
+        else o.val = num(bare[1]) * 1e-12;                                                   // ГОСТ: 100 = 100 пФ
+      }
+    }
     if (cf) {
       var k = PFX[cf[2].toLowerCase()] || PFX[cf[2]];
       var val = cf.length > 3 && cf[3] !== undefined && /^\d+$/.test(cf[3] || '') ? num(cf[1] + '.' + cf[3]) : num(cf[1]);
@@ -199,7 +213,7 @@ var PARTS = (function () {
   function V() { return typeof I18N !== 'undefined' && I18N.get && I18N.get() === 'en' ? 'V' : 'В'; }
   function fmtVal(o) {
     if (!o) return '';
-    var v = o.val, u, units = o.kind === 'C' ? [[1e-6, 'мкФ'], [1e-9, 'нФ'], [1e-12, 'пФ']] : [[1e6, 'МОм'], [1e3, 'кОм'], [1, 'Ом']];
+    var v = o.val, u, units = o.kind === 'C' ? [[1, 'Ф'], [1e-6, 'мкФ'], [1e-9, 'нФ'], [1e-12, 'пФ']] : [[1e6, 'МОм'], [1e3, 'кОм'], [1, 'Ом']];
     for (var i = 0; i < units.length; i++) if (v >= units[i][0] * 0.999 || i === units.length - 1) { u = units[i]; break; }
     var n = v / u[0]; n = Math.round(n * 100) / 100;
     return [String(n).replace('.', DS()) + '\u00a0' + u[1], o.volt ? String(o.volt).replace('.', DS()) + '\u00a0' + V() : '', o.size || '', o.diel || '', o.tol ? '±' + String(o.tol).replace('.', DS()) + '%' : ''].filter(Boolean).join(' · ');

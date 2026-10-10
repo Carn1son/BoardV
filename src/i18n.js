@@ -79,7 +79,7 @@ var I18N = (function () {
     'Не удалось открыть установщик': 'Could not open the installer', 'установка не удалась': 'installation failed', 'сервер ответил': 'server replied',
     // ---- phone viewing
     'Показать на телефоне': 'Show on phone', 'Открыть с компьютера по QR': 'Open from PC via QR', 'Открыть с компьютера': 'Open from PC',
-    'На телефоне в BoardV: ☰ → значок QR или «Открыть с компьютера по QR» — и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'On the phone in BoardV: ☰ → QR icon or «Open from PC via QR», then point the camera. The phone and the PC must be on the same Wi-Fi network.',
+    'На телефоне в BoardV нажмите «Открыть с компьютера по QR» на стартовом экране и наведите камеру. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'On the phone in BoardV tap «Open from PC via QR» on the start screen and point the camera. The phone and the PC must be on the same Wi-Fi network.',
     'Подготовка…': 'Preparing…', 'Разрешить': 'Allow', 'Отклонить': 'Decline', 'Отмена': 'Cancel',
     'Файл не передаётся. Телефон получает зашифрованную копию платы только для просмотра, держит её лишь в памяти и не может сохранить. Код одноразовый и действует 10 минут.': 'The file is not sent. The phone gets an encrypted, view-only copy of the board, keeps it in memory only and cannot save it. The code works once, for 10 minutes.',
     'Компьютер не подключён к сети. Подключите Wi-Fi или кабель к роутеру.': 'This PC is not on a network. Connect Wi-Fi or a cable to the router.',
@@ -103,7 +103,7 @@ var I18N = (function () {
     'На компьютере никто не подтвердил доступ.': 'Nobody confirmed access on the PC.', 'Отклонено': 'Declined', 'Компьютер отклонил подключение.': 'The PC declined the connection.',
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
-    'Сканирование компонентов': 'Scanning parts', 'Наведите камеру на QR или DataMatrix на катушке или пакете компонента': 'Point the camera at the QR or DataMatrix code on the reel or bag',
+    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Поиск и BOM': 'Search and BOM', 'Наведите камеру на QR или DataMatrix на катушке или пакете компонента': 'Point the camera at the QR or DataMatrix code on the reel or bag',
     'Сканировать QR компонента': 'Scan a part QR code', 'Есть в BOM:': 'In the BOM:', 'Нет в BOM этой платы': 'Not in this board BOM', 'Отсканирован': 'Scanned',
     'Номинал совпадает, но': 'Value matches, but', 'а нужен': 'needed', 'а нужно': 'needed', 'корпус': 'package', 'напряжение': 'voltage', 'диэлектрик': 'dielectric', 'допуск': 'tolerance',
     'мкФ': 'µF', 'нФ': 'nF', 'пФ': 'pF', 'МОм': 'MΩ', 'кОм': 'kΩ', 'Ом': 'Ω',

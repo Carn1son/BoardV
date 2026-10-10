@@ -139,10 +139,23 @@ table.bomt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .bomt .c-r .b { color: var(--muted); text-decoration: underline dashed; text-underline-offset: 3px; }
 .bomt .c-r { color: var(--ui-grp); }
 .bomt th.c-q button { text-align: right; }
+#paneBom { container-type: inline-size; }
+.sethead.bomtop #bomCount { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sethead.bomtop .btn { flex: none; }
+@container (max-width: 360px) { #bomExport { display: none; } }
 .bomt .c-k { width: 1%; padding-right: 0; text-align: center; }
 .bomt td.c-k .chk { color: #22b35e; font-weight: 700; }
+.bomt td.c-k .chk.part { color: #e0a020; }
+#bomList .spn.warn { color: #e0a020; }
+.ctxmenu { position: fixed; z-index: 45; min-width: 220px; padding: 6px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); box-shadow: 0 14px 40px rgb(0 0 0 / .45); display: grid; gap: 2px; }
+.ctxmenu[hidden] { display: none; }
+.ctxmenu .ttl { font-size: 11px; color: var(--muted); padding: 6px 10px 4px; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
+.ctxmenu button { font: inherit; text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: none; color: var(--fg); cursor: pointer; display: flex; gap: 10px; align-items: center; }
+.ctxmenu button:hover, .ctxmenu button:focus-visible { background: var(--panel); outline: none; }
+.ctxmenu button.bad { color: #e8665a; }
+html.mobile .ctxmenu button { padding: 13px 14px; font-size: 15px; }
 .bomt th.c-k button { text-align: center; padding-inline: 6px; }
-.side { border-right: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; min-width: 0; }
+.side { border-right: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; }
 .search { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
 input[type=search] { font: inherit; font-family: var(--f-mono); padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--fg); width: 100%; box-sizing: border-box; }
 input[type=search]:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
@@ -172,6 +185,10 @@ table.pins td:first-child { color: var(--muted); width: 1%; white-space: nowrap;
 .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 .netlink.nc { color: var(--muted); font-style: italic; } /* UI colour, independent of the board's N/C outline colour */
 .list { overflow: auto; min-height: 0; }
+.sscroll { overflow: auto; min-height: 0; overscroll-behavior: contain; }
+.sscroll .card { max-height: none; overflow: visible; }
+.sscroll .list { overflow: visible; }
+html.mobile .sscroll { overflow: visible; }
 .row { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 5px 12px; cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
 .row:hover { background: var(--panel2); }
 .row.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -421,8 +438,10 @@ html.mobile .cp-sv { height: 210px; }
           <button class="tab" role="tab" id="tabNets" aria-selected="false" type="button">Цепи</button>
         </div>
       </div>
-      <div class="card" id="card" aria-live="polite"></div>
-      <div class="list" id="list" role="listbox" aria-label="Результаты"></div>
+      <div class="sscroll" id="sscroll">
+        <div class="card" id="card" aria-live="polite"></div>
+        <div class="list" id="list" role="listbox" aria-label="Результаты"></div>
+      </div>
     </aside>
     <div class="split" id="splitL" role="separator" aria-orientation="vertical" aria-label="Ширина левой панели" tabindex="0" title="Потяните, чтобы изменить ширину. Двойной клик — по умолчанию"></div>
     <div class="stage" id="stage">
@@ -443,7 +462,7 @@ html.mobile .cp-sv { height: 210px; }
     <div class="split" id="splitR" role="separator" aria-orientation="vertical" aria-label="Ширина правой панели" tabindex="0" title="Потяните, чтобы изменить ширину. Двойной клик — по умолчанию"></div>
     <aside class="rpanel" aria-label="BOM и настройки">
       <section class="rbody" id="paneBom" aria-label="BOM">
-      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn sm" type="button" id="copyBom">Копировать CSV</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
+      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn sm" type="button" id="bomExport" title="Таблица Excel: фактическое наименование (что отсканировано), номинал, корпус, количество" hidden>Выгрузить BOM</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
       <div class="bomhead">
         <input type="search" id="bq" placeholder="Фильтр: 100n, 0402, LM…" aria-label="Фильтр BOM" autocomplete="off" spellcheck="false">
       </div>
@@ -459,7 +478,7 @@ html.mobile .cp-sv { height: 210px; }
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="note" id="verLine">Версия 0V1.12 · 10.10.2026</div>
+          <div class="note" id="verLine">Версия 0V1.13 · 10.10.2026</div>
         </div>
       </section>
     </aside>
@@ -472,6 +491,7 @@ html.mobile .cp-sv { height: 210px; }
   </div>
   <div class="status" id="status"><span>Файл не открыт</span></div>
 </div>
+<div class="ctxmenu" id="ctxMenu" role="menu" hidden></div>
 <div class="cpick" id="cpick" hidden><div class="cp-card" role="dialog" aria-modal="true" aria-labelledby="cpTtl">
   <div class="cp-grab"></div>
   <div class="cp-head"><div class="cp-prev" title="Было / стало"><i id="cpNew"></i></div><b id="cpTtl">Цвет</b></div>
@@ -1831,6 +1851,12 @@ var I18N = (function () {
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
     'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project',
+    'Выгрузить BOM': 'Export BOM', 'Таблица Excel: фактическое наименование (что отсканировано), номинал, корпус, количество': 'Excel table: actual part (what was scanned), value, package, quantity',
+    'Ошибочный компонент — снять отметку': 'Wrong part — remove the mark', 'Подходит — отметить зелёным': 'It fits — mark green', 'Отметить как найденный': 'Mark as found',
+    'Подходит частично:': 'Fits partly:', 'Отмечен жёлтым — заменится, если найдётся подходящий.': 'Marked yellow — replaced when a matching one is scanned.',
+    'BOM выгружен:': 'BOM exported:', 'отметка снята —': 'mark removed —', 'подтверждено —': 'confirmed —',
+    'Фактическое наименование': 'Actual part', 'Номинал / комментарий': 'Value / comment', 'Количество': 'Quantity', 'Обозначения': 'Designators', 'Примечание': 'Note', 'Описание': 'Description',
+    'а нужен': 'needed', 'Отсканирован': 'Scanned',
     'Телефон подключён. Сканируйте компоненты телефоном — найденные отметятся в BOM.': 'The phone is connected. Scan parts with the phone and the ones found are checked in the BOM.',
     'Телефон не на связи. Он вернётся сам, когда BoardV на телефоне снова откроется в той же сети.': 'The phone is not responding. It comes back by itself when BoardV is open on the phone again on the same network.',
     'Телефон не на связи': 'The phone is not responding', 'Телефон снова на связи': 'The phone is back', 'Телефон отключился.': 'The phone disconnected.', 'Телефон отключился': 'The phone disconnected', 'Связь с телефоном потеряна': 'Lost the phone', 'Компьютер не отвечает — связь закрыта': 'The PC does not answer, the link is closed',
@@ -2246,7 +2272,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     ['rotate', 'Поворот на 90°'], ['fit', 'Вписать плату'], ['clear', 'Сбросить выбор / закрыть настройки'], ['zoomIn', 'Приблизить'], ['zoomOut', 'Отдалить'],
     ['bom', 'Показать / скрыть BOM'], ['settings', 'Открыть / закрыть настройки'], ['ui', 'Оформление: День / Ночь'], ['values', 'Номиналы на плате вкл/выкл'],
     ['pinNums', 'Номера пинов вкл/выкл'], ['open', 'Открыть файл']];
-  var DEF_KEYS = { search: ['Slash', 'Ctrl+KeyF'], flip: ['Space'], top: [], bottom: [], both: ['KeyB'], cycle: ['KeyL'], rotate: ['KeyR'], fit: ['KeyF'], clear: ['Escape'],
+  var DEF_KEYS = { search: ['Ctrl+KeyF'], flip: ['Space'], top: [], bottom: [], both: ['KeyB'], cycle: ['KeyL'], rotate: ['KeyR'], fit: ['KeyF'], clear: ['Escape'],
     zoomIn: ['Equal', 'NumpadAdd'], zoomOut: ['Minus', 'NumpadSubtract'], bom: [], settings: [], ui: [], values: [], pinNums: [], open: ['Ctrl+KeyO'] };
   var KEYNAME = { Space: 'Пробел', Escape: 'Esc', Slash: '/', Backslash: '\\', Period: '.', Comma: ',', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']',
     Minus: '-', Equal: '=', Backquote: '`', Enter: 'Enter', Tab: 'Tab', Backspace: '⌫', Delete: 'Del', Insert: 'Ins', Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn',
@@ -2261,6 +2287,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function mergeCfg(src) {
     var c = { v: 3, colors: Object.assign({}, DEF_COLORS), fx: Object.assign({}, DEF_FX), nets: [], keys: JSON.parse(JSON.stringify(DEF_KEYS)) };
     if (src && src.keys && typeof src.keys === 'object') Object.keys(DEF_KEYS).forEach(function (a) { if (Array.isArray(src.keys[a])) c.keys[a] = src.keys[a].filter(function (k) { return typeof k === 'string' && k; }); });
+    if (c.keys.search.join() === 'Slash,Ctrl+KeyF') c.keys.search = ['Ctrl+KeyF']; // old default: search is Ctrl+F now, as in browsers
     function put(obj, defs, k, v) { k = LEGACY[k] || k; if (k in defs && typeof v === typeof defs[k]) obj[k] = v; }
     if (src && src.colors) Object.keys(src.colors).forEach(function (k) { if (/^#[0-9a-f]{6}$/i.test(src.colors[k])) put(c.colors, DEF_COLORS, k, src.colors[k]); });
     var OLD_ANIM = { bomBreath: 1, bomGlow: 1, partGlow: 1, selBreath: 1, selGlow: 1, netPulse: 1, netRipple: 1, netGlow: 1 };
@@ -2673,14 +2700,15 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       if (g.footprint || g.desc) h += '<dl class="kv">' + (g.footprint ? '<dt>Корпус</dt><dd>' + esc(g.footprint) + '</dd>' : '') + (g.desc ? '<dt>Описание</dt><dd>' + esc(g.desc) + '</dd>' : '') + '</dl>';
       h += '<div class="reflist">' + g.parts.map(function (p) { return '<button type="button" class="netlink ' + (p.bottom ? 'gb' : 'gt') + '" data-part=""' + esc(p.ref) + '" title="' + (p.bottom ? 'снизу' : 'сверху') + '">' + esc(p.ref) + '</button>'; }).join('') + '</div>';
     }
-    if (!S.part && !S.net && !S.group) {
+    if (!S.part && !S.net && !S.group && S.tab !== 'nets') { // the board summary belongs to the Parts tab
       var withVal = M.parts.filter(function (p) { return p.value; }).length;
       h += '<div class="eyebrow">Плата</div><dl class="kv"><dt>Деталей</dt><dd>' + M.parts.length + ' (снизу ' + M.parts.filter(function (p) { return p.bottom; }).length + ')</dd><dt>Пинов</dt><dd>' + M.nPins + '</dd><dt>Цепей</dt><dd>' + M.nNets + '</dd><dt>Размер</dt><dd>' + (M.w * 0.0254).toFixed(1) + ' × ' + (M.h * 0.0254).toFixed(1) + ' мм</dd><dt>Номиналы</dt><dd>' + withVal + ' из ' + M.parts.length + '</dd></dl>';
       if (!withVal) h += '<div class="note warn">Номиналов в файле нет. Добавьте BOM или файл расстановки (CSV) — перетащите его сюда или откройте вместе с платой.</div>';
       h += '<div class="legend"><span><i style="background:var(--ui-pin)"></i>сигнал</span><span><i style="background:var(--ui-sel)"></i>выбранная цепь</span><span><i style="background:var(--pwr)"></i>питание</span><span><i style="background:var(--gnd)"></i>земля</span><span><i style="background:none;box-shadow:inset 0 0 0 1.5px var(--nc)"></i>N/C — не подключён</span></div>';
-      if (!IS_PHONE) { // a phone has no keyboard
-        h += '<div class="keys"><kbd>ЛКМ</kbd><span>выбор пин/компонент</span>';
-        ACTIONS.forEach(function (a) { // every action that has a key, in the same words as the hotkey settings
+      if (!IS_PHONE) { // a phone has no keyboard; only the keys people need most
+        h += '<div class="keys">';
+        ACTIONS.forEach(function (a) {
+          if (['search', 'flip', 'cycle', 'rotate', 'fit', 'clear'].indexOf(a[0]) < 0) return;
           var ks = CFG.keys[a[0]] || []; if (ks.length) h += '<kbd>' + esc(keyLabel(ks[0])) + '</kbd><span>' + esc(a[1]) + '</span>';
         });
         h += '</div>';
@@ -2727,9 +2755,51 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function partGroup(p) { return bomByKey[(p.value || '').trim() + '\u0001' + (p.footprint || '').trim()]; }
   function partHit(p, q) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0 || valEq(q, partGroup(p)); }
   function bomMatch(g, q) { return !q || valEq(q, g) || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
+  function xmlEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ''); }
+  function xlsx(head, rows, styles, widths) { // a small .xlsx built here: one sheet, a bold header, green / yellow rows
+    function col(i) { var s = ''; i++; while (i) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; } return s; }
+    function row(cells, r, st) { return '<row r="' + r + '">' + cells.map(function (c, i) { var ref = col(i) + r; return typeof c === 'number' ? '<c r="' + ref + '" s="' + st + '"><v>' + c + '</v></c>' : '<c r="' + ref + '" s="' + st + '" t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(c) + '</t></is></c>'; }).join('') + '</row>'; }
+    var sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>' +
+      widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join('') + '</cols><sheetData>' +
+      row(head, 1, 1) + rows.map(function (r, i) { return row(r, i + 2, styles[i] || 0); }).join('') + '</sheetData><autoFilter ref="A1:' + col(head.length - 1) + (rows.length + 1) + '"/></worksheet>';
+    var styleXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+      '<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7E9EC"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9F2E1"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF1C7"/></patternFill></fill></fills>' +
+      '<borders count="2"><border/><border><left style="thin"><color rgb="FFC9CDD2"/></left><right style="thin"><color rgb="FFC9CDD2"/></right><top style="thin"><color rgb="FFC9CDD2"/></top><bottom style="thin"><color rgb="FFC9CDD2"/></bottom></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4">' +
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
+      '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>' +
+      '<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
+      '<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    return BV.zip([
+      { name: '[Content_Types].xml', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
+      { name: '_rels/.rels', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { name: 'xl/workbook.xml', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="BOM" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">BOM!$A$1:$' + col(head.length - 1) + '$' + (rows.length + 1) + '</definedName></definedNames></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+      { name: 'xl/worksheets/sheet1.xml', text: sheet },
+      { name: 'xl/styles.xml', text: styleXml }
+    ]);
+  }
+  function exportBom() { // what was scanned, next to what the board wants
+    if (!bomIndex) return;
+    var head = ['Фактическое наименование', 'Номинал / комментарий', 'Корпус', 'Количество', 'Обозначения', 'Описание', 'Примечание'].map(I18N.tr);
+    var list = bomIndex.slice().sort(function (a, b) { var ra = PART_OK[a.key] ? (PART_OK[a.key].ok ? 2 : 1) : 0, rb = PART_OK[b.key] ? (PART_OK[b.key].ok ? 2 : 1) : 0; return rb - ra; });
+    var rows = [], st = [];
+    list.forEach(function (g) {
+      var mk = PART_OK[g.key];
+      rows.push([mk ? mk.pns.join(', ') : '', g.value, g.footprint, g.parts.length, g.parts.map(function (p) { return p.ref; }).join(', '), g.desc, mk ? (mk.ok ? '' : I18N.tr('Подходит частично: ' + mk.warn)) : '']);
+      st.push(mk ? (mk.ok ? 2 : 3) : 0);
+    });
+    var data = xlsx(head, rows, st, [30, 22, 18, 11, 40, 40, 30]);
+    var base = String((src.files && src.files[0]) || 'board').replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]+/g, '_');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); a.download = base + ' — BOM.xlsx';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    flash('BOM выгружен: ' + a.download);
+  }
   function bomCsv() {
     var sc = Object.keys(PART_OK).length > 0, rows = [['Comment', 'Footprint', 'Quantity', 'Designator', 'Description'].concat(sc ? ['Scanned'] : [])];
-    bomIndex.forEach(function (g) { rows.push([g.value, g.footprint, String(g.parts.length), g.parts.map(function (p) { return p.ref; }).join(', '), g.desc].concat(sc ? [(PART_OK[g.key] || []).join(', ')] : [])); });
+    bomIndex.forEach(function (g) { rows.push([g.value, g.footprint, String(g.parts.length), g.parts.map(function (p) { return p.ref; }).join(', '), g.desc].concat(sc ? [PART_OK[g.key] ? PART_OK[g.key].pns.join(', ') : ''] : [])); });
     return rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
   }
   function buildNetIndex() { buildBom(); buildNetIndex2(); }
@@ -2745,7 +2815,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (S.tab === 'bom') {
       var gs = bomIndex.filter(function (g) { return bomMatch(g, q); });
       var total = gs.reduce(function (a, g) { return a + g.parts.length; }, 0);
-      out.push('<div class="listbar"><span>' + gs.length + ' позиций · ' + total + ' шт.</span><button class="btn sm" type="button" id="copyBom">Копировать CSV</button></div>');
+      out.push('<div class="listbar"><span>' + gs.length + ' позиций · ' + total + ' шт.</span></div>');
       gs.forEach(function (g) {
         out.push('<div class="row bom' + (g.key === S.group ? ' on' : '') + '" role="option" tabindex="0" data-group="' + esc(g.key) + '"><div class="v">' + esc(g.value || '— без номинала') + '<small>' + esc(g.footprint || 'корпус не указан') + '</small></div><div class="qty">' + g.parts.length + '</div><div class="refs">' + esc(g.parts.map(function (p) { return p.ref; }).join(', ')) + '</div></div>');
       });
@@ -2794,8 +2864,8 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (e.key === 'Enter') { var r = $('list').querySelector('.row'); if (r) activateRow(r); }
     if (e.key === 'Escape') { $('q').value = ''; renderList(); $('q').blur(); }
   });
-  $('tabParts').onclick = function () { S.tab = 'parts'; renderList(); };
-  $('tabNets').onclick = function () { S.tab = 'nets'; renderList(); };
+  $('tabParts').onclick = function () { S.tab = 'parts'; renderList(); renderCard(); };
+  $('tabNets').onclick = function () { S.tab = 'nets'; renderList(); renderCard(); };
 
 
   /* ---------- BOM panel ---------- */
@@ -2805,10 +2875,10 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var box = $('bomList'); if (!M || !bomIndex) { box.innerHTML = ''; return; }
     var q = $('bq').value.trim().toUpperCase();
     var gs = bomIndex.filter(function (g) { return bomMatch(g, q); });
-    var anyGot = Object.keys(PART_OK).length > 0, cols = anyGot ? [['got', '✓', 'c-k']].concat(BOM_COLS) : BOM_COLS;
+    var anyGot = Object.keys(PART_OK).length > 0, rank = function (g) { var c = PART_OK[g.key]; return c ? (c.ok ? 2 : 1) : 0; }, cols = anyGot ? [['got', '✓', 'c-k']].concat(BOM_COLS) : BOM_COLS;
     if (BS.key === 'got' && !anyGot) BS = { key: 'ref', dir: 1 };
     var order = {}; gs.forEach(function (g, i) { order[g.key] = i; });
-    var cmp = { ref: function (a, b) { return 0; }, got: function (a, b) { return (!!PART_OK[b.key] - !!PART_OK[a.key]) || 0; }, value: function (a, b) { return (!a.value - !b.value) || natCmp(a.value, b.value); },
+    var cmp = { ref: function (a, b) { return 0; }, got: function (a, b) { return rank(b) - rank(a); }, value: function (a, b) { return (!a.value - !b.value) || natCmp(a.value, b.value); },
                 fp: function (a, b) { return natCmp(a.footprint, b.footprint) || natCmp(a.value, b.value); },
                 qty: function (a, b) { return a.parts.length - b.parts.length; } }[BS.key];
     if (BS.key !== 'ref') gs = gs.slice().sort(function (a, b) { return cmp(a, b) * BS.dir || order[a.key] - order[b.key]; }); // ties keep the board order
@@ -2819,8 +2889,8 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     cols.forEach(function (c) { h += '<th class="' + c[2] + '"' + (BS.key === c[0] ? ' aria-sort="' + (BS.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" data-sort="' + c[0] + '">' + c[1] + (BS.key === c[0] ? (BS.dir > 0 ? ' ↑' : ' ↓') : '') + '</button></th>'; });
     h += '</tr></thead><tbody>';
     gs.forEach(function (g) {
-      var got = !!PART_OK[g.key], cls = (g.key === S.group ? 'on' : '') + (got ? ' got' : '');
-      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '>' + (anyGot ? '<td class="c-k">' + (got ? '<span class="chk" title="Отсканирован">✓</span>' : '') + '</td>' : '') + '<td class="c-v">' + esc(g.value || '—') + (got && PART_OK[g.key].length ? '<span class="spn" title="Отсканировано">' + esc(PART_OK[g.key].join(', ')) + '</span>' : '') + '</td><td class="c-f">' + esc(g.footprint || '—') +
+      var mk = PART_OK[g.key], got = !!mk, cls = (g.key === S.group ? 'on' : '') + (got ? ' got' : '');
+      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '>' + (anyGot ? '<td class="c-k">' + (got ? '<span class="chk' + (mk.ok ? '' : ' part') + '" title="' + (mk.ok ? 'Отсканирован' : 'Подходит частично: ' + esc(mk.warn)) + '">✓</span>' : '') + '</td>' : '') + '<td class="c-v">' + esc(g.value || '—') + (got && mk.pns.length ? '<span class="spn" title="Отсканировано">' + esc(mk.pns.join(', ')) + '</span>' : '') + (got && !mk.ok && mk.warn ? '<span class="spn warn">' + esc(mk.warn) + '</span>' : '') + '</td><td class="c-f">' + esc(g.footprint || '—') +
            (g.desc ? '<div class="note">' + esc(g.desc) + '</div>' : '') + '</td><td class="c-q">' + g.parts.length + '</td><td class="c-r">' +
            g.parts.map(function (p) { return p.bottom ? '<span class="b">' + esc(p.ref) + '</span>' : esc(p.ref); }).join(', ') + '</td></tr>';
     });
@@ -2832,12 +2902,50 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   $('bomList').addEventListener('click', function (e) {
     var sb = e.target.closest('button[data-sort]');
     if (sb) { var k = sb.dataset.sort; if (BS.key === k) BS.dir = -BS.dir; else { BS.key = k; BS.dir = k === 'qty' ? -1 : 1; } renderBom(); return; } // ✓: found first, again: not found first
+    if (Date.now() - ctxEat < 700) return; // the long press opened the menu; this is not a pick
     var tr = e.target.closest('tr[data-group]'); if (tr) { pickedOnPhone(); selectGroup(tr.dataset.group); }
   });
   $('bomList').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var tr = e.target.closest('tr[data-group]'); if (tr) selectGroup(tr.dataset.group); } });
   $('bq').addEventListener('input', renderBom);
   $('bq').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var tr = $('bomList').querySelector('tr[data-group]'); if (tr) selectGroup(tr.dataset.group); } if (e.key === 'Escape') { $('bq').value = ''; renderBom(); } });
-  $('copyBom').onclick = function () { if (bomIndex) copyText(bomCsv(), 'BOM скопирован. Вставьте в Excel или Google Таблицы.'); };
+  $('bomExport').onclick = exportBom;
+  var ctxKey = null, ctxEat = 0;
+  function openRowMenu(key, x, y) {
+    var g = bomByKey[key]; if (!g) return;
+    var mk = PART_OK[key], m = $('ctxMenu'), h = '<div class="ttl"></div>';
+    if (mk) h += '<button type="button" class="bad" data-op="unmark">✕ Ошибочный компонент — снять отметку</button>';
+    if (mk && !mk.ok) h += '<button type="button" data-op="ok">✓ Подходит — отметить зелёным</button>';
+    if (!mk) h += '<button type="button" data-op="ok">✓ Отметить как найденный</button>';
+    m.innerHTML = h; m.querySelector('.ttl').textContent = (g.value || '—') + (g.footprint ? ' · ' + g.footprint : '');
+    ctxKey = key; m.hidden = false;
+    var w = m.offsetWidth, hh = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + 'px';
+    if (navigator.vibrate && IS_PHONE) try { navigator.vibrate(15); } catch (e) {}
+  }
+  function closeRowMenu() { $('ctxMenu').hidden = true; ctxKey = null; }
+  $('ctxMenu').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-op]'); if (!b || !ctxKey) return;
+    var k = ctxKey, op = b.dataset.op; closeRowMenu(); setMark(k, op);
+    if (typeof sendLink === 'function') sendLink({ op: op, key: k }); // the PC that shared the board follows
+  });
+  document.addEventListener('pointerdown', function (e) { if (!$('ctxMenu').hidden && !e.target.closest('#ctxMenu')) closeRowMenu(); }, true);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('ctxMenu').hidden) { e.stopPropagation(); closeRowMenu(); } }, true);
+  $('bomList').addEventListener('contextmenu', function (e) {
+    var tr = e.target.closest('tr[data-group]'); if (!tr) return;
+    e.preventDefault(); e.stopPropagation(); ctxEat = Date.now(); openRowMenu(tr.dataset.group, e.clientX, e.clientY);
+  });
+  (function () { // long press on a row (phones that do not send contextmenu)
+    var t = 0, start = null;
+    $('bomList').addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse') return;
+      var tr = e.target.closest('tr[data-group]'); if (!tr) return;
+      start = { x: e.clientX, y: e.clientY }; clearTimeout(t);
+      t = setTimeout(function () { if (!start) return; ctxEat = Date.now(); openRowMenu(tr.dataset.group, start.x, start.y); start = null; }, 550);
+    });
+    $('bomList').addEventListener('pointermove', function (e) { if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) { clearTimeout(t); start = null; } });
+    ['pointerup', 'pointercancel'].forEach(function (n) { $('bomList').addEventListener(n, function () { clearTimeout(t); start = null; }); });
+  })();
+  function updBomExport() { $('bomExport').hidden = IS_PHONE || !M || !Object.keys(PART_OK).length; }
 
   /* ---------- resizable panels ---------- */
   var main = document.querySelector('.main'), LAY = { lw: 330, rw: 440, bom: true }, SETOPEN = false, KEYCAP = null; // settings cover the BOM column while open
@@ -3130,9 +3238,12 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     crypto.subtle.importKey('raw', shareKey, 'AES-GCM', false, ['decrypt'])
       .then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.subarray(0, 12) }, k, b.subarray(12)); })
       .then(function (plain) {
-        var m = JSON.parse(new TextDecoder().decode(plain)); if (!m || typeof m.text !== 'string' || !M) return;
+        var m = JSON.parse(new TextDecoder().decode(plain)); if (!m || !M) return;
+        if (typeof m.op === 'string' && typeof m.key === 'string' && bomByKey[m.key]) { setMark(m.key, m.op); flash('Телефон: ' + (m.op === 'unmark' ? 'отметка снята — ' : 'подтверждено — ') + (bomByKey[m.key].value || '—')); return; }
+        if (typeof m.text !== 'string') return;
         var r = matchPart(m.text); if (!r) return;
-        if (r.best) { markScanned(r); flash('Телефон: ✓ ' + (r.best.g.value || '—') + (r.best.g.footprint ? ' · ' + r.best.g.footprint : '') + ' — ' + scannedPn(r)); }
+        markScanned(r);
+        if (r.best) flash('Телефон: ✓ ' + (r.best.g.value || '—') + (r.best.g.footprint ? ' · ' + r.best.g.footprint : '') + ' — ' + scannedPn(r));
         else flash('Телефон: ' + scannedPn(r) + (r.near ? ' — номинал совпадает, но ' + r.near.warn.join(', ') : ' — нет в BOM'));
       }).catch(function () {});
   }
@@ -3252,11 +3363,11 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     }
   }
   var LINK = null; // phone: where to send scans for the PC that shared this board
-  function sendScan(text) {
+  function sendLink(msg) { // scans and row edits go to the PC that shared the board
     if (!LINK) return;
     var iv = crypto.getRandomValues(new Uint8Array(12)), L = LINK;
     crypto.subtle.importKey('raw', L.key, 'AES-GCM', false, ['encrypt'])
-      .then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify({ text: text }))); })
+      .then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify(msg))); })
       .then(function (ct) { var o = new Uint8Array(12 + ct.byteLength); o.set(iv); o.set(new Uint8Array(ct), 12); return timedFetch2(L.base + '/scan?id=' + L.id, b64u(o)); })
       .then(function (r) { if (r.status === 410 || r.status === 404) { LINK = null; flash('Компьютер отключил телефон'); } })
       .catch(function () {});
@@ -3360,7 +3471,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       el.querySelector('b').textContent = (g.value || '—') + (g.footprint ? ' · ' + g.footprint : '');
       el.querySelector('span').textContent = r.best
         ? 'Есть в BOM: ' + g.parts.length + ' шт. — ' + g.parts.slice(0, 12).map(function (p) { return p.ref; }).join(', ') + (g.parts.length > 12 ? '…' : '')
-        : 'Номинал совпадает, но ' + r.near.warn.join(', ');
+        : 'Номинал совпадает, но ' + r.near.warn.join(', ') + '. Отмечен жёлтым — заменится, если найдётся подходящий.';
       el.onclick = function () { closeScanner(); selectGroup(g.key); };
     } else {
       el.querySelector('b').textContent = 'Нет в BOM этой платы';
@@ -3370,11 +3481,25 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (r.dec) el.querySelector('i').textContent = ((r.dec.mfr + ' ' + r.dec.pn).trim() ? (r.dec.mfr + ' ' + r.dec.pn).trim() + ' → ' : '') + PARTS.fmt(r.dec);
   }
   function scannedPn(r) { return (r.dec && r.dec.pn) || (r.best && r.best.hit) || ((r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '' }).raw); }
-  function markScanned(r) { // BOM row gets ✓ and the part number that was on the reel
-    var pn = scannedPn(r), cur = PART_OK[r.best.g.key];
-    var list = Array.isArray(cur) ? cur : [];
-    if (pn && list.indexOf(pn) < 0) list.push(pn);
-    PART_OK[r.best.g.key] = list; renderBom();
+  function markScanned(r) { // BOM row gets ✓ (green: fits, yellow: value fits but not all) and the part number from the reel
+    var pn = scannedPn(r);
+    if (r.best) {
+      var k = r.best.g.key, cur = PART_OK[k];
+      if (!cur || !cur.ok) cur = PART_OK[k] = { ok: true, pns: [], warn: '' }; // a full match replaces a yellow one
+      if (pn && cur.pns.indexOf(pn) < 0) cur.pns.push(pn);
+    } else if (r.near) {
+      var k2 = r.near.g.key, c2 = PART_OK[k2];
+      if (c2 && c2.ok) return; // already found for real
+      if (!c2) c2 = PART_OK[k2] = { ok: false, pns: [], warn: '' };
+      if (pn && c2.pns.indexOf(pn) < 0) c2.pns.push(pn);
+      c2.warn = r.near.warn.join(', ');
+    } else return;
+    renderBom(); updBomExport();
+  }
+  function setMark(key, op) { // from the row menu: wrong part / it fits / found by hand
+    if (op === 'unmark') delete PART_OK[key];
+    else if (op === 'ok') { var c = PART_OK[key] || { pns: [] }; PART_OK[key] = { ok: true, pns: c.pns || [], warn: '' }; }
+    renderBom(); updBomExport();
   }
   function onPartCode(text) {
     if (/^BV\d;/.test(text)) return; // the PC's own sharing code is not a part
@@ -3382,15 +3507,14 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     partLast = { text: text, at: now };
     var r = matchPart(text); if (!r) return;
     partResult(r);
-    if (r.best) { markScanned(r); if (navigator.vibrate) try { navigator.vibrate(35); } catch (e) {} }
-    sendScan(text);
+    if (r.best || r.near) { markScanned(r); if (navigator.vibrate) try { navigator.vibrate(r.best ? 35 : [20, 60, 20]); } catch (e) {} }
+    sendLink({ text: text });
   }
   $('partScan').onclick = function () { openScanner('part'); };
   function updPartScan() { $('partScan').hidden = !(IS_PHONE && CAN_CAM && M); } // reels are scanned with the phone; the PC has no use for it
 
   function setShared(on) { // view-only copy: nothing leaves the phone, no screenshots
     if (window.BoardVAndroid && window.BoardVAndroid.setSecure) try { window.BoardVAndroid.setSecure(!!on); } catch (e) {}
-    $('copyBom').hidden = !!on;
     updShareBtn();
   }
   $('scanStop').onclick = closeScanner;
@@ -3709,14 +3833,14 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     M = null; src = { files: [], valuesFrom: '', pinNames: true }; PART_OK = {}; netIndex = null; bomIndex = null; bomByKey = {};
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true; setShared(false);
     $('q').value = ''; $('bq').value = ''; try { $('file').value = ''; } catch (e) {}
-    $('empty').hidden = false; $('fileName').textContent = ''; updShareBtn(); updPartScan(); updCloseProj();
+    $('empty').hidden = false; $('fileName').textContent = ''; updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
     if (IS_PHONE) { SHEET.open = false; MSET = false; sheetApply(); } else setSettings(false);
     renderCard(); renderList(); status(); req();
   }
   function updCloseProj() { $('closeProj').hidden = !M; }
   function refreshAll(refit) {
     buildNetIndex();
-    $('empty').hidden = !!M; applyLayout(false); updShareBtn(); updPartScan(); updCloseProj();
+    $('empty').hidden = !!M; applyLayout(false); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
     $('fileName').textContent = src.files.join(' + ');
     if (refit) { V.rot = IS_PHONE && H > W * 1.15 && M.w > M.h * 1.15 ? 1 : 0; setSide('top', true); fit(); } // phone held upright + wide board: turn it to fill the screen
     renderCard(); renderList(); status(); req();

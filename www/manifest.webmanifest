@@ -38,7 +38,11 @@
           ".PcbDoc",
           ".pcbdoc",
           ".brd",
-          ".bvr"
+          ".bvr",
+          ".bdv",
+          ".cad",
+          ".cst",
+          ".kicad_pcb"
         ],
         "application/zip": [
           ".zip"

@@ -23,6 +23,10 @@
   !insertmacro BV_EXT ".PcbDoc"
   !insertmacro BV_EXT ".brd"
   !insertmacro BV_EXT ".bvr"
+  !insertmacro BV_EXT ".bdv"
+  !insertmacro BV_EXT ".cad"
+  !insertmacro BV_EXT ".cst"
+  !insertmacro BV_EXT ".kicad_pcb"
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 !macroend
 
@@ -30,6 +34,10 @@
   !insertmacro BV_UNEXT ".PcbDoc"
   !insertmacro BV_UNEXT ".brd"
   !insertmacro BV_UNEXT ".bvr"
+  !insertmacro BV_UNEXT ".bdv"
+  !insertmacro BV_UNEXT ".cad"
+  !insertmacro BV_UNEXT ".cst"
+  !insertmacro BV_UNEXT ".kicad_pcb"
   DeleteRegKey HKCU "Software\Classes\BoardV.Board"
   DeleteRegKey HKCU "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}"
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'

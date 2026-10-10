@@ -379,7 +379,7 @@ html.mobile .top .iconbtn { width: 36px; }
         <div class="in">
           <i class="logo" aria-hidden="true"></i>
           <b id="emptyT">Закинь поддерживаемый файл</b>
-          <div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div>
+          <div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bdv</span><span>.bvr</span><span>.cad</span><span>.kicad_pcb</span><span>.zip</span></div>
           <div class="note" id="emptyN">Перетащи файл в окно или нажми, чтобы выбрать</div>
           <button type="button" class="btn" id="scanEmpty" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg><span>Открыть с компьютера по QR</span></button>
         </div>
@@ -444,7 +444,7 @@ html.mobile .top .iconbtn { width: 36px; }
   <div class="sc-result" id="partRes" hidden></div>
   <div class="sc-bottom"><button type="button" class="btn" id="scanStop">Отмена</button></div>
 </div>
-<div class="dropmask" id="mask" hidden><div class="dm"><i class="logo" aria-hidden="true"></i><b>Отпустите файл, чтобы открыть</b><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div></div></div>
+<div class="dropmask" id="mask" hidden><div class="dm"><i class="logo" aria-hidden="true"></i><b>Отпустите файл, чтобы открыть</b><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bdv</span><span>.bvr</span><span>.cad</span><span>.kicad_pcb</span><span>.zip</span></div></div></div>
 
 <script src="build-info.js"></script>
 <script src="BoardV-config.js"></script>
@@ -628,20 +628,25 @@ html.mobile .top .iconbtn { width: 36px; }
     return t;
   }
   function isZip(u8) { return u8.length > 4 && u8[0] === 0x50 && u8[1] === 0x4b && u8[2] === 3 && u8[3] === 4; }
+  function rawItem(name, u8, from) { // encrypted and binary boardviews are recognised by their bytes first
+    var sn = FMT.sniff(u8, name);
+    if (sn) return { name: name, from: from, type: sn.error ? 'locked' : sn.type, text: sn.text, bin: sn.bin, error: sn.error, detail: sn.detail };
+    return { name: name, from: from, text: decode(u8) };
+  }
   function loadFiles(list) {
     var items = [];
     return Promise.all(Array.prototype.map.call(list, function (f) {
       return f.arrayBuffer().then(function (buf) {
         var u8 = new Uint8Array(buf);
         if (PCBDOC.isCfb(u8)) { items.push({ name: f.name, bin: u8, type: 'pcbdoc' }); return; }
-        if (isZip(u8)) return BV.unzip(u8).then(function (es) { es.forEach(function (e) { if (e.data && !/\/$/.test(e.name)) items.push({ name: e.name.split('/').pop(), from: f.name, text: decode(e.data) }); }); });
-        items.push({ name: f.name, text: decode(u8) });
+        if (isZip(u8)) return BV.unzip(u8).then(function (es) { es.forEach(function (e) { if (e.data && !/\/$/.test(e.name)) items.push(rawItem(e.name.split('/').pop(), e.data, f.name)); }); });
+        items.push(rawItem(f.name, u8));
       });
     })).then(function () { ingest(items); }).catch(function () { unsupported(Array.prototype.map.call(list, function (f) { return f.name; })); });
   }
   function ingest(items) {
     var by = {};
-    items.forEach(function (it) { it.type = it.type || BV.detect(it.name, it.text); (by[it.type] = by[it.type] || []).push(it); });
+    items.forEach(function (it) { it.type = it.type || FMT.detect(it.name, it.text) || BV.detect(it.name, it.text); (by[it.type] = by[it.type] || []).push(it); });
     var unknown = uniq((by['null'] || []).map(function (i) { return i.from || i.name; }));
     var meta = [], metaNames = [];
     (by.pnp || []).forEach(function (i) { try { var r = BV.parsePnp(i.text); meta.push(r); metaNames.push(i.name); } catch (e) {} });
@@ -651,6 +656,8 @@ html.mobile .top .iconbtn { width: 36px; }
       if (by.json) { model = BV.readJson(by.json[0].text); used.push(by.json[0].name); }
       else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); used.push(by.pcbdoc[0].name); }
       else if (by.bvr) { model = BV.readBvr(by.bvr[0].text); used.push(by.bvr[0].name); }
+      else if (FMT.TYPES.some(function (t) { return by[t]; })) { var ft = FMT.TYPES.filter(function (t) { return by[t]; })[0]; model = FMT.read(ft, by[ft][0]); used.push(by[ft][0].name); pinNames = !/^(brd2|cst)$/.test(ft); }
+      else if (by.ascpins) { model = FMT.readAsc(items); used = items.filter(function (i) { return /^asc/.test(i.type); }).map(function (i) { return i.name; }); }
       else if (by.brd) { model = BV.readBrd(by.brd[0].text); used.push(by.brd[0].name); pinNames = false; }
       else if (by.ascii || by.ipc356) {
         var p = by.ascii ? by.ascii[0] : by.ipc356[0];
@@ -659,6 +666,7 @@ html.mobile .top .iconbtn { width: 36px; }
         var b = BV.build(s); model = BV.finalize(b.parts, b.outline); used.unshift(p.name);
       }
     } catch (e) { showError('Не удалось открыть файл', e.message); return; }
+    if (!model && !meta.length && by.locked) { showError(by.locked[0].error, by.locked[0].detail); return; }
     if (!model && !meta.length) {
       if (unknown.length) unsupported(unknown); else showError('Файл пустой');
       return;
@@ -683,7 +691,7 @@ html.mobile .top .iconbtn { width: 36px; }
   var toastT = 0;
   function showError(title, detail, withFormats) { // every load error shows here, over the board, and fades after a while
     var t = $('toast');
-    t.innerHTML = '<b></b>' + (detail ? '<div class="nm"></div>' : '') + (withFormats ? '<div class="note">Отправьте файл в одном из форматов:</div><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bvr</span><span>.json</span><span>.zip</span></div>' : '') + '<button type="button" class="btn x" aria-label="Закрыть">✕</button>';
+    t.innerHTML = '<b></b>' + (detail ? '<div class="nm"></div>' : '') + (withFormats ? '<div class="note">Отправьте файл в одном из форматов:</div><div class="fmts"><span>.PcbDoc</span><span>.brd</span><span>.bdv</span><span>.bvr</span><span>.cad</span><span>.kicad_pcb</span><span>.zip</span></div>' : '') + '<button type="button" class="btn x" aria-label="Закрыть">✕</button>';
     t.querySelector('b').textContent = title; if (detail) t.querySelector('.nm').textContent = detail;
     t.querySelector('.x').onclick = function () { t.hidden = true; };
     t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 8000);
@@ -981,13 +989,15 @@ html.mobile .top .iconbtn { width: 36px; }
     if (!S.part && !S.net && !S.group) {
       var withVal = M.parts.filter(function (p) { return p.value; }).length;
       h += '<div class="eyebrow">Плата</div><dl class="kv"><dt>Деталей</dt><dd>' + M.parts.length + ' (снизу ' + M.parts.filter(function (p) { return p.bottom; }).length + ')</dd><dt>Пинов</dt><dd>' + M.nPins + '</dd><dt>Цепей</dt><dd>' + M.nNets + '</dd><dt>Размер</dt><dd>' + (M.w * 0.0254).toFixed(1) + ' × ' + (M.h * 0.0254).toFixed(1) + ' мм</dd><dt>Номиналы</dt><dd>' + withVal + ' из ' + M.parts.length + '</dd></dl>';
-      if (!withVal) h += '<div class="note warn">Номиналов нет: у деталей в файле платы не задан текст Comment.</div>';
+      if (!withVal) h += '<div class="note warn">Номиналов в файле нет. Добавьте BOM или файл расстановки (CSV) — перетащите его сюда или откройте вместе с платой.</div>';
       h += '<div class="legend"><span><i style="background:var(--ui-pin)"></i>сигнал</span><span><i style="background:var(--ui-sel)"></i>выбранная цепь</span><span><i style="background:var(--pwr)"></i>питание</span><span><i style="background:var(--gnd)"></i>земля</span><span><i style="background:none;box-shadow:inset 0 0 0 1.5px var(--nc)"></i>N/C — не подключён</span></div>';
-      h += '<div class="keys"><kbd>ЛКМ</kbd><span>выбор пин/компонент</span>';
-      ACTIONS.forEach(function (a) { // every action that has a key, in the same words as the hotkey settings
-        var ks = CFG.keys[a[0]] || []; if (ks.length) h += '<kbd>' + esc(keyLabel(ks[0])) + '</kbd><span>' + esc(a[1]) + '</span>';
-      });
-      h += '</div>';
+      if (!IS_PHONE) { // a phone has no keyboard
+        h += '<div class="keys"><kbd>ЛКМ</kbd><span>выбор пин/компонент</span>';
+        ACTIONS.forEach(function (a) { // every action that has a key, in the same words as the hotkey settings
+          var ks = CFG.keys[a[0]] || []; if (ks.length) h += '<kbd>' + esc(keyLabel(ks[0])) + '</kbd><span>' + esc(a[1]) + '</span>';
+        });
+        h += '</div>';
+      }
     }
     c.innerHTML = h;
   }

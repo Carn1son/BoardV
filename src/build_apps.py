@@ -18,9 +18,10 @@ def lib():
     pcb = open(os.path.join(ROOT, 'pcbdoc.js')).read().replace("if (typeof module !== 'undefined') module.exports = PCBDOC;", "")
     core = open(os.path.join(ROOT, 'core.js')).read().replace("if (typeof module !== 'undefined') module.exports = BV;", "")
     i18n = open(os.path.join(ROOT, 'i18n.js')).read()
+    fmts = open(os.path.join(ROOT, 'formats.js')).read().replace("if (typeof module !== 'undefined') module.exports = FMT;", "")
     parts = open(os.path.join(ROOT, 'parts.js')).read().replace("if (typeof module !== 'undefined') module.exports = PARTS;", "")
     vendor = ''.join(open(os.path.join(ROOT, 'vendor', f)).read() + '\n' for f in ('qrcode.min.js', 'jsqr.min.js', 'zxing-dm.min.js'))
-    return pcb + '\n' + core + '\n' + i18n + '\n' + parts + '\n' + vendor
+    return pcb + '\n' + core + '\n' + fmts + '\n' + i18n + '\n' + parts + '\n' + vendor
 
 
 def logo_uri(px=96):
@@ -77,7 +78,7 @@ MANIFEST = {
     "file_handlers": [{
         "action": "./",
         "accept": {
-            "application/octet-stream": [".PcbDoc", ".pcbdoc", ".brd", ".bvr"],
+            "application/octet-stream": [".PcbDoc", ".pcbdoc", ".brd", ".bvr", ".bdv", ".cad", ".cst", ".kicad_pcb"],
             "application/zip": [".zip"],
             "application/json": [".json"]
         }
@@ -577,6 +578,10 @@ NSIS_INCLUDE = r'''; BoardV file types: listed in "Open with" for .PcbDoc / .brd
   !insertmacro BV_EXT ".PcbDoc"
   !insertmacro BV_EXT ".brd"
   !insertmacro BV_EXT ".bvr"
+  !insertmacro BV_EXT ".bdv"
+  !insertmacro BV_EXT ".cad"
+  !insertmacro BV_EXT ".cst"
+  !insertmacro BV_EXT ".kicad_pcb"
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 !macroend
 
@@ -584,6 +589,10 @@ NSIS_INCLUDE = r'''; BoardV file types: listed in "Open with" for .PcbDoc / .brd
   !insertmacro BV_UNEXT ".PcbDoc"
   !insertmacro BV_UNEXT ".brd"
   !insertmacro BV_UNEXT ".bvr"
+  !insertmacro BV_UNEXT ".bdv"
+  !insertmacro BV_UNEXT ".cad"
+  !insertmacro BV_UNEXT ".cst"
+  !insertmacro BV_UNEXT ".kicad_pcb"
   DeleteRegKey HKCU "Software\Classes\BoardV.Board"
   DeleteRegKey HKCU "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}"
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
@@ -916,7 +925,7 @@ PROJECT_README = '''<p align="center"><img src="src/logo.png" width="120" alt="B
 </p>
 
 ## Что умеет
-- Открывает **Altium .PcbDoc** напрямую, а также `.brd` (Test_Link), `.bvr`, `.json` и `.zip`.
+- Открывает **Altium .PcbDoc** напрямую, а также boardview `.brd` (Test_Link, в том числе зашифрованные, и BRD2), `.bdv`, `.bvr`, `.asc`, `.cad` (GenCAD и ###Panel), `.cst`, Eagle `.brd`, KiCad `.kicad_pcb` и `.zip`.
 - Поиск по деталям, цепям и номиналам; клик по пину подсвечивает всю цепь, питание и земля окрашены отдельно.
 - **BOM** справа: клик по позиции показывает все места установки, сверху и снизу платы.
 - Верх / низ / обе стороны, поворот, зеркалирование нижней стороны.

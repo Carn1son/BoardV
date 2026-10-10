@@ -638,6 +638,6 @@ var BV = (function () {
 
   return { detect: detect, parseAscii: parseAscii, parseIpc356: parseIpc356, parsePnp: parsePnp, parseGerber: parseGerber,
            parseBom: parseBom, applyMeta: applyMeta, readBrd: readBrd, readBvr: readBvr, readJson: readJson, writeJson: writeJson,
-           unzip: unzip, finalize: finalize, build: build, asciiOutline: asciiOutline, parsePcbDoc: parsePcbDoc, writeBrd: writeBrd, writeBvr: writeBvr, checkBrd: checkBrd, zip: zip, crc32: crc32 };
+           unzip: unzip, finalize: finalize, build: build, asciiOutline: asciiOutline, parsePcbDoc: parsePcbDoc, writeBrd: writeBrd, writeBvr: writeBvr, checkBrd: checkBrd, zip: zip, crc32: crc32, chain: chain };
 })();
 if (typeof module !== 'undefined') module.exports = BV;

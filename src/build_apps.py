@@ -318,6 +318,14 @@ public class MainActivity extends Activity {
     }
     @Override
     protected void onDestroy() { sayBye(); super.onDestroy(); }
+    /** Back (button or swipe) first closes what is open inside BoardV - scanner, settings, panels; only then leaves the app. */
+    @Override
+    public void onBackPressed() {
+        if (web == null) { super.onBackPressed(); return; }
+        web.evaluateJavascript("(window.bvBack && window.bvBack()) ? 1 : 0", new ValueCallback<String>() {
+            @Override public void onReceiveValue(String v) { if (!"1".equals(v)) MainActivity.super.onBackPressed(); }
+        });
+    }
     private PermissionRequest pendingCamera;
 
     /** Lets the page save a text file (exported settings) through the system "Save as" screen. */

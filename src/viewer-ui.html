@@ -1142,7 +1142,7 @@ html.mobile .cp-sv { height: 210px; }
   }
   function partGroup(p) { return bomByKey[(p.value || '').trim() + '\u0001' + (p.footprint || '').trim()]; }
   function partHit(p, q) { return !q || p.ref.toUpperCase().indexOf(q) >= 0 || p.value.toUpperCase().indexOf(q) >= 0 || p.footprint.toUpperCase().indexOf(q) >= 0 || valEq(q, partGroup(p)) || (partGroup(p) ? scannedHit(partGroup(p), q) : false); }
-  function scannedHit(g, q) { var mk = PART_OK[g.key], nq = normPN(q); return !!(mk && nq.length >= 3 && mk.pns.some(function (p) { return normPN(p).indexOf(nq) >= 0; })); }
+  function scannedHit(g, q) { var mk = PART_OK[g.key], nq = normPN(q); return !!(mk && nq.length >= 1 && mk.pns.some(function (p) { return normPN(p).indexOf(nq) >= 0; })); }
   function bomMatch(g, q) { return !q || scannedHit(g, q) || valEq(q, g) || g.value.toUpperCase().indexOf(q) >= 0 || g.footprint.toUpperCase().indexOf(q) >= 0 || g.desc.toUpperCase().indexOf(q) >= 0 || g.parts.some(function (p) { return p.ref.toUpperCase() === q; }); }
   function xmlEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ''); }
   function xlsx(head, rows, styles, widths) { // a small .xlsx built here: one sheet, a bold header, green / yellow rows
@@ -1597,7 +1597,7 @@ html.mobile .cp-sv { height: 210px; }
   /* ---------- hidden: 10 taps on the version line show "pass the board" (PC: Pair, phone: open from PC) until restart ---------- */
   var SECRET = false, verTaps = [];
   var ICO_PAIR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Pair</span>';
-  var ICO_FROMPC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M21 17v2.5a1.5 1.5 0 0 1-1.5 1.5H17M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17"/><rect x="7" y="7.5" width="10" height="6.5" rx="1"/><path d="M10 17h4M12 14v3"/></svg><span>С компьютера</span>';
+  var ICO_FROMPC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M21 17v2.5a1.5 1.5 0 0 1-1.5 1.5H17M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17"/><rect x="7" y="7.5" width="10" height="6.5" rx="1"/><path d="M10 17h4M12 14v3"/></svg><span>Pair</span>';
   function updSecret() {
     var b = $('secretBtn'), can = IS_PHONE ? CAN_SCAN : (HAS_SHARE && !!M);
     b.hidden = !(SECRET && can);
@@ -1631,7 +1631,7 @@ html.mobile .cp-sv { height: 210px; }
     var key = crypto.getRandomValues(new Uint8Array(32)), iv = crypto.getRandomValues(new Uint8Array(12));
     var raw = new TextEncoder().encode(SHARE_KIND === 'board' ? BV.writeJson(M, src.files.join(' + ')) : JSON.stringify({ bvScan: 1, title: src.files.join(' + ') }));
     $('shareTtl').textContent = SHARE_KIND === 'board' ? 'Передать плату на телефон' : 'Подключить телефон-сканер';
-    $('shareHow').textContent = SHARE_KIND === 'board' ? 'Откройте на телефоне в BoardV скрытую кнопку с компьютером и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.' : 'На телефоне в BoardV нажмите значок сканера справа сверху и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.';
+    $('shareHow').textContent = SHARE_KIND === 'board' ? 'На телефоне в BoardV нажмите Pair внизу настроек и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.' : 'На телефоне в BoardV нажмите значок сканера справа сверху и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.';
     $('shareDlg').hidden = false; $('shareQr').innerHTML = ''; $('shareAddr').textContent = ''; shareMode('wait', 'Подготовка…');
     gz(raw, true).then(function (z) {
       var flag = z ? 1 : 0, data = z || raw;
@@ -1774,7 +1774,7 @@ html.mobile .cp-sv { height: 210px; }
     if (want && kind !== want) { scanView('error', 'Не тот код', want === 'pair' ? 'На компьютере нажмите значок телефона сверху — «Подключить телефон-сканер» — и наведите камеру на этот код.' : 'Этот код подключает телефон как сканер. Нажмите значок сканера справа сверху.'); return; }
     var ips = (p[1] || '').split(',').filter(Boolean), port = p[2], token = p[3], key;
     try { key = unb64u(p[4] || ''); } catch (e) { key = null; }
-    if (!ips.length || !/^\d+$/.test(port) || !/^[0-9a-f]{32}$/.test(token || '') || !key || key.length !== 32) { scanView('error', 'Это не код BoardV', 'Отсканируйте QR-код из окна «Показать на телефоне».'); return; }
+    if (!ips.length || !/^\d+$/.test(port) || !/^[0-9a-f]{32}$/.test(token || '') || !key || key.length !== 32) { scanView('error', 'Это не код BoardV', 'Отсканируйте QR-код из окна BoardV на компьютере.'); return; }
     scanView('wait', 'Подключение к компьютеру', ips.join(', '));
     // 1) find the PC: the first address that answers "hello" wins (8 s each, all at once)
     var found = false, fails = 0;
@@ -2341,6 +2341,16 @@ html.mobile .cp-sv { height: 210px; }
     renderCard(); renderList(); status(); req();
   }
 
+  // Android back button / swipe: close the topmost thing inside BoardV; false = nothing open, the app may close
+  window.bvBack = function () {
+    if (!$('cpick').hidden) { $('cpCancel').click(); return true; }
+    if (!$('ctxMenu').hidden) { closeRowMenu(); return true; }
+    if (!$('scanDlg').hidden) { closeScanner(); return true; }
+    if (!$('shareDlg').hidden) { $('shareDlg').hidden = true; return true; }
+    if (IS_PHONE && MSET) { MSET = false; sheetApply(); return true; }
+    if (IS_PHONE && SHEET.open) { openSheet(null); return true; }
+    return false;
+  };
   /* ---------- start ---------- */
   applyCfg(false);
   status(); req(); // empty field until a file is dropped or picked

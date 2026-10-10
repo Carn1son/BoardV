@@ -53,19 +53,33 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
   shareStop('restart');
   // phone: GET /bv/<token>/hello -> 202 {id} right away (and this PC asks the user);
   //        GET /bv/<token>/data?id=N -> 204 while undecided, 403 declined, 200 encrypted board once
-  const s = { token: crypto.randomBytes(16).toString('hex'), blob: Buffer.from(blob), reqs: new Map(), bad: 0, seq: 0, sent: false };
+  const s = { token: crypto.randomBytes(16).toString('hex'), blob0: Buffer.from(blob), reqs: new Map(), bad: 0, seq: 0, sent: false };
   s.server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-store');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
     const u = new URL(req.url, 'http://x'), base = '/bv/' + s.token;
-    if (share !== s || req.method !== 'GET' || !u.pathname.startsWith(base + '/')) {
+    if (share !== s || (req.method !== 'GET' && req.method !== 'POST') || !u.pathname.startsWith(base + '/')) {
       s.bad++; res.writeHead(404); res.end();
       if (s.bad > 30) shareStop('too many wrong requests');
       return;
     }
-    if (s.sent) { res.writeHead(410); res.end(); return; }
     const ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+    // after the board went over, only that phone may talk: it sends what it scans (encrypted by the page with the same key)
+    if (s.sent) {
+      if (req.method === 'POST' && u.pathname === base + '/scan' && ip === s.linkIp && Number(u.searchParams.get('id')) === s.linkId) {
+        let body = '', big = false;
+        req.on('data', (c) => { body += c; if (body.length > 16384) { big = true; req.destroy(); } });
+        req.on('end', () => {
+          if (big || share !== s) return;
+          clearTimeout(s.timer); s.timer = setTimeout(() => shareStop('idle'), 12 * 3600 * 1000);
+          shareSend('scan', body); res.writeHead(204); res.end();
+        });
+        return;
+      }
+      res.writeHead(410); res.end(); return;
+    }
+    if (req.method !== 'GET') { res.writeHead(404); res.end(); return; }
     if (u.pathname === base + '/hello') {
       let id = 0;
       s.reqs.forEach((r, k) => { if (r.ip === ip && r.ok === null) id = k; }); // the same phone asking again
@@ -78,11 +92,12 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
       if (!r || r.ip !== ip) { res.writeHead(404); res.end(); return; }
       if (r.ok === null) { res.writeHead(204); res.end(); return; }
       if (!r.ok) { res.writeHead(403); res.end(); return; }
-      s.sent = true;
+      s.sent = true; s.linkIp = ip; s.linkId = Number(u.searchParams.get('id'));
       res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
-      res.end(s.blob);
+      res.end(s.blob0); s.blob0 = null;
       shareSend('sent', { ip });
-      setTimeout(() => shareStop('sent'), 1000); // one phone, one time
+      // the board goes once; the link stays only for scans from this phone, until the PC disconnects it
+      clearTimeout(s.timer); s.timer = setTimeout(() => shareStop('idle'), 12 * 3600 * 1000);
       return;
     }
     res.writeHead(404); res.end();

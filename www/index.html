@@ -262,6 +262,9 @@ canvas.drag { cursor: grabbing; }
 .sc-result .mk { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; font-weight: 700; }
 .sc-result.ok .mk { background: #1f9d55; color: #fff; }
 .sc-result.no .mk { background: rgb(255 255 255 / .12); color: #ddd; }
+#bomList .spn { display: block; font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; font-weight: 400; }
+#shareBtn.linked { color: #2ecc71; }
+#shareBtn.linked::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #2ecc71; transform: translate(9px, -9px); box-shadow: 0 0 0 2px var(--panel); }
 .sc-result.warn .mk { background: #d98a1c; color: #fff; }
 .sc-result .mk { grid-row: span 3; }
 .sc-result i { grid-column: 2; font-style: normal; font-size: 12px; color: rgb(255 255 255 / .6); overflow-wrap: anywhere; }
@@ -352,6 +355,35 @@ html.mobile .top .iconbtn { width: 36px; }
   html.mobile .top .iconbtn svg { width: 20px; height: 20px; }
   html.mobile .sidesel { padding: 0 16px 0 6px; background-position: right 3px center; }
 }
+/* ---------- colour picker (replaces the system dialog) ---------- */
+input[type=color] { -webkit-appearance: none; appearance: none; }
+input[type=color]::-webkit-color-swatch-wrapper { padding: 3px; }
+input[type=color]::-webkit-color-swatch { border: 0; border-radius: 3px; }
+.cpick { position: fixed; inset: 0; z-index: 40; display: flex; align-items: flex-end; justify-content: center; background: rgb(0 0 0 / .45); }
+.cpick[hidden] { display: none; }
+.cp-card { width: min(420px, 100%); box-sizing: border-box; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -18px 50px rgb(0 0 0 / .5); display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; animation: cpUp .18s ease-out; }
+@keyframes cpUp { from { transform: translateY(24px); opacity: 0; } }
+html:not(.mobile) .cpick { align-items: center; }
+html:not(.mobile) .cp-card { border-radius: 16px; width: 340px; }
+.cp-grab { width: 44px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .5; justify-self: center; margin-top: -4px; }
+html:not(.mobile) .cp-grab { display: none; }
+.cp-head { display: flex; align-items: center; gap: 12px; }
+.cp-head b { flex: 1; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-prev { width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgb(127 127 127 / .35); box-shadow: inset 0 0 0 3px rgb(0 0 0 / .08); position: relative; overflow: hidden; }
+.cp-prev i { position: absolute; inset: 0 0 0 50%; }
+.cp-sv { position: relative; height: 190px; border-radius: 12px; touch-action: none; cursor: crosshair; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); }
+html.mobile .cp-sv { height: 210px; }
+.cp-hue { position: relative; height: 22px; border-radius: 11px; touch-action: none; cursor: pointer; background: linear-gradient(to right, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00); }
+.cp-dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .35), 0 2px 8px rgb(0 0 0 / .4); pointer-events: none; box-sizing: border-box; }
+.cp-hue .cp-dot { top: 50%; }
+.cp-sw { display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; }
+.cp-sw button { aspect-ratio: 1; border-radius: 50%; border: 1px solid rgb(127 127 127 / .35); padding: 0; cursor: pointer; }
+.cp-sw button.on { outline: 2px solid var(--accent, #f0a020); outline-offset: 2px; }
+.cp-lbl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: -6px; }
+.cp-row { display: flex; gap: 10px; align-items: center; }
+.cp-row input { flex: 1 1 0; width: 0; min-width: 0; font: inherit; font-family: var(--f-mono); font-size: 15px; text-transform: uppercase; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); }
+.cp-row .btn { min-height: 42px; padding: 0 16px; }
+.cp-row .btn.primary { min-width: 96px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -422,7 +454,7 @@ html.mobile .top .iconbtn { width: 36px; }
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="note" id="verLine">Версия 0V1.9 · 10.10.2026</div>
+          <div class="note" id="verLine">Версия 0V1.10 · 10.10.2026</div>
         </div>
       </section>
     </aside>
@@ -435,6 +467,15 @@ html.mobile .top .iconbtn { width: 36px; }
   </div>
   <div class="status" id="status"><span>Файл не открыт</span></div>
 </div>
+<div class="cpick" id="cpick" hidden><div class="cp-card" role="dialog" aria-modal="true" aria-labelledby="cpTtl">
+  <div class="cp-grab"></div>
+  <div class="cp-head"><div class="cp-prev" title="Было / стало"><i id="cpNew"></i></div><b id="cpTtl">Цвет</b></div>
+  <div class="cp-sv" id="cpSv"><div class="cp-dot" id="cpSvDot"></div></div>
+  <div class="cp-hue" id="cpHue"><div class="cp-dot" id="cpHueDot"></div></div>
+  <div class="cp-lbl" id="cpRecentL">Недавние</div><div class="cp-sw" id="cpRecent"></div>
+  <div class="cp-lbl">Палитра</div><div class="cp-sw" id="cpSw"></div>
+  <div class="cp-row"><input id="cpHex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Код цвета"><button class="btn" type="button" id="cpCancel">Отмена</button><button class="btn primary" type="button" id="cpOk">Готово</button></div>
+</div></div>
 <div class="modal" id="shareDlg" hidden><div class="mcard" role="dialog" aria-modal="true" aria-labelledby="shareTtl">
   <b id="shareTtl">Показать на телефоне</b>
   <div class="qrbox" id="shareQr"></div>
@@ -443,7 +484,7 @@ html.mobile .top .iconbtn { width: 36px; }
   <div class="note" id="shareAddr"></div>
   <div class="btnrow" id="shareAsk" hidden><button type="button" class="btn primary" id="shareYes">Разрешить</button><button type="button" class="btn" id="shareNo">Отклонить</button></div>
   <div class="note">Файл не передаётся. Телефон получает зашифрованную копию платы только для просмотра, держит её лишь в памяти и не может сохранить. Код одноразовый и действует 10 минут.</div>
-  <div class="btnrow"><button type="button" class="btn" id="shareStop">Закрыть</button></div>
+  <div class="btnrow"><button class="btn" type="button" id="shareHide" hidden>Скрыть</button><button type="button" class="btn" id="shareStop">Закрыть</button></div>
 </div></div>
 <div class="scanner" id="scanDlg" hidden role="dialog" aria-modal="true" aria-label="Открыть с компьютера">
   <video id="scanVid" playsinline muted autoplay poster="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="></video>
@@ -1785,6 +1826,10 @@ var I18N = (function () {
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
     'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project',
+    'Телефон подключён. Плата у него, код больше не действует. Сканируйте компоненты телефоном — найденные отметятся в BOM здесь.': 'The phone is connected. It has the board and the code no longer works. Scan parts with the phone and the ones found are checked in the BOM here.',
+    'Отключить телефон': 'Disconnect the phone', 'Скрыть': 'Hide', 'Телефон подключён — сканы появляются в BOM': 'Phone connected: scans show up in the BOM', 'Компьютер отключил телефон': 'The PC disconnected the phone',
+    'нет в BOM': 'not in the BOM', 'номинал совпадает, но': 'value matches, but', 'Отсканировано': 'Scanned',
+    'Недавние': 'Recent', 'Палитра': 'Palette', 'Готово': 'Done', 'Код цвета': 'Colour code', 'Было / стало': 'Before / after',
     'Это .brd из Cadence Allegro': 'This is a Cadence Allegro .brd', 'Это закрытый двоичный формат самой САПР, а не boardview. Выгрузите из Allegro файл GenCAD (.cad) или IPC-D-356 — их BoardV откроет.': 'It is the closed binary format of the CAD tool itself, not a boardview. Export GenCAD (.cad) or IPC-D-356 from Allegro and BoardV will open it.',
     'Файл ASUS .fz зашифрован ключом производителя': 'ASUS .fz files are encrypted with the maker key', 'Без ключа ASUS его не прочитать. Попросите файл в формате .brd, .bdv или .bvr.': 'It cannot be read without the ASUS key. Ask for the file as .brd, .bdv or .bvr.',
     'Файл XZZ (.pcb) зашифрован ключом программы XZZ': 'XZZ (.pcb) files are encrypted with the XZZ key', 'Ключа в открытом доступе нет, поэтому такие файлы не открываются. Попросите файл в другом формате.': 'The key is not public, so these files cannot be opened. Ask for the file in another format.',
@@ -2317,7 +2362,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     setModel(model, { files: used.concat(metaNames), valuesFrom: metaNames.join(', ') || (by.json || by.ascii || by.pcbdoc ? 'из файла платы' : ''), pinNames: pinNames });
   }
   function setModel(model, info) {
-    M = model; src = info; PART_OK = {}; setShared(!!info.shared);
+    M = model; src = info; PART_OK = {}; setShared(!!info.shared); if (!info.shared && typeof LINK !== 'undefined') LINK = null;
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true;
     refreshAll(true);
   }
@@ -2765,7 +2810,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     h += '</tr></thead><tbody>';
     gs.forEach(function (g) {
       var got = !!PART_OK[g.key], cls = (g.key === S.group ? 'on' : '') + (got ? ' got' : '');
-      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '><td class="c-v">' + (got ? '<span class="chk" title="Отсканирован">✓</span>' : '') + esc(g.value || '—') + '</td><td class="c-f">' + esc(g.footprint || '—') +
+      h += '<tr tabindex="0" data-group="' + esc(g.key) + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '><td class="c-v">' + (got ? '<span class="chk" title="Отсканирован">✓</span>' : '') + esc(g.value || '—') + (got && PART_OK[g.key].length ? '<span class="spn" title="Отсканировано">' + esc(PART_OK[g.key].join(', ')) + '</span>' : '') + '</td><td class="c-f">' + esc(g.footprint || '—') +
            (g.desc ? '<div class="note">' + esc(g.desc) + '</div>' : '') + '</td><td class="c-q">' + g.parts.length + '</td><td class="c-r">' +
            g.parts.map(function (p) { return p.bottom ? '<span class="b">' + esc(p.ref) + '</span>' : esc(p.ref); }).join(', ') + '</td></tr>';
     });
@@ -3054,20 +3099,44 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
         .then(function (ct) { var b = new Uint8Array(13 + ct.byteLength); b[0] = flag; b.set(iv, 1); b.set(new Uint8Array(ct), 13); return window.bvDesktop.share.start(b); });
     }).then(function (r) {
       if (!r.ips.length) { shareStatus('Компьютер не подключён к сети. Подключите Wi-Fi или кабель к роутеру.'); return; }
+      shareKey = key; setLinked(false);
       var q = qrcode(0, 'M'); q.addData('BV2;' + r.ips.join(',') + ';' + r.port + ';' + r.token + ';' + b64u(key)); q.make();
       $('shareQr').innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
       shareStatus('Ожидание телефона…'); $('shareAddr').textContent = 'Адрес компьютера: ' + r.ips.join(', ');
     }).catch(function (e) { shareStatus('Не получилось: ' + (e && e.message || e)); });
   }
-  function stopShare() { if (HAS_SHARE) window.bvDesktop.share.stop(); $('shareDlg').hidden = true; shareReq = null; }
+  function stopShare() { if (HAS_SHARE) window.bvDesktop.share.stop(); $('shareDlg').hidden = true; shareReq = null; shareKey = null; setLinked(false); }
+  var shareKey = null, LINKED = false;
+  function setLinked(on) { // the phone that got the board is still connected and sends what it scans
+    LINKED = !!on; $('shareBtn').classList.toggle('linked', LINKED);
+    $('shareBtn').title = LINKED ? 'Телефон подключён — сканы появляются в BOM' : 'Показать на телефоне';
+    $('shareStop').textContent = LINKED ? 'Отключить телефон' : 'Закрыть';
+    $('shareHide').hidden = !LINKED; $('shareQr').hidden = LINKED;
+  }
+  function scanFromPhone(body) { // decrypt with the key that only this PC and the phone know
+    if (!shareKey) return;
+    var b; try { b = unb64u(body.trim()); } catch (e) { return; }
+    if (b.length < 29) return;
+    crypto.subtle.importKey('raw', shareKey, 'AES-GCM', false, ['decrypt'])
+      .then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.subarray(0, 12) }, k, b.subarray(12)); })
+      .then(function (plain) {
+        var m = JSON.parse(new TextDecoder().decode(plain)); if (!m || typeof m.text !== 'string' || !M) return;
+        var r = matchPart(m.text); if (!r) return;
+        if (r.best) { markScanned(r); flash('Телефон: ✓ ' + (r.best.g.value || '—') + (r.best.g.footprint ? ' · ' + r.best.g.footprint : '') + ' — ' + scannedPn(r)); }
+        else flash('Телефон: ' + scannedPn(r) + (r.near ? ' — номинал совпадает, но ' + r.near.warn.join(', ') : ' — нет в BOM'));
+      }).catch(function () {});
+  }
   if (HAS_SHARE) window.bvDesktop.share.on(function (m) {
     if (m.type === 'request') { shareReq = m.data.id; shareStatus('Телефон ' + m.data.ip + ' просит доступ к плате', true); }
     else if (m.type === 'gone' || m.type === 'timeout') { if (shareReq === m.data.id) { shareReq = null; shareStatus('Ожидание телефона…'); } }
-    else if (m.type === 'sent') { shareStatus('Плата отправлена на телефон. Код больше не действует.'); $('shareQr').innerHTML = ''; }
+    else if (m.type === 'sent') { shareStatus('Телефон подключён. Плата у него, код больше не действует. Сканируйте компоненты телефоном — найденные отметятся в BOM здесь.'); $('shareQr').innerHTML = ''; setLinked(true); }
+    else if (m.type === 'scan') scanFromPhone(m.data);
+    else if (m.type === 'ended' && m.data === 'idle') { setLinked(false); shareKey = null; }
     else if (m.type === 'ended' && m.data === 'timeout') shareStatus('Время вышло. Закройте окно и покажите новый код.');
     else if (m.type === 'error') shareStatus('Не получилось: ' + m.data);
   });
-  $('shareBtn').onclick = startShare;
+  $('shareBtn').onclick = function () { if (LINKED) { $('shareDlg').hidden = false; return; } startShare(); };
+  $('shareHide').onclick = function () { $('shareDlg').hidden = true; };
   $('shareStop').onclick = stopShare;
   $('shareYes').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, true); shareStatus('Отправляю…'); shareReq = null; } };
   $('shareNo').onclick = function () { if (shareReq != null) { window.bvDesktop.share.decide(shareReq, false); shareStatus('Отклонено. Ожидание телефона…'); shareReq = null; } };
@@ -3162,12 +3231,23 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
           if (r.status === 403) { scanView('error', 'Отклонено', 'Компьютер отклонил подключение.'); return; }
           if (r.status !== 200) { scanView('error', 'Код устарел', 'Закройте окно на компьютере и покажите новый код.'); return; }
           scanView('wait', 'Получение платы', '');
-          return r.arrayBuffer().then(function (buf) { openReceived(new Uint8Array(buf), key, job); });
+          return r.arrayBuffer().then(function (buf) { openReceived(new Uint8Array(buf), key, job, { base: base, id: id }); });
         }).catch(function () { if (job === scanJob) setTimeout(poll, 1500); });
       })();
     }
   }
-  function openReceived(b, key, job) {
+  var LINK = null; // phone: where to send scans for the PC that shared this board
+  function sendScan(text) {
+    if (!LINK) return;
+    var iv = crypto.getRandomValues(new Uint8Array(12)), L = LINK;
+    crypto.subtle.importKey('raw', L.key, 'AES-GCM', false, ['encrypt'])
+      .then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify({ text: text }))); })
+      .then(function (ct) { var o = new Uint8Array(12 + ct.byteLength); o.set(iv); o.set(new Uint8Array(ct), 12); return timedFetch2(L.base + '/scan?id=' + L.id, b64u(o)); })
+      .then(function (r) { if (r.status === 410 || r.status === 404) { LINK = null; flash('Компьютер отключил телефон'); } })
+      .catch(function () {});
+  }
+  function timedFetch2(url, body) { var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, 6000); return fetch(url, { method: 'POST', body: body, cache: 'no-store', signal: ac.signal }).finally(function () { clearTimeout(t); }); }
+  function openReceived(b, key, job, link) {
     var iv = b.subarray(1, 13), ct = b.subarray(13);
     crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['decrypt']).then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, k, ct); })
       .then(function (plain) { plain = new Uint8Array(plain); return b[0] === 1 ? gz(plain, false) : plain; })
@@ -3176,6 +3256,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
         var m = BV.readJson(new TextDecoder().decode(u8));
         closeScanner();
         setModel(m, { files: [(m.title || 'плата') + ' — с компьютера'], valuesFrom: 'из файла платы', pinNames: true, shared: true });
+        if (link) LINK = { base: link.base, id: link.id, key: key };
         flash('Плата с компьютера: только просмотр');
       }).catch(function () { scanView('error', 'Не удалось открыть плату', 'Данные не расшифровались. Покажите на компьютере новый код.'); });
   }
@@ -3253,12 +3334,21 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     }
     if (r.dec) el.querySelector('i').textContent = ((r.dec.mfr + ' ' + r.dec.pn).trim() ? (r.dec.mfr + ' ' + r.dec.pn).trim() + ' → ' : '') + PARTS.fmt(r.dec);
   }
+  function scannedPn(r) { return (r.dec && r.dec.pn) || (r.best && r.best.hit) || ((r.cands.filter(function (c) { return c.key; })[0] || r.cands[0] || { raw: '' }).raw); }
+  function markScanned(r) { // BOM row gets ✓ and the part number that was on the reel
+    var pn = scannedPn(r), cur = PART_OK[r.best.g.key];
+    var list = Array.isArray(cur) ? cur : [];
+    if (pn && list.indexOf(pn) < 0) list.push(pn);
+    PART_OK[r.best.g.key] = list; renderBom();
+  }
   function onPartCode(text) {
+    if (/^BV\d;/.test(text)) return; // the PC's own sharing code is not a part
     var now = Date.now(); if (text === partLast.text && now - partLast.at < 2500) return; // same label still in view
     partLast = { text: text, at: now };
     var r = matchPart(text); if (!r) return;
     partResult(r);
-    if (r.best) { PART_OK[r.best.g.key] = 1; renderBom(); if (navigator.vibrate) try { navigator.vibrate(35); } catch (e) {} }
+    if (r.best) { markScanned(r); if (navigator.vibrate) try { navigator.vibrate(35); } catch (e) {} }
+    sendScan(text);
   }
   $('partScan').onclick = function () { openScanner('part'); };
   function updPartScan() { $('partScan').hidden = !(IS_PHONE && CAN_CAM && M); } // reels are scanned with the phone; the PC has no use for it
@@ -3272,6 +3362,85 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   $('scanAgain').onclick = function () { openScanner(SCAN_MODE); };
   if (CAN_SCAN) $('scanEmpty').hidden = false;
   $('scanEmpty').onclick = function (e) { e.stopPropagation(); openScanner('board'); };
+
+
+  /* ---------- colour picker: a sheet of our own instead of the system dialog ---------- */
+  (function () {
+    var PAL = ['#ffffff', '#c8ccd4', '#7a828e', '#3a3f47', '#000000', '#ff4d4f', '#ff8a3d', '#ffc53d', '#ffe066',
+               '#9be15d', '#2ecc71', '#14b8a6', '#22d3ee', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#b45309'];
+    var el = null, old = '', h = 0, sv = 1, vv = 1, sat = 0;
+    function hex2hsv(x) {
+      var r = parseInt(x.substr(1, 2), 16) / 255, g = parseInt(x.substr(3, 2), 16) / 255, b = parseInt(x.substr(5, 2), 16) / 255;
+      var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, hh = 0;
+      if (d) hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return [((hh * 60) + 360) % 360, mx ? d / mx : 0, mx];
+    }
+    function hsv2hex(H, S, V) {
+      function f(n) { var k = (n + H / 60) % 6; return Math.round(255 * (V - V * S * Math.max(0, Math.min(k, 4 - k, 1)))); }
+      return '#' + [f(5), f(3), f(1)].map(function (c) { return ('0' + c.toString(16)).slice(-2); }).join('');
+    }
+    function recent() { try { return JSON.parse(localStorage.getItem('bvr-colors') || '[]'); } catch (e) { return []; } }
+    function swatches(box, list, cur) {
+      box.innerHTML = list.map(function (c) { return '<button type="button" data-c="' + c + '" style="background:' + c + '"' + (c === cur ? ' class="on"' : '') + ' aria-label="' + c + '"></button>'; }).join('');
+    }
+    function cur() { return hsv2hex(h, sat, vv); }
+    function paint(fromHex) {
+      var c = cur(), sb = $('cpSv').getBoundingClientRect();
+      $('cpSv').style.backgroundColor = hsv2hex(h, 1, 1);
+      $('cpSvDot').style.left = (sat * 100) + '%'; $('cpSvDot').style.top = ((1 - vv) * 100) + '%'; $('cpSvDot').style.background = c;
+      $('cpHueDot').style.left = (h / 360 * 100) + '%'; $('cpHueDot').style.background = hsv2hex(h, 1, 1);
+      $('cpNew').style.background = c;
+      if (!fromHex) $('cpHex').value = c.toUpperCase();
+      [].forEach.call(document.querySelectorAll('#cpick .cp-sw button'), function (b) { b.classList.toggle('on', b.dataset.c === c); });
+    }
+    function apply() { // live: the board changes while you pick
+      if (!el) return; el.value = cur();
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function setHex(x) { if (!/^#[0-9a-f]{6}$/i.test(x)) return false; var t = hex2hsv(x.toLowerCase()); if (t[1] > 0 && t[2] > 0) h = t[0]; sat = t[1]; vv = t[2]; return true; }
+    function open(input) {
+      el = input; old = input.value || '#ffffff'; setHex(old);
+      var lab = input.closest('label') || input.closest('.rule'), name = lab ? (lab.querySelector('span') ? lab.querySelector('span').textContent : '') : '';
+      if (!name && input.dataset.ruleC != null) { var t = input.parentNode.querySelector('input[type=text]'); name = t ? t.value : ''; }
+      $('cpTtl').textContent = name || 'Цвет';
+      $('cpick').querySelector('.cp-prev').style.background = old;
+      var rc = recent(); $('cpRecentL').hidden = $('cpRecent').hidden = !rc.length;
+      swatches($('cpRecent'), rc, old); swatches($('cpSw'), PAL, old);
+      $('cpick').hidden = false; paint();
+    }
+    function close(ok) {
+      if (!el) return;
+      if (ok) {
+        var c = cur(), rc = recent().filter(function (x) { return x !== c; }); rc.unshift(c);
+        try { localStorage.setItem('bvr-colors', JSON.stringify(rc.slice(0, 9))); } catch (e) {}
+        el.value = c;
+      } else el.value = old;
+      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+      el = null; $('cpick').hidden = true;
+    }
+    function drag(area, fn) {
+      var on = false;
+      function at(e) { var r = area.getBoundingClientRect(); fn(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (e.clientY - r.top) / r.height))); paint(); apply(); }
+      area.addEventListener('pointerdown', function (e) { on = true; try { area.setPointerCapture(e.pointerId); } catch (er) {} at(e); e.preventDefault(); });
+      area.addEventListener('pointermove', function (e) { if (on) at(e); });
+      area.addEventListener('pointerup', function () { on = false; }); area.addEventListener('pointercancel', function () { on = false; });
+    }
+    drag($('cpSv'), function (x, y) { sat = x; vv = 1 - y; });
+    drag($('cpHue'), function (x) { h = Math.min(359.9, x * 360); });
+    $('cpick').addEventListener('click', function (e) {
+      var b = e.target.closest('.cp-sw button'); if (b) { setHex(b.dataset.c); paint(); apply(); return; }
+      if (e.target === $('cpick')) close(true); // tap outside keeps the colour
+    });
+    $('cpHex').addEventListener('input', function () { var v = this.value.trim(); if (v.charAt(0) !== '#') v = '#' + v; if (setHex(v)) { paint(true); apply(); } });
+    $('cpOk').onclick = function () { close(true); };
+    $('cpCancel').onclick = function () { close(false); };
+    document.addEventListener('keydown', function (e) { if (!el) return; if (e.key === 'Escape') { e.stopPropagation(); close(false); } else if (e.key === 'Enter') close(true); }, true);
+    // every colour field in BoardV opens this sheet instead of the system dialog
+    document.addEventListener('click', function (e) {
+      var t = e.target; if (!t || t.tagName !== 'INPUT' || t.type !== 'color') return;
+      e.preventDefault(); open(t);
+    }, true);
+  })();
 
   /* ---------- files opened from the system (double-click, "Open with") ---------- */
   if ('launchQueue' in window && window.launchQueue.setConsumer) {
@@ -3500,7 +3669,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
 
   function closeProject() { // back to the empty field, on the PC and on the phone
     if (!M) return;
-    if (HAS_SHARE && !$('shareDlg').hidden) stopShare();
+    if (HAS_SHARE && (LINKED || !$('shareDlg').hidden)) stopShare();
     M = null; src = { files: [], valuesFrom: '', pinNames: true }; PART_OK = {}; netIndex = null; bomIndex = null; bomByKey = {};
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true; setShared(false);
     $('q').value = ''; $('bq').value = ''; try { $('file').value = ''; } catch (e) {}

@@ -21,11 +21,12 @@ jobs:
       - uses: actions/checkout@v4
       - id: v
         run: |
-          # src/VERSION holds major.minor; people see 0V<major>.<minor>, the apps compare 2100.<major>.<minor>
+          # src/VERSION holds major.minor; people see V1.0, V1.01 … V1.10; the apps compare 2100.<major+1>.<minor>
           IFS=. read -r MA MI < src/VERSION
-          echo "ver=2100.$MA.$MI" >> "$GITHUB_OUTPUT"
-          echo "vcode=$((2100000000 + MA * 10000 + MI))" >> "$GITHUB_OUTPUT"
-          echo "label=0V$MA.$MI" >> "$GITHUB_OUTPUT"
+          MI=$((10#$MI))
+          echo "ver=2100.$((MA + 1)).$MI" >> "$GITHUB_OUTPUT"
+          echo "vcode=$((2100000000 + (MA + 1) * 10000 + MI))" >> "$GITHUB_OUTPUT"
+          if [ "$MI" -eq 0 ]; then echo "label=V$MA.0" >> "$GITHUB_OUTPUT"; else echo "label=V$MA.$(printf %02d $MI)" >> "$GITHUB_OUTPUT"; fi
           echo "day=$(TZ=Europe/Moscow date +%d.%m.%Y)" >> "$GITHUB_OUTPUT"
 
   android:

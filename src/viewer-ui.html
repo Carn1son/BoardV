@@ -249,6 +249,8 @@ canvas.drag { cursor: grabbing; }
 .sc-result.no .mk { background: rgb(255 255 255 / .12); color: #ddd; }
 #bomList .spn { display: block; font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; font-weight: 400; }
 #shareBtn.linked { color: #2ecc71; }
+#shareBtn.lost { color: #e0a030; }
+#shareBtn.lost::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #e0a030; transform: translate(9px, -9px); box-shadow: 0 0 0 2px var(--panel); }
 #shareBtn.linked::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #2ecc71; transform: translate(9px, -9px); box-shadow: 0 0 0 2px var(--panel); }
 .sc-result.warn .mk { background: #d98a1c; color: #fff; }
 .sc-result .mk { grid-row: span 3; }
@@ -723,7 +725,7 @@ html.mobile .cp-sv { height: 210px; }
     setModel(model, { files: used.concat(metaNames), valuesFrom: metaNames.join(', ') || (by.json || by.ascii || by.pcbdoc ? 'из файла платы' : ''), pinNames: pinNames });
   }
   function setModel(model, info) {
-    M = model; src = info; PART_OK = {}; setShared(!!info.shared); if (!info.shared && typeof LINK !== 'undefined') LINK = null;
+    M = model; src = info; PART_OK = {}; setShared(!!info.shared); if (typeof LINK !== 'undefined' && LINK) dropLink();
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true;
     refreshAll(true);
   }
@@ -1468,9 +1470,9 @@ html.mobile .cp-sv { height: 210px; }
   }
   function stopShare() { if (HAS_SHARE) window.bvDesktop.share.stop(); $('shareDlg').hidden = true; shareReq = null; shareKey = null; setLinked(false); }
   var shareKey = null, LINKED = false;
-  function setLinked(on) { // the phone that got the board is still connected and sends what it scans
-    LINKED = !!on; $('shareBtn').classList.toggle('linked', LINKED);
-    $('shareBtn').title = LINKED ? 'Телефон подключён — сканы появляются в BOM' : 'Показать на телефоне';
+  function setLinked(on, lost) { // the phone that got the board is still connected and sends what it scans
+    LINKED = !!on; $('shareBtn').classList.toggle('linked', LINKED && !lost); $('shareBtn').classList.toggle('lost', LINKED && !!lost);
+    $('shareBtn').title = !LINKED ? 'Показать на телефоне' : lost ? 'Телефон не на связи' : 'Телефон подключён — сканы появляются в BOM';
     $('shareStop').textContent = LINKED ? 'Отключить телефон' : 'Закрыть';
     $('shareHide').hidden = !LINKED; $('shareQr').hidden = LINKED;
   }
@@ -1490,9 +1492,14 @@ html.mobile .cp-sv { height: 210px; }
   if (HAS_SHARE) window.bvDesktop.share.on(function (m) {
     if (m.type === 'request') { shareReq = m.data.id; shareStatus('Телефон ' + m.data.ip + ' просит доступ к плате', true); }
     else if (m.type === 'gone' || m.type === 'timeout') { if (shareReq === m.data.id) { shareReq = null; shareStatus('Ожидание телефона…'); } }
-    else if (m.type === 'sent') { shareStatus('Телефон подключён. Плата у него, код больше не действует. Сканируйте компоненты телефоном — найденные отметятся в BOM здесь.'); $('shareQr').innerHTML = ''; setLinked(true); }
+    else if (m.type === 'sent') { shareStatus('Телефон подключён. Сканируйте компоненты телефоном — найденные отметятся в BOM.'); $('shareQr').innerHTML = ''; setLinked(true); }
     else if (m.type === 'scan') scanFromPhone(m.data);
-    else if (m.type === 'ended' && m.data === 'idle') { setLinked(false); shareKey = null; }
+    else if (m.type === 'lost') { if (LINKED) { setLinked(true, true); shareStatus('Телефон не на связи. Он вернётся сам, когда BoardV на телефоне снова откроется в той же сети.'); flash('Телефон не на связи'); } }
+    else if (m.type === 'back') { if (LINKED) { setLinked(true); shareStatus('Телефон подключён. Сканируйте компоненты телефоном — найденные отметятся в BOM.'); flash('Телефон снова на связи'); } }
+    else if (m.type === 'ended' && /^(bye|lost|idle)$/.test(m.data)) {
+      var was = LINKED; setLinked(false); shareKey = null;
+      if (was) { shareStatus('Телефон отключился.'); flash(m.data === 'bye' ? 'Телефон отключился' : 'Связь с телефоном потеряна'); }
+    }
     else if (m.type === 'ended' && m.data === 'timeout') shareStatus('Время вышло. Закройте окно и покажите новый код.');
     else if (m.type === 'error') shareStatus('Не получилось: ' + m.data);
   });
@@ -1607,6 +1614,24 @@ html.mobile .cp-sv { height: 210px; }
       .then(function (r) { if (r.status === 410 || r.status === 404) { LINK = null; flash('Компьютер отключил телефон'); } })
       .catch(function () {});
   }
+  var pingT = 0;
+  function startPing() { // tell the PC every few seconds that this phone is still here
+    clearInterval(pingT);
+    pingT = setInterval(function () {
+      if (!LINK) { clearInterval(pingT); return; }
+      if (document.hidden) return;
+      var L = LINK;
+      timedFetch(L.base + '/ping?id=' + L.id, 4000).then(function (r) {
+        if ((r.status === 410 || r.status === 404) && LINK === L) { LINK = null; clearInterval(pingT); flash('Компьютер отключил телефон'); }
+      }).catch(function () {});
+    }, 4000);
+  }
+  function dropLink() { // say goodbye so the PC knows at once
+    if (!LINK) return; var L = LINK; LINK = null; clearInterval(pingT);
+    try { fetch(L.base + '/bye?id=' + L.id, { cache: 'no-store', keepalive: true }).catch(function () {}); } catch (e) {}
+  }
+  window.addEventListener('pagehide', dropLink);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && LINK) startPing(); });
   function timedFetch2(url, body) { var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, 6000); return fetch(url, { method: 'POST', body: body, cache: 'no-store', signal: ac.signal }).finally(function () { clearTimeout(t); }); }
   function openReceived(b, key, job, link) {
     var iv = b.subarray(1, 13), ct = b.subarray(13);
@@ -1617,7 +1642,7 @@ html.mobile .cp-sv { height: 210px; }
         var m = BV.readJson(new TextDecoder().decode(u8));
         closeScanner();
         setModel(m, { files: [(m.title || 'плата') + ' — с компьютера'], valuesFrom: 'из файла платы', pinNames: true, shared: true });
-        if (link) LINK = { base: link.base, id: link.id, key: key };
+        if (link) { LINK = { base: link.base, id: link.id, key: key }; startPing(); }
         flash('Плата с компьютера: только просмотр');
       }).catch(function () { scanView('error', 'Не удалось открыть плату', 'Данные не расшифровались. Покажите на компьютере новый код.'); });
   }
@@ -2031,6 +2056,7 @@ html.mobile .cp-sv { height: 210px; }
   function closeProject() { // back to the empty field, on the PC and on the phone
     if (!M) return;
     if (HAS_SHARE && (LINKED || !$('shareDlg').hidden)) stopShare();
+    dropLink();
     M = null; src = { files: [], valuesFrom: '', pinNames: true }; PART_OK = {}; netIndex = null; bomIndex = null; bomByKey = {};
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true; setShared(false);
     $('q').value = ''; $('bq').value = ''; try { $('file').value = ''; } catch (e) {}

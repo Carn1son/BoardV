@@ -45,7 +45,7 @@ function lanIPs() {
 function shareSend(type, data) { if (win) win.webContents.send('share', { type, data }); }
 function shareStop(reason) {
   if (!share) return;
-  const s = share; share = null; clearTimeout(s.timer);
+  const s = share; share = null; clearTimeout(s.timer); clearInterval(s.watch);
   try { s.server.close(); } catch (e) { /* not listening */ }
   shareSend('ended', reason || '');
 }
@@ -67,12 +67,19 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
     const ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
     // after the board went over, only that phone may talk: it sends what it scans (encrypted by the page with the same key)
     if (s.sent) {
+      const mine = ip === s.linkIp && Number(u.searchParams.get('id')) === s.linkId;
+      if (mine && u.pathname === base + '/ping') { // the phone says it is still here every few seconds
+        s.seen = Date.now(); if (s.lost) { s.lost = false; shareSend('back', ''); }
+        res.writeHead(204); res.end(); return;
+      }
+      if (mine && u.pathname === base + '/bye') { res.writeHead(204); res.end(); shareStop('bye'); return; }
       if (req.method === 'POST' && u.pathname === base + '/scan' && ip === s.linkIp && Number(u.searchParams.get('id')) === s.linkId) {
         let body = '', big = false;
         req.on('data', (c) => { body += c; if (body.length > 16384) { big = true; req.destroy(); } });
         req.on('end', () => {
           if (big || share !== s) return;
           clearTimeout(s.timer); s.timer = setTimeout(() => shareStop('idle'), 12 * 3600 * 1000);
+          s.seen = Date.now(); if (s.lost) { s.lost = false; shareSend('back', ''); }
           shareSend('scan', body); res.writeHead(204); res.end();
         });
         return;
@@ -96,8 +103,15 @@ ipcMain.handle('share-start', (_e, blob) => new Promise((resolve, reject) => {
       res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
       res.end(s.blob0); s.blob0 = null;
       shareSend('sent', { ip });
-      // the board goes once; the link stays only for scans from this phone, until the PC disconnects it
+      // the board goes once; the link stays only for scans from this phone, until one side disconnects
       clearTimeout(s.timer); s.timer = setTimeout(() => shareStop('idle'), 12 * 3600 * 1000);
+      s.seen = Date.now(); s.lost = false;
+      s.watch = setInterval(() => { // no ping: the phone is gone (closed, asleep, out of Wi-Fi); give up after 10 minutes
+        if (share !== s) return;
+        const quiet = Date.now() - s.seen;
+        if (quiet > 10 * 60 * 1000) shareStop('lost');
+        else if (quiet > 12000 && !s.lost) { s.lost = true; shareSend('lost', ''); }
+      }, 2000);
       return;
     }
     res.writeHead(404); res.end();

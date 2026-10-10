@@ -125,9 +125,14 @@ table.bomt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .bomt .c-r { color: var(--ui-grp); }
 .bomt th.c-q button { text-align: right; }
 #paneBom { container-type: inline-size; }
+#paneBom > * { min-width: 0; }
+.sethead.bomtop { min-width: 0; overflow: hidden; }
 .sethead.bomtop #bomCount { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sethead.bomtop .btn { flex: none; }
-@container (max-width: 360px) { #bomExport { display: none; } }
+#bomExport { display: inline-flex; align-items: center; gap: 6px; }
+#bomExport[hidden] { display: none; }
+#bomExport svg { width: 15px; height: 15px; flex: none; }
+@container (max-width: 380px) { #bomExport span { display: none; } #bomExport { padding: 4px 7px; } }
 .bomt .c-k { width: 1%; padding-right: 0; text-align: center; }
 .bomt td.c-k .chk { color: #22b35e; font-weight: 700; }
 .bomt td.c-k .chk.part { color: #e0a020; }
@@ -246,7 +251,7 @@ canvas.drag { cursor: grabbing; }
 .sc-top { position: absolute; z-index: 2; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 22px) 24px 40px; display: grid; gap: 6px; text-align: center; background: linear-gradient(rgb(0 0 0 / .75), transparent); }
 .sc-top b { font-family: var(--f-display); font-size: 20px; letter-spacing: .02em; }
 .sc-top span { font-size: 13.5px; color: rgb(255 255 255 / .8); }
-.sc-frame { position: absolute; left: 50%; top: 46%; width: min(68vw, 300px); aspect-ratio: 1; transform: translate(-50%, -50%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / .45); border-radius: 18px; }
+.sc-frame { position: absolute; left: 50%; top: 46%; width: min(76vw, 340px); aspect-ratio: 1; transform: translate(-50%, -50%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / .45); border-radius: 18px; }
 .sc-frame i { position: absolute; width: 34px; height: 34px; border: 4px solid var(--accent); }
 .sc-frame i:nth-child(1) { left: -2px; top: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 18px; }
 .sc-frame i:nth-child(2) { right: -2px; top: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 18px; }
@@ -324,7 +329,7 @@ html.mobile.set-open .sethead.sethd { display: flex; position: sticky; top: 0; z
 /* folded sheet: a strip at the bottom, tap or pull it to unfold */
 html.mobile.sheet-open.sheet-min[data-mtab] .side, html.mobile.sheet-open.sheet-min[data-mtab] .rpanel { display: none !important; }
 html.mobile #msheet { user-select: none; -webkit-user-select: none; }
-html.mobile.sheet-min #msheet { bottom: 0; min-height: 12.5vh; align-items: flex-start; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); box-shadow: 0 -10px 30px rgb(0 0 0 / .45); }
+html.mobile.sheet-min #msheet { bottom: 0; align-items: center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); box-shadow: 0 -10px 30px rgb(0 0 0 / .45); }
 #msheet .mgrab { position: absolute; left: 50%; top: 5px; width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: var(--muted); opacity: .55; }
 html.mobile #msheet { padding-top: 16px; touch-action: none; }
 /* one scroll per sheet: inner panes grow with their content instead of scrolling separately */
@@ -447,7 +452,7 @@ html.mobile .cp-sv { height: 210px; }
     <div class="split" id="splitR" role="separator" aria-orientation="vertical" aria-label="Ширина правой панели" tabindex="0" title="Потяните, чтобы изменить ширину. Двойной клик — по умолчанию"></div>
     <aside class="rpanel" aria-label="BOM и настройки">
       <section class="rbody" id="paneBom" aria-label="BOM">
-      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn sm" type="button" id="bomExport" title="Таблица Excel: фактическое наименование (что отсканировано), номинал, корпус, количество" hidden>Выгрузить BOM</button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
+      <div class="sethead bomtop"><b>BOM</b><span class="cnt" id="bomCount"></span><button class="btn sm" type="button" id="bomExport" title="Таблица Excel: фактическое наименование (что отсканировано), номинал, корпус, количество" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Выгрузить BOM</span></button><button class="btn" id="bomClose" type="button" aria-label="Закрыть BOM" title="Закрыть">✕</button></div>
       <div class="bomhead">
         <input type="search" id="bq" placeholder="Фильтр: 100n, 0402, LM…" aria-label="Фильтр BOM" autocomplete="off" spellcheck="false">
       </div>
@@ -1640,27 +1645,41 @@ html.mobile .cp-sv { height: 210px; }
     if (SCAN_MODE === 'board' ? !CAN_SCAN : !CAN_CAM) return;
     openSheet(null); scanJob++; $('scanDlg').hidden = false; scanView('camera'); partResult(null);
     $('scanTtl').textContent = SCAN_MODE === 'part' ? 'Сканирование компонентов' : 'Открыть с компьютера';
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }).then(function (st) {
+    // a sharp picture: ask for a big frame and continuous focus; only the square in the frame is read
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }).then(function (st) {
       if ($('scanDlg').hidden) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
       scanStream = st; var v = $('scanVid'); v.classList.remove('live'); v.srcObject = st; v.play().catch(function () {});
+      var track = st.getVideoTracks()[0];
+      try { var caps = track.getCapabilities ? track.getCapabilities() : {}, adv = {};
+        if (caps.focusMode && caps.focusMode.indexOf('continuous') >= 0) adv.focusMode = 'continuous';
+        if (caps.exposureMode && caps.exposureMode.indexOf('continuous') >= 0) adv.exposureMode = 'continuous';
+        if (Object.keys(adv).length) track.applyConstraints({ advanced: [adv] }).catch(function () {});
+      } catch (e) {}
       var shown = false, reveal = function () { if (shown || !v.videoWidth) return; shown = true; setTimeout(function () { v.classList.add('live'); }, 180); }; // skip the camera's first blank frames
       v.onplaying = reveal;
       var c = document.createElement('canvas'), cx = c.getContext('2d', { willReadFrequently: true }), tick = 0, bd = null, bdBusy = false;
-      // labels on reels and bags carry a QR or a DataMatrix; the system detector reads both when the phone has it
-      if (SCAN_MODE === 'part' && window.BarcodeDetector && BarcodeDetector.getSupportedFormats) BarcodeDetector.getSupportedFormats().then(function (f) {
-        var want = f.filter(function (x) { return x === 'qr_code' || x === 'data_matrix'; });
-        if (want.indexOf('data_matrix') >= 0) bd = new BarcodeDetector({ formats: want });
+      // the system detector (Android) is sharper than the built-in readers: QR for boards, QR + DataMatrix for reels
+      if (window.BarcodeDetector && BarcodeDetector.getSupportedFormats) BarcodeDetector.getSupportedFormats().then(function (f) {
+        var want = f.filter(function (x) { return x === 'qr_code' || (SCAN_MODE === 'part' && x === 'data_matrix'); });
+        if (want.indexOf('qr_code') >= 0 && (SCAN_MODE !== 'part' || want.indexOf('data_matrix') >= 0)) bd = new BarcodeDetector({ formats: want });
       }).catch(function () {});
       function got(text) {
         if (!text) return;
         if (SCAN_MODE === 'part') onPartCode(text);
         else if (/^BV\d;/.test(text)) { stopScan(); receiveBoard(text); }
       }
+      function crop() { // the part of the camera picture under the frame (plus a small margin), at full camera resolution
+        var vw = v.videoWidth, vh = v.videoHeight, er = v.getBoundingClientRect(), fr = $('scanFrame').getBoundingClientRect();
+        var sc = Math.max(er.width / vw, er.height / vh), ox = er.left + (er.width - vw * sc) / 2, oy = er.top + (er.height - vh * sc) / 2;
+        var m = fr.width * 0.12, x0 = (fr.left - m - ox) / sc, y0 = (fr.top - m - oy) / sc, w = (fr.width + 2 * m) / sc, h = (fr.height + 2 * m) / sc;
+        x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); w = Math.min(vw - x0, Math.ceil(w)); h = Math.min(vh - y0, Math.ceil(h));
+        var k = Math.min(1, 900 / Math.max(w, h)); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+        cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(v, x0, y0, w, h, 0, 0, c.width, c.height);
+      }
       scanTimer = setInterval(function () {
         if (!v.videoWidth) return; reveal();
-        if (bd) { if (!bdBusy) { bdBusy = true; bd.detect(v).then(function (list) { bdBusy = false; if (list && list[0] && scanStream) got(list[0].rawValue); }).catch(function () { bdBusy = false; bd = null; }); } return; }
-        var k = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
-        cx.drawImage(v, 0, 0, c.width, c.height);
+        if (bd) { if (!bdBusy) { bdBusy = true; crop(); bd.detect(c).then(function (list) { bdBusy = false; if (list && list[0] && scanStream) got(list[0].rawValue); }).catch(function () { bdBusy = false; bd = null; }); } return; }
+        crop();
         var img = cx.getImageData(0, 0, c.width, c.height), code;
         if (SCAN_MODE === 'part' && (tick++ & 1) && window.BVDM) { // every other frame: DataMatrix
           var d = img.data, g = new Uint8ClampedArray(c.width * c.height);
@@ -1669,7 +1688,7 @@ html.mobile .cp-sv { height: 210px; }
         }
         code = jsQR(img.data, c.width, c.height, { inversionAttempts: SCAN_MODE === 'part' ? 'attemptBoth' : 'dontInvert' });
         if (code) got(code.data);
-      }, 200);
+      }, 150);
     }).catch(function () { scanView('error', 'Нет доступа к камере', 'Разрешите BoardV использовать камеру в настройках Android и попробуйте снова.'); });
   }
   function timedFetch(url, ms, job) {
@@ -2011,7 +2030,7 @@ html.mobile .cp-sv { height: 210px; }
     el.addEventListener('pointerdown', function (e) {
       if (e.target.closest('#mclose')) return;
       if (e.pointerType === 'mouse') e.preventDefault(); // no text selection while pulling with a mouse
-      var L = sheetLimits(); d = { y: e.clientY, h: SHEET.min ? Math.round(L.vh * 0.125) : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheetH')) || L.min, moved: false, id: e.pointerId, L: L };
+      var L = sheetLimits(); d = { y: e.clientY, h: SHEET.min ? $('msheet').offsetHeight : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheetH')) || L.min, moved: false, id: e.pointerId, L: L };
     });
     window.addEventListener('pointermove', function (e) {
       if (!d || e.pointerId !== d.id) return;

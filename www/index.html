@@ -76,14 +76,15 @@ body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font
 .presetrow span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
 .presetrow select { font: inherit; font-weight: 600; background: var(--panel2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; min-width: 0; cursor: pointer; }
 .presetrow select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-details.grp { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel2) 55%, transparent); }
-details.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 600; border-radius: 8px; user-select: none; }
+details.grp { border: 0; border-left: 3px solid transparent; border-radius: 12px; background: color-mix(in srgb, var(--panel2) 70%, transparent); transition: border-color .15s, background .15s; }
+details.grp[open] { border-left-color: var(--accent); background: var(--panel2); }
+details.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 13px; font-weight: 600; border-radius: 12px; user-select: none; }
 details.grp > summary::-webkit-details-marker { display: none; }
-details.grp > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; flex: none; margin-right: 2px; }
-details.grp[open] > summary::before { transform: rotate(45deg); }
-details.grp > summary:hover { background: var(--panel2); }
+details.grp > summary::after { content: ""; order: 9; margin-left: auto; width: 8px; height: 8px; border-right: 2.2px solid var(--muted); border-bottom: 2.2px solid var(--muted); transform: translateY(-2px) rotate(45deg); transition: transform .18s, border-color .15s; flex: none; margin-right: 4px; }
+details.grp[open] > summary::after { transform: translateY(2px) rotate(-135deg); border-color: var(--accent); }
 details.grp > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 details.grp > summary small { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 11.5px; }
+details.grp > summary small + * { margin-left: 0; }
 details.grp .gbody { display: grid; gap: 8px; padding: 4px 12px 12px; }
 .setfoot { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 8px; }
 .verrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -273,6 +274,12 @@ canvas.drag { cursor: grabbing; }
 .toast .nm { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
 .toast .fmts span { color: var(--fg); }
 .upd { display: grid; gap: 8px; }
+.updmini { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--panel2) 70%, transparent); }
+.updmini .upd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.updmini .upd .ln { flex: 1 1 140px; }
+.updmini .upd .bar { flex: 1 1 100%; }
+.updmini .mchk { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.updmini .mchk input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
 .upd .ln { font-size: 12.5px; }
 .upd .ok { color: var(--muted); }
 .upd .bad { color: #e06464; overflow-wrap: anywhere; }
@@ -370,19 +377,19 @@ html.mobile .btn, html.mobile .seg button, html.mobile .sidesel { min-height: 36
 html.mobile .main, html.mobile .main.nobom { grid-template-columns: minmax(0, 1fr); }
 html.mobile .split { display: none; }
 html.mobile .side, html.mobile .rpanel { display: none !important; }
-html.mobile .side, html.mobile .rpanel { position: fixed; left: 0; right: 0; bottom: 0; height: var(--sheetH); z-index: 8; border: 0; border-top: 1px solid var(--line); box-shadow: 0 -16px 40px rgb(0 0 0 / .55); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html.mobile .side, html.mobile .rpanel { position: fixed; left: 0; right: 0; bottom: 0; height: var(--sheetH); z-index: 8; border: 0; border-top: 1px solid var(--line); box-shadow: none; padding-bottom: env(safe-area-inset-bottom, 0px); }
 html.mobile .side, html.mobile .rpanel { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--panel); }
 html.mobile.sheet-open[data-mtab=info] .side { display: block !important; }
 html.mobile.sheet-open[data-mtab=bom] .rpanel { display: block !important; }
 /* settings: their own window from the toolbar down */
-html.mobile.set-open .rpanel { display: block !important; top: var(--topH, 50px); height: auto; bottom: 0; border-top: 0; z-index: 10; }
+html.mobile.set-open .rpanel { display: block !important; top: var(--topH, 50px); height: auto; bottom: 0; border-top: 0; z-index: 10; box-shadow: none; }
 html.mobile.set-open .sethead.sethd { display: flex; position: sticky; top: 0; z-index: 3; }
 /* folded sheet: a strip at the bottom, tap or pull it to unfold */
 html.mobile.sheet-open.sheet-min[data-mtab] .side, html.mobile.sheet-open.sheet-min[data-mtab] .rpanel { overflow: hidden; border-top-width: 0; box-shadow: none; padding-bottom: 0; }
 html.mobile .side, html.mobile .rpanel, html.mobile #msheet { transition: height .26s cubic-bezier(.2, .8, .2, 1), bottom .26s cubic-bezier(.2, .8, .2, 1); }
 html.mobile.sheet-drag .side, html.mobile.sheet-drag .rpanel, html.mobile.sheet-drag #msheet { transition: none; }
 html.mobile #msheet { user-select: none; -webkit-user-select: none; }
-html.mobile.sheet-min #msheet { align-items: center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); box-shadow: 0 -10px 30px rgb(0 0 0 / .45); }
+html.mobile.sheet-min #msheet { align-items: center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); box-shadow: none; }
 #msheet .mgrab { position: absolute; left: 50%; top: 4px; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--muted); opacity: .5; }
 html.mobile #msheet { padding-top: 16px; touch-action: none; }
 /* one scroll per sheet: inner panes grow with their content instead of scrolling separately */
@@ -524,7 +531,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.06 · 11.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.07 · 11.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -1900,7 +1907,7 @@ var I18N = (function () {
     'На компьютере никто не подтвердил доступ.': 'Nobody confirmed access on the PC.', 'Отклонено': 'Declined', 'Компьютер отклонил подключение.': 'The PC declined the connection.',
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
-    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project', 'Низ (зеркально)': 'Bottom (mirrored)', 'Обе стороны': 'Both sides', 'Сброс': 'Reset', 'Копировать': 'Copy', 'Копировать номинал': 'Copy value', 'Найти даташит (PDF) в браузере': 'Find the datasheet (PDF) in the browser', 'Найти даташит (PDF)': 'Find datasheet (PDF)', 'Найти даташит': 'Find datasheet', 'Скопировано:': 'Copied:',
+    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project', 'Проверять при запуске': 'Check at startup', 'Обновления': 'Updates', 'Низ (зеркально)': 'Bottom (mirrored)', 'Обе стороны': 'Both sides', 'Сброс': 'Reset', 'Копировать': 'Copy', 'Копировать номинал': 'Copy value', 'Найти даташит (PDF) в браузере': 'Find the datasheet (PDF) in the browser', 'Найти даташит (PDF)': 'Find datasheet (PDF)', 'Найти даташит': 'Find datasheet', 'Скопировано:': 'Copied:',
     'Ничего не найдено по': 'Nothing found for', 'браузер (новее, чем файл)': 'browser (newer than the file)', 'браузер': 'browser', 'по умолчанию': 'default', 'свои': 'custom', 'загружено': 'loaded', 'нет данных': 'no data',
     'показаны': 'shown', 'скрыты': 'hidden', 'тема': 'theme', '(не сохранено в файл)': '(not saved to a file)', 'группа сброшена': 'group reset', 'клавиши по умолчанию': 'default keys', 'свои клавиши': 'custom keys', 'Номера пинов': 'Pin numbers', 'Связь с ПК разорвана': 'The PC closed the link', 'просит подключиться как сканер': 'asks to connect as a scanner', 'Передать плату на телефон': 'Send the board to the phone', 'Подключить телефон-сканер': 'Connect a phone scanner', 'Телефон-сканер подключён': 'Phone scanner connected',
     'На телефоне в BoardV нажмите Pair внизу настроек и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'On the phone in BoardV tap Pair at the bottom of the settings and point the camera at the code. The phone and the PC must be on the same Wi-Fi network.',
@@ -2744,7 +2751,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var h = '';
     if (S.part) {
       var p = S.part;
-      h += '<div class="eyebrow">Деталь</div><div class="ref tline">' + esc(p.ref) + tools(p.ref, false) + '</div>';
+      h += '<div class="eyebrow">Деталь</div><div class="ref">' + esc(p.ref) + '</div>';
       if (p.value) h += '<div class="val tline">' + esc(p.value) + tools(p.value, true) + '</div>';
       h += '<div class="chips"><span class="chip ' + (p.bottom ? 'b' : 't') + '">' + (p.bottom ? 'низ' : 'верх') + '</span><span class="chip">' + (p.smd ? 'SMD' : 'выводной') + '</span><span class="chip">' + p.pins.length + ' пин.</span></div>';
       if (p.footprint || p.desc) h += '<dl class="kv">' + (p.footprint ? '<dt>Корпус</dt><dd>' + esc(p.footprint) + '</dd>' : '') + (p.desc ? '<dt>Описание</dt><dd>' + esc(p.desc) + '</dd>' : '') + '</dl>';
@@ -3081,7 +3088,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     });
   }
   splitter($('splitL'), 'lw', 1); splitter($('splitR'), 'rw', -1);
-  function setSettings(open) { SETOPEN = !!open; KEYCAP = null; if (SETOPEN) { GROUPS_OPEN = { s2: true }; buildSettings(); } applyLayout(false); } // closing brings the BOM back exactly as it was
+  function setSettings(open) { SETOPEN = !!open; KEYCAP = null; if (SETOPEN) { GROUPS_OPEN = {}; buildSettings(); } applyLayout(false); } // closing brings the BOM back exactly as it was
   $('bomToggle').onclick = function () { if (SETOPEN) { SETOPEN = false; LAY.bom = true; } else LAY.bom = !LAY.bom; applyLayout(true); };
   $('setBtn').onclick = function () { if (IS_PHONE) { MSET = !MSET; sheetApply(); return; } setSettings(!SETOPEN); };
   $('setClose').onclick = function () { if (IS_PHONE) { MSET = false; sheetApply(); return; } setSettings(false); $('setBtn').focus(); };
@@ -3131,7 +3138,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     });
     k += '<div class="btnrow"><button type="button" class="btn sm" id="hkReset">Клавиши по умолчанию</button></div>';
     if (!IS_PHONE) h += group('keys', 'Горячие клавиши', k); // a phone has no keyboard
-    if (CAN_UPDATE) h += group('upd', 'Обновления', '<label class="srow chk" for="updAuto"><input type="checkbox" id="updAuto"' + (UPD.auto ? ' checked' : '') + '><span>Проверять обновления при запуске</span></label><div class="upd" id="updBox">' + updHtml() + '</div>');
+    if (CAN_UPDATE) h += '<div class="updmini"><div class="upd" id="updBox">' + updHtml() + '</div><label class="mchk" for="updAuto"><input type="checkbox" id="updAuto"' + (UPD.auto ? ' checked' : '') + '><span>Проверять при запуске</span></label></div>';
 
     body.innerHTML = h; body.scrollTop = st;
   }
@@ -3221,7 +3228,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   }
   function verDay(v) { if (/^2100\./.test(v || '')) return ''; var m = /^(\d{4})\.(\d{1,2})(\d{2})\./.exec(v || ''); return m ? m[3] + '.' + ('0' + m[2]).slice(-2) + '.' + m[1] : ''; } // 2026.1009.7 -> 09.10.2026
   function updHtml() {
-    var h = '<div class="ln ok">Установлена версия ' + esc(BUILD && BUILD.label ? BUILD.label + ' · ' + BUILD.day : (BUILD && BUILD.day) || '—') + '</div>', b = [], d = (UPD.label ? UPD.label + ' · ' : '') + (UPD.day || verDay(UPD.latest));
+    var h = '', b = [], d = (UPD.label ? UPD.label + ' · ' : '') + (UPD.day || verDay(UPD.latest));
     if (UPD.st === 'checking') h += '<div class="ln">Проверяю…</div>';
     else if (UPD.st === 'none') h += '<div class="ln ok">У вас последняя версия.</div>';
     else if (UPD.st === 'available') { h += '<div class="ln">Есть обновление: ' + esc(d) + '</div>'; b.push(['go', UPD.mode === 'portable' ? 'Скачать новую версию' : 'Обновить', 1]); }
@@ -3232,6 +3239,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     else if (UPD.st === 'ready') { h += '<div class="ln">Обновление загружено.</div>'; b.push(['install', 'Перезапустить и обновить', 1]); }
     else if (UPD.st === 'error') { h += '<div class="ln bad">Не получилось: ' + esc(UPD.msg) + '</div>'; }
     if (UPD.st !== 'downloading' && UPD.st !== 'installing' && UPD.st !== 'checking') b.push(['check', 'Проверить обновления']);
+    if (!h) h = '<div class="ln ok">Обновления</div>';
     return h + '<div class="btnrow">' + b.map(function (x) { return '<button type="button" class="btn sm' + (x[2] ? ' primary' : '') + '" data-upd="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
   }
   function updRender() {
@@ -3845,7 +3853,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     de.dataset.mtab = MSET ? 'set' : SHEET.tab;
     $('mmenu').setAttribute('aria-expanded', String(SHEET.open && !MSET)); $('setBtn').setAttribute('aria-pressed', String(MSET));
     document.querySelectorAll('#msheet .mtab').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.mt === SHEET.tab)); });
-    if (SETOPEN !== MSET) { SETOPEN = MSET; if (SETOPEN) { GROUPS_OPEN = { s2: true }; buildSettings(); } }
+    if (SETOPEN !== MSET) { SETOPEN = MSET; if (SETOPEN) { GROUPS_OPEN = {}; buildSettings(); } }
     applyLayout(false); $('setBtn').setAttribute('aria-pressed', String(MSET)); sheetSize();
   }
   function openSheet(t) {

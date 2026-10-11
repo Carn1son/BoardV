@@ -58,7 +58,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font
 .srow.chk { grid-template-columns: auto minmax(0, 1fr); cursor: pointer; }
 .srow.chk input { accent-color: var(--accent); width: 16px; height: 16px; }
 .presetrow { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 2px 2px 4px; }
-.presetrow span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+.presetrow > span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
 .presetrow select { font: inherit; font-weight: 600; background: var(--panel2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; min-width: 0; cursor: pointer; }
 .presetrow select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 details.grp { border: 0; border-left: 3px solid transparent; border-radius: 12px; background: color-mix(in srgb, var(--panel2) 70%, transparent); transition: border-color .15s, background .15s; }
@@ -159,7 +159,22 @@ table.bomt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ctxmenu button:hover, .ctxmenu button:focus-visible { background: var(--panel); outline: none; }
 .ctxmenu button.bad { color: #e8665a; }
 .ctxmenu button.cur { color: var(--accent); background: var(--panel); }
-.sidebtn { display: none; }
+.ctxmenu.xmenu { max-height: min(60vh, 420px); overflow-y: auto; }
+.ctxmenu.xmenu button { justify-content: space-between; }
+.ctxmenu.xmenu button i { font-style: normal; color: var(--accent); }
+select.xsrc { display: none !important; }
+.xsel { font: inherit; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; max-width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--fg); cursor: pointer; text-align: left; }
+.xsel span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xsel svg { width: 15px; height: 15px; flex: none; opacity: .65; transition: transform .15s; }
+.xsel[aria-expanded=true] { border-color: var(--accent); }
+.xsel[aria-expanded=true] svg { transform: rotate(180deg); opacity: 1; color: var(--accent); }
+.xsel:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.presetrow .xsel { flex: 1; font-weight: 600; padding: 8px 12px; border-radius: 10px; }
+.srow .xsel { justify-self: end; }
+html.mobile .xsel { min-height: 38px; }
+.sidesel { display: none !important; }
+.sidebtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; font-weight: 600; min-width: 92px; justify-content: space-between; }
+.sidebtn svg { width: 16px; height: 16px; opacity: .7; }
 html.mobile .sidebtn { display: inline-flex; align-items: center; gap: 4px; width: auto !important; min-width: 0 !important; padding: 0 8px 0 10px !important; font-weight: 600; }
 html.mobile .sidebtn svg { width: 16px; height: 16px; opacity: .7; }
 html.mobile .sidesel { display: none; }
@@ -453,7 +468,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     <button class="btn primary" id="open" type="button">Открыть файлы</button>
     <input type="file" id="file" multiple hidden>
     <button class="btn" id="bomToggle" type="button" aria-pressed="true" title="Показать или скрыть BOM справа">BOM</button>
-    <button class="btn mbtn sidebtn" id="sideBtn" type="button" aria-haspopup="menu" aria-label="Сторона платы"><span id="sideLbl">Верх</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+    <button class="btn sidebtn" id="sideBtn" type="button" aria-haspopup="menu" aria-label="Сторона платы"><span id="sideLbl">Верх</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
     <select class="sidesel" id="sideSel" aria-label="Сторона платы" title="Сторона платы">
       <option value="top">Верх</option><option value="bottom">Низ</option><option value="both">Обе</option>
     </select>
@@ -1336,7 +1351,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   function openTextMenu(text, x, y) { // copy what was pressed (and look for a datasheet)
     text = String(text || '').trim(); if (!text) return;
     var m = $('ctxMenu'); m.innerHTML = '<div class="ttl"></div><button type="button" data-tx="copy">' + ICO_COPY + ' Копировать</button><button type="button" data-tx="pdf">' + ICO_PDF + ' Найти даташит (PDF)</button>';
-    m.querySelector('.ttl').textContent = text; ctxKey = null; m.dataset.text = text; m.hidden = false;
+    m.querySelector('.ttl').textContent = text; ctxKey = null; m.dataset.text = text; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.hidden = false;
     var w = m.offsetWidth, hh = m.offsetHeight;
     m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + 'px';
     if (navigator.vibrate && IS_PHONE) try { navigator.vibrate(15); } catch (e) {}
@@ -1366,13 +1381,15 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     if (mk && !mk.ok) h += '<button type="button" data-op="ok">✓ Подходит — отметить зелёным</button>';
     if (!mk) h += '<button type="button" data-op="ok">✓ Отметить как найденный</button>';
     m.innerHTML = h; m.querySelector('.ttl').textContent = (g.value || '—') + (g.footprint ? ' · ' + g.footprint : '');
-    ctxKey = key; m.dataset.text = g.value || g.footprint || ''; m.hidden = false;
+    ctxKey = key; m.dataset.text = g.value || g.footprint || ''; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.hidden = false;
     var w = m.offsetWidth, hh = m.offsetHeight;
     m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + 'px';
     if (navigator.vibrate && IS_PHONE) try { navigator.vibrate(15); } catch (e) {}
   }
-  function closeRowMenu() { $('ctxMenu').hidden = true; ctxKey = null; }
+  function closeRowMenu() { var m = $('ctxMenu'); m.hidden = true; ctxKey = null; m.classList.remove('xmenu'); if (m.xsel) { m.xsel.btn.setAttribute('aria-expanded', 'false'); m.xsel = null; } }
   $('ctxMenu').addEventListener('click', function (e) {
+    var xi = e.target.closest('button[data-xi]');
+    if (xi && $('ctxMenu').xsel) { var X = $('ctxMenu').xsel; closeRowMenu(); X.sel.selectedIndex = +xi.dataset.xi; X.sel.dispatchEvent(new Event('input', { bubbles: true })); X.sel.dispatchEvent(new Event('change', { bubbles: true })); xselSync(); return; }
     var sd = e.target.closest('button[data-side]'); if (sd) { closeRowMenu(); setSide(sd.dataset.side); return; }
     var tx = e.target.closest('button[data-tx]');
     if (tx) { var t = $('ctxMenu').dataset.text || ''; closeRowMenu(); if (tx.dataset.tx === 'copy') copyText(t, 'Скопировано: ' + t); else searchPdf(t); return; }
@@ -2337,7 +2354,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       bottom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>',
       both: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>' };
     m.innerHTML = [['top', 'Верх'], ['bottom', 'Низ (зеркально)'], ['both', 'Обе стороны']].map(function (o) { return '<button type="button" data-side="' + o[0] + '"' + (V.side === o[0] ? ' class="cur"' : '') + '>' + ic[o[0]] + ' ' + o[1] + '</button>'; }).join('');
-    ctxKey = null; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+    ctxKey = null; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   };
   function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
   function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 1) % 4; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
@@ -2424,6 +2441,33 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     if (IS_PHONE && SHEET.open) { openSheet(null); return true; }
     return false;
   };
+  /* ---------- our own drop-down lists instead of the system ones ---------- */
+  var XCHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>';
+  function xselLabel(sel) { var o = sel.options[sel.selectedIndex]; return o ? o.textContent : ''; }
+  function xselSync() { document.querySelectorAll('select.xsrc').forEach(function (sel) { var b = sel.nextElementSibling; if (b && b.classList.contains('xsel') && b.dataset.si !== sel.selectedIndex + ':' + sel.value) { b.dataset.si = sel.selectedIndex + ':' + sel.value; b.querySelector('span').textContent = xselLabel(sel); } }); } // only when the choice changed: the translator may rewrite the text
+  function xselWrap(sel) {
+    if (sel.classList.contains('xsrc') || sel.id === 'sideSel') return;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'xsel'; b.setAttribute('aria-haspopup', 'listbox'); b.setAttribute('aria-expanded', 'false');
+    if (sel.getAttribute('aria-label')) b.setAttribute('aria-label', sel.getAttribute('aria-label'));
+    b.innerHTML = '<span></span>' + XCHEV; b.querySelector('span').textContent = xselLabel(sel); b.dataset.si = sel.selectedIndex + ':' + sel.value;
+    sel.classList.add('xsrc'); sel.parentNode.insertBefore(b, sel.nextSibling);
+    b.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var m = $('ctxMenu'), r = b.getBoundingClientRect();
+      m.innerHTML = Array.prototype.map.call(sel.options, function (o, i) { return '<button type="button" data-xi="' + i + '"' + (i === sel.selectedIndex ? ' class="cur"' : '') + '><span></span>' + (i === sel.selectedIndex ? '<i>✓</i>' : '') + '</button>'; }).join('');
+      Array.prototype.forEach.call(sel.options, function (o, i) { m.querySelector('[data-xi="' + i + '"] span').textContent = o.textContent; });
+      m.classList.add('xmenu'); m.xsel = { sel: sel, btn: b }; ctxKey = null; m.hidden = false; b.setAttribute('aria-expanded', 'true');
+      m.style.minWidth = Math.max(180, r.width) + 'px';
+      var w = m.offsetWidth, hh = m.offsetHeight, top = r.bottom + 6;
+      if (top + hh > innerHeight - 8) top = Math.max(8, r.top - hh - 6);
+      m.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px'; m.style.top = top + 'px';
+      var cur = m.querySelector('.cur'); if (cur) cur.scrollIntoView({ block: 'nearest' });
+    });
+  }
+  function xselAll(root) { (root || document).querySelectorAll('select').forEach(xselWrap); }
+  new MutationObserver(function (list) { if (list.some(function (r) { return Array.prototype.some.call(r.addedNodes, function (n) { return n.nodeType === 1 && (n.tagName === 'SELECT' || n.querySelector && n.querySelector('select')); }); })) xselAll(document.body); xselSync(); }).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('change', xselSync, true);
+  xselAll(document.body);
   /* ---------- start ---------- */
   applyCfg(false);
   status(); req(); // empty field until a file is dropped or picked

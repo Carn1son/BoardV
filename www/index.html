@@ -172,6 +172,18 @@ table.bomt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ctxmenu button { font: inherit; text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: none; color: var(--fg); cursor: pointer; display: flex; gap: 10px; align-items: center; }
 .ctxmenu button:hover, .ctxmenu button:focus-visible { background: var(--panel); outline: none; }
 .ctxmenu button.bad { color: #e8665a; }
+.ctxmenu button.cur { color: var(--accent); background: var(--panel); }
+.sidebtn { display: none; }
+html.mobile .sidebtn { display: inline-flex; align-items: center; gap: 4px; width: auto !important; min-width: 0 !important; padding: 0 8px 0 10px !important; font-weight: 600; }
+html.mobile .sidebtn svg { width: 16px; height: 16px; opacity: .7; }
+html.mobile .sidesel { display: none; }
+.ctxmenu button svg { width: 17px; height: 17px; flex: none; opacity: .85; }
+.tline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tools { display: inline-flex; gap: 2px; }
+.tbtn { width: 28px; height: 28px; padding: 0; border: 1px solid transparent; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; display: inline-grid; place-items: center; }
+.tbtn svg { width: 16px; height: 16px; }
+.tbtn:hover, .tbtn:focus-visible { color: var(--accent); border-color: var(--line); background: var(--panel2); outline: none; }
+html.mobile .tbtn { width: 34px; height: 34px; }
 html.mobile .ctxmenu button { padding: 13px 14px; font-size: 15px; }
 .bomt th.c-k button { text-align: center; padding-inline: 6px; }
 .side { border-right: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; }
@@ -371,7 +383,7 @@ html.mobile .side, html.mobile .rpanel, html.mobile #msheet { transition: height
 html.mobile.sheet-drag .side, html.mobile.sheet-drag .rpanel, html.mobile.sheet-drag #msheet { transition: none; }
 html.mobile #msheet { user-select: none; -webkit-user-select: none; }
 html.mobile.sheet-min #msheet { align-items: center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); box-shadow: 0 -10px 30px rgb(0 0 0 / .45); }
-#msheet .mgrab { position: absolute; left: 50%; top: 5px; width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: var(--muted); opacity: .55; }
+#msheet .mgrab { position: absolute; left: 50%; top: 4px; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--muted); opacity: .5; }
 html.mobile #msheet { padding-top: 16px; touch-action: none; }
 /* one scroll per sheet: inner panes grow with their content instead of scrolling separately */
 html.mobile .search { position: sticky; top: 0; z-index: 2; background: var(--panel); }
@@ -437,6 +449,8 @@ html.mobile .cp-sv { height: 210px; }
 .cp-row input { flex: 1 1 0; width: 0; min-width: 0; font: inherit; font-family: var(--f-mono); font-size: 15px; text-transform: uppercase; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); }
 .cp-row .btn { min-height: 42px; padding: 0 16px; }
 .cp-row .btn.primary { min-width: 96px; }
+* { -webkit-tap-highlight-color: transparent; }
+button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focus:not(:focus-visible), [tabindex]:focus:not(:focus-visible) { outline: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -447,6 +461,7 @@ html.mobile .cp-sv { height: 210px; }
     <button class="btn primary" id="open" type="button">Открыть файлы</button>
     <input type="file" id="file" multiple hidden>
     <button class="btn" id="bomToggle" type="button" aria-pressed="true" title="Показать или скрыть BOM справа">BOM</button>
+    <button class="btn mbtn sidebtn" id="sideBtn" type="button" aria-haspopup="menu" aria-label="Сторона платы"><span id="sideLbl">Верх</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
     <select class="sidesel" id="sideSel" aria-label="Сторона платы" title="Сторона платы">
       <option value="top">Верх</option><option value="bottom">Низ</option><option value="both">Обе</option>
     </select>
@@ -509,7 +524,7 @@ html.mobile .cp-sv { height: 210px; }
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.05 · 10.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.06 · 11.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -1885,7 +1900,7 @@ var I18N = (function () {
     'На компьютере никто не подтвердил доступ.': 'Nobody confirmed access on the PC.', 'Отклонено': 'Declined', 'Компьютер отклонил подключение.': 'The PC declined the connection.',
     'Получение платы': 'Receiving the board', 'Не удалось открыть плату': 'Could not open the board', 'Данные не расшифровались. Покажите на компьютере новый код.': 'The data could not be decrypted. Show a new code on the PC.',
     'Адрес компьютера:': 'PC address:',
-    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project',
+    'Сканирование компонентов': 'Scanning parts', 'Сканировать компонент': 'Scan a part', 'Закрыть проект': 'Close project', 'Низ (зеркально)': 'Bottom (mirrored)', 'Обе стороны': 'Both sides', 'Сброс': 'Reset', 'Копировать': 'Copy', 'Копировать номинал': 'Copy value', 'Найти даташит (PDF) в браузере': 'Find the datasheet (PDF) in the browser', 'Найти даташит (PDF)': 'Find datasheet (PDF)', 'Найти даташит': 'Find datasheet', 'Скопировано:': 'Copied:',
     'Ничего не найдено по': 'Nothing found for', 'браузер (новее, чем файл)': 'browser (newer than the file)', 'браузер': 'browser', 'по умолчанию': 'default', 'свои': 'custom', 'загружено': 'loaded', 'нет данных': 'no data',
     'показаны': 'shown', 'скрыты': 'hidden', 'тема': 'theme', '(не сохранено в файл)': '(not saved to a file)', 'группа сброшена': 'group reset', 'клавиши по умолчанию': 'default keys', 'свои клавиши': 'custom keys', 'Номера пинов': 'Pin numbers', 'Связь с ПК разорвана': 'The PC closed the link', 'просит подключиться как сканер': 'asks to connect as a scanner', 'Передать плату на телефон': 'Send the board to the phone', 'Подключить телефон-сканер': 'Connect a phone scanner', 'Телефон-сканер подключён': 'Phone scanner connected',
     'На телефоне в BoardV нажмите Pair внизу настроек и наведите камеру на код. Телефон и компьютер должны быть в одной Wi-Fi сети.': 'On the phone in BoardV tap Pair at the bottom of the settings and point the camera at the code. The phone and the PC must be on the same Wi-Fi network.',
@@ -2713,14 +2728,24 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     renderCard(); renderList(); status(); req();
   }
   function netPins(n) { var out = []; M.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.net === n) out.push({ p: p, q: q }); }); }); return out; }
+  var ICO_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>';
+  var ICO_PDF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/><path d="M8 10.5h5M10.5 8v5"/></svg>';
+  function tools(text, pdf) { // small buttons next to a name: copy it, look for its datasheet
+    return '<span class="tools"><button type="button" class="tbtn" data-copy="' + esc(text) + '" title="Копировать" aria-label="Копировать">' + ICO_COPY + '</button>' +
+      (pdf ? '<button type="button" class="tbtn" data-pdf="' + esc(text) + '" title="Найти даташит (PDF) в браузере" aria-label="Найти даташит">' + ICO_PDF + '</button>' : '') + '</span>';
+  }
+  function searchPdf(t) { // the default browser opens: "name" filetype:pdf
+    var a = document.createElement('a'); a.href = 'https://www.google.com/search?q=' + encodeURIComponent('"' + t + '" filetype:pdf'); a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
   function renderCard() {
     var c = $('card'); c.innerHTML = '';
     if (!M) return;
     var h = '';
     if (S.part) {
       var p = S.part;
-      h += '<div class="eyebrow">Деталь</div><div class="ref">' + esc(p.ref) + '</div>';
-      if (p.value) h += '<div class="val">' + esc(p.value) + '</div>';
+      h += '<div class="eyebrow">Деталь</div><div class="ref tline">' + esc(p.ref) + tools(p.ref, false) + '</div>';
+      if (p.value) h += '<div class="val tline">' + esc(p.value) + tools(p.value, true) + '</div>';
       h += '<div class="chips"><span class="chip ' + (p.bottom ? 'b' : 't') + '">' + (p.bottom ? 'низ' : 'верх') + '</span><span class="chip">' + (p.smd ? 'SMD' : 'выводной') + '</span><span class="chip">' + p.pins.length + ' пин.</span></div>';
       if (p.footprint || p.desc) h += '<dl class="kv">' + (p.footprint ? '<dt>Корпус</dt><dd>' + esc(p.footprint) + '</dd>' : '') + (p.desc ? '<dt>Описание</dt><dd>' + esc(p.desc) + '</dd>' : '') + '</dl>';
       h += '<table class="pins"><tbody>';
@@ -2733,7 +2758,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (S.net) {
       var np = netPins(S.net);
       var nc0 = netRuleColor(S.net);
-      h += '<div class="eyebrow">Цепь</div><div class="ref" style="color:var(--ui-sel)">' + esc(S.net) + '</div><label class="netcolor">Цвет этой цепи на плате <input type="color" data-netcolor="' + esc(S.net) + '" value="' + (nc0 || '#3fa7ff') + '">' + (nc0 ? '<button type="button" class="btn sm" data-netclear="' + esc(S.net) + '">Убрать</button>' : '') + '</label><div class="note">' + np.length + ' пинов на ' + uniq(np.map(function (x) { return x.p; })).length + ' деталях</div><table class="pins"><tbody>';
+      h += '<div class="eyebrow">Цепь</div><div class="ref tline" style="color:var(--ui-sel)">' + esc(S.net) + tools(S.net, false) + '</div><label class="netcolor">Цвет этой цепи на плате <input type="color" data-netcolor="' + esc(S.net) + '" value="' + (nc0 || '#3fa7ff') + '">' + (nc0 ? '<button type="button" class="btn sm" data-netclear="' + esc(S.net) + '">Убрать</button>' : '') + '</label><div class="note">' + np.length + ' пинов на ' + uniq(np.map(function (x) { return x.p; })).length + ' деталях</div><table class="pins"><tbody>';
       np.slice(0, 400).forEach(function (x) { h += '<tr><td>' + (x.p.bottom ? '↓' : '') + '</td><td><button type="button" class="netlink" data-part="' + esc(x.p.ref) + '">' + esc(x.p.ref) + '.' + esc(x.q.name) + (x.p.value ? ' · ' + esc(x.p.value) : '') + '</button></td></tr>'; });
       h += '</tbody></table>';
     }
@@ -2770,6 +2795,8 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   $('card').addEventListener('change', function (e) { var t = e.target; if (t.dataset && t.dataset.netcolor) setNetColor(t.dataset.netcolor, t.value); });
   $('card').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.copy != null) { copyText(b.dataset.copy, 'Скопировано: ' + b.dataset.copy); return; }
+    if (b.dataset.pdf != null) { searchPdf(b.dataset.pdf); return; }
     if (b.dataset.netclear) { setNetColor(b.dataset.netclear, null); return; }
     if (b.dataset.net) { if (b.dataset.net !== 'UNCONNECTED') selectNet(b.dataset.net); }
     else if (b.dataset.part) { var p = M.parts.filter(function (x) { return x.ref === b.dataset.part; })[0]; if (p) { pickedOnPhone(); S.net = null; selectPart(p, true); } }
@@ -2956,20 +2983,49 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   $('bq').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var tr = $('bomList').querySelector('tr[data-group]'); if (tr) selectGroup(tr.dataset.group); } if (e.key === 'Escape') { $('bq').value = ''; renderBom(); } });
   $('bomExport').onclick = exportBom;
   var ctxKey = null, ctxEat = 0;
+  function openTextMenu(text, x, y) { // copy what was pressed (and look for a datasheet)
+    text = String(text || '').trim(); if (!text) return;
+    var m = $('ctxMenu'); m.innerHTML = '<div class="ttl"></div><button type="button" data-tx="copy">' + ICO_COPY + ' Копировать</button><button type="button" data-tx="pdf">' + ICO_PDF + ' Найти даташит (PDF)</button>';
+    m.querySelector('.ttl').textContent = text; ctxKey = null; m.dataset.text = text; m.hidden = false;
+    var w = m.offsetWidth, hh = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + 'px';
+    if (navigator.vibrate && IS_PHONE) try { navigator.vibrate(15); } catch (e) {}
+  }
+  function pressedText(el) { // the smallest meaningful piece of text under the finger
+    var t = el.closest('[data-copy], .netlink, td, .ref, .val, dd, .v, b, small, span, .row');
+    if (!t) return '';
+    if (t.dataset && t.dataset.copy) return t.dataset.copy;
+    var c = t.cloneNode(true); c.querySelectorAll('.tools, svg').forEach(function (x) { x.remove(); });
+    return c.textContent.replace(/\s+/g, ' ').trim();
+  }
+  ['card', 'list'].forEach(function (id) {
+    $(id).addEventListener('contextmenu', function (e) { var t = pressedText(e.target); if (!t) return; e.preventDefault(); e.stopPropagation(); ctxEat = Date.now(); openTextMenu(t, e.clientX, e.clientY); });
+    var lt = 0, st = null;
+    $(id).addEventListener('pointerdown', function (e) { if (e.pointerType === 'mouse') return; st = { x: e.clientX, y: e.clientY, el: e.target }; clearTimeout(lt);
+      lt = setTimeout(function () { if (!st) return; var t = pressedText(st.el); if (t) { ctxEat = Date.now(); openTextMenu(t, st.x, st.y); } st = null; }, 550); });
+    $(id).addEventListener('pointermove', function (e) { if (st && Math.hypot(e.clientX - st.x, e.clientY - st.y) > 10) { clearTimeout(lt); st = null; } });
+    ['pointerup', 'pointercancel'].forEach(function (n) { $(id).addEventListener(n, function () { clearTimeout(lt); st = null; }); });
+    $(id).addEventListener('click', function (e) { if (Date.now() - ctxEat < 700) { e.stopPropagation(); e.preventDefault(); } }, true);
+  });
   function openRowMenu(key, x, y) {
     var g = bomByKey[key]; if (!g) return;
     var mk = PART_OK[key], m = $('ctxMenu'), h = '<div class="ttl"></div>';
+    h += '<button type="button" data-tx="copy">' + ICO_COPY + ' Копировать номинал</button>';
+    if (g.value) h += '<button type="button" data-tx="pdf">' + ICO_PDF + ' Найти даташит (PDF)</button>';
     if (mk) h += '<button type="button" class="bad" data-op="unmark">✕ Ошибочный компонент — снять отметку</button>';
     if (mk && !mk.ok) h += '<button type="button" data-op="ok">✓ Подходит — отметить зелёным</button>';
     if (!mk) h += '<button type="button" data-op="ok">✓ Отметить как найденный</button>';
     m.innerHTML = h; m.querySelector('.ttl').textContent = (g.value || '—') + (g.footprint ? ' · ' + g.footprint : '');
-    ctxKey = key; m.hidden = false;
+    ctxKey = key; m.dataset.text = g.value || g.footprint || ''; m.hidden = false;
     var w = m.offsetWidth, hh = m.offsetHeight;
     m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + 'px';
     if (navigator.vibrate && IS_PHONE) try { navigator.vibrate(15); } catch (e) {}
   }
   function closeRowMenu() { $('ctxMenu').hidden = true; ctxKey = null; }
   $('ctxMenu').addEventListener('click', function (e) {
+    var sd = e.target.closest('button[data-side]'); if (sd) { closeRowMenu(); setSide(sd.dataset.side); return; }
+    var tx = e.target.closest('button[data-tx]');
+    if (tx) { var t = $('ctxMenu').dataset.text || ''; closeRowMenu(); if (tx.dataset.tx === 'copy') copyText(t, 'Скопировано: ' + t); else searchPdf(t); return; }
     var b = e.target.closest('button[data-op]'); if (!b || !ctxKey) return;
     var k = ctxKey, op = b.dataset.op; closeRowMenu(); setMark(k, op);
     if (typeof sendLink === 'function') sendLink({ op: op, key: k }); // the PC that shared the board follows
@@ -3025,7 +3081,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     });
   }
   splitter($('splitL'), 'lw', 1); splitter($('splitR'), 'rw', -1);
-  function setSettings(open) { SETOPEN = !!open; KEYCAP = null; if (SETOPEN) { GROUPS_OPEN = {}; buildSettings(); } applyLayout(false); } // closing brings the BOM back exactly as it was
+  function setSettings(open) { SETOPEN = !!open; KEYCAP = null; if (SETOPEN) { GROUPS_OPEN = { s2: true }; buildSettings(); } applyLayout(false); } // closing brings the BOM back exactly as it was
   $('bomToggle').onclick = function () { if (SETOPEN) { SETOPEN = false; LAY.bom = true; } else LAY.bom = !LAY.bom; applyLayout(true); };
   $('setBtn').onclick = function () { if (IS_PHONE) { MSET = !MSET; sheetApply(); return; } setSettings(!SETOPEN); };
   $('setClose').onclick = function () { if (IS_PHONE) { MSET = false; sheetApply(); return; } setSettings(false); $('setBtn').focus(); };
@@ -3058,7 +3114,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
         else if (t === 'select') g += '<label class="srow" for="' + id + '"><span>' + esc(it[2]) + '</span><select id="' + id + '" data-fxs="' + k + '">' + it[3].map(function (o) { return '<option value="' + o[0] + '"' + (CFG.fx[k] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
         else g += '<label class="srow chk" for="' + id + '"><input type="checkbox" id="' + id + '" data-fxb="' + k + '"' + (CFG.fx[k] ? ' checked' : '') + '><span>' + esc(it[2]) + '</span></label>';
       });
-      g += '<div class="btnrow"><button type="button" class="btn sm" data-grp-reset="' + si + '" title="Вернуть значения этой группы из темы «' + esc(CFG.base || 'По умолчанию') + '»">Сбросить группу</button></div>';
+      if (!(IS_PHONE && sec[0] === 'Управление')) g += '<div class="btnrow"><button type="button" class="btn sm" data-grp-reset="' + si + '" title="Вернуть значения этой группы из темы «' + esc(CFG.base || 'По умолчанию') + '»">Сброс</button></div>';
       h += group('s' + si, sec[0], g);
     });
     var r = '<div class="note">Имя цепи или маска: <code>*</code> — любые символы, <code>?</code> — один. Например <code>*3V3*</code>, <code>USB_*</code>, <code>I2C_SDA</code>. Нижнее правило главнее.</div><div class="rules" id="rules">';
@@ -3664,7 +3720,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   $('scanUnlink').onclick = function () { dropLink(); updPartScan(); closeScanner(); flash('Отключено от компьютера'); };
 
   function setShared(on) { // view-only copy: nothing leaves the phone, no screenshots
-    if (window.BoardVAndroid && window.BoardVAndroid.setSecure) try { window.BoardVAndroid.setSecure(!!on); } catch (e) {}
+    if (window.BoardVAndroid && window.BoardVAndroid.setSecure) try { window.BoardVAndroid.setSecure(false); } catch (e) {} // screenshots are allowed
     updShareBtn();
   }
   $('scanStop').onclick = closeScanner;
@@ -3789,7 +3845,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     de.dataset.mtab = MSET ? 'set' : SHEET.tab;
     $('mmenu').setAttribute('aria-expanded', String(SHEET.open && !MSET)); $('setBtn').setAttribute('aria-pressed', String(MSET));
     document.querySelectorAll('#msheet .mtab').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.mt === SHEET.tab)); });
-    if (SETOPEN !== MSET) { SETOPEN = MSET; if (SETOPEN) { GROUPS_OPEN = {}; buildSettings(); } }
+    if (SETOPEN !== MSET) { SETOPEN = MSET; if (SETOPEN) { GROUPS_OPEN = { s2: true }; buildSettings(); } }
     applyLayout(false); $('setBtn').setAttribute('aria-pressed', String(MSET)); sheetSize();
   }
   function openSheet(t) {
@@ -3919,10 +3975,19 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       // keep the point under the screen center in place when flipping
       var c = s2w(W / 2, H / 2); V.side = s; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1];
     } else V.side = s;
-    $('sideSel').value = s;
+    $('sideSel').value = s; $('sideLbl').textContent = ({ top: 'Верх', bottom: 'Низ', both: 'Обе' })[s];
     status(); req();
   }
   $('sideSel').onchange = function () { setSide(this.value); this.blur(); };
+  // phone: our own small menu instead of the system list
+  $('sideBtn').onclick = function () {
+    var m = $('ctxMenu'), r = this.getBoundingClientRect(), ic = {
+      top: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg>',
+      bottom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>',
+      both: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>' };
+    m.innerHTML = [['top', 'Верх'], ['bottom', 'Низ (зеркально)'], ['both', 'Обе стороны']].map(function (o) { return '<button type="button" data-side="' + o[0] + '"' + (V.side === o[0] ? ' class="cur"' : '') + '>' + ic[o[0]] + ' ' + o[1] + '</button>'; }).join('');
+    ctxKey = null; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+  };
   function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
   function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 1) % 4; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
   $('rot').onclick = rotate;

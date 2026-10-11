@@ -10,8 +10,8 @@ android {
         applicationId = "com.carnison.boardview"
         minSdk = 24
         targetSdk = 34
-        versionCode = (System.getenv("BV_VCODE") ?: "2100020005").toInt()
-        versionName = System.getenv("BV_VER") ?: "10.10.2026"
+        versionCode = (System.getenv("BV_VCODE") ?: "2100020006").toInt()
+        versionName = System.getenv("BV_VER") ?: "11.10.2026"
     }
 
     // One permanent key (decrypted in CI from src/keys/boardv.jks.enc) so every new APK installs over the old one.

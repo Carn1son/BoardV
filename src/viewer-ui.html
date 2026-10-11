@@ -1502,6 +1502,12 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
 
     body.innerHTML = h; body.scrollTop = st;
   }
+  // group headers open and close by our own hand: some Android WebViews would not close a group by tapping its header
+  $('setBody').addEventListener('click', function (e) {
+    var sm = e.target.closest('summary'); if (!sm) return;
+    var d = sm.parentNode; if (!d || !d.classList || !d.classList.contains('grp')) return;
+    e.preventDefault(); d.open = !d.open; GROUPS_OPEN[d.dataset.g] = d.open;
+  }, true);
   $('setBody').addEventListener('toggle', function (e) {
     var d = e.target; if (!d.dataset || !d.dataset.g) return;
     GROUPS_OPEN[d.dataset.g] = d.open;

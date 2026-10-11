@@ -546,7 +546,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.09 · 11.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.10 · 11.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -3043,7 +3043,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + 'px';
     if (navigator.vibrate && IS_PHONE) try { navigator.vibrate(15); } catch (e) {}
   }
-  function closeRowMenu() { var m = $('ctxMenu'); m.hidden = true; ctxKey = null; m.classList.remove('xmenu'); if (m.xsel) { m.xsel.btn.setAttribute('aria-expanded', 'false'); m.xsel = null; } }
+  function closeRowMenu() { var m = $('ctxMenu'); m.hidden = true; m.owner = null; ctxKey = null; m.classList.remove('xmenu'); if (m.xsel) { m.xsel.btn.setAttribute('aria-expanded', 'false'); m.xsel = null; } }
   $('ctxMenu').addEventListener('click', function (e) {
     var xi = e.target.closest('button[data-xi]');
     if (xi && $('ctxMenu').xsel) { var X = $('ctxMenu').xsel; closeRowMenu(); X.sel.selectedIndex = +xi.dataset.xi; X.sel.dispatchEvent(new Event('input', { bubbles: true })); X.sel.dispatchEvent(new Event('change', { bubbles: true })); xselSync(); return; }
@@ -3054,7 +3054,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var k = ctxKey, op = b.dataset.op; closeRowMenu(); setMark(k, op);
     if (typeof sendLink === 'function') sendLink({ op: op, key: k }); // the PC that shared the board follows
   });
-  document.addEventListener('pointerdown', function (e) { if (!$('ctxMenu').hidden && !e.target.closest('#ctxMenu')) closeRowMenu(); }, true);
+  document.addEventListener('pointerdown', function (e) { var m = $('ctxMenu'); if (!m.hidden && !e.target.closest('#ctxMenu') && !(m.owner && m.owner.contains(e.target))) closeRowMenu(); }, true); // a tap on the list's own button is handled by that button (it closes the list)
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('ctxMenu').hidden) { e.stopPropagation(); closeRowMenu(); } }, true);
   $('bomList').addEventListener('contextmenu', function (e) {
     var tr = e.target.closest('tr[data-group]'); if (!tr) return;
@@ -4012,12 +4012,13 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   $('sideSel').onchange = function () { setSide(this.value); this.blur(); };
   // phone: our own small menu instead of the system list
   $('sideBtn').onclick = function () {
+    if (!$('ctxMenu').hidden && $('ctxMenu').owner === this) { closeRowMenu(); return; } // second tap closes
     var m = $('ctxMenu'), r = this.getBoundingClientRect(), ic = {
       top: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg>',
       bottom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>',
       both: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>' };
     m.innerHTML = [['top', 'Верх'], ['bottom', 'Низ (зеркально)'], ['both', 'Обе стороны']].map(function (o) { return '<button type="button" data-side="' + o[0] + '"' + (V.side === o[0] ? ' class="cur"' : '') + '>' + ic[o[0]] + ' ' + o[1] + '</button>'; }).join('');
-    ctxKey = null; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+    ctxKey = null; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.owner = this; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   };
   function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
   function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 1) % 4; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
@@ -4117,9 +4118,10 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     b.addEventListener('click', function (e) {
       e.preventDefault(); e.stopPropagation();
       var m = $('ctxMenu'), r = b.getBoundingClientRect();
+      if (!m.hidden && m.owner === b) { closeRowMenu(); return; } // second tap closes
       m.innerHTML = Array.prototype.map.call(sel.options, function (o, i) { return '<button type="button" data-xi="' + i + '"' + (i === sel.selectedIndex ? ' class="cur"' : '') + '><span></span>' + (i === sel.selectedIndex ? '<i>✓</i>' : '') + '</button>'; }).join('');
       Array.prototype.forEach.call(sel.options, function (o, i) { m.querySelector('[data-xi="' + i + '"] span').textContent = o.textContent; });
-      m.classList.add('xmenu'); m.xsel = { sel: sel, btn: b }; ctxKey = null; m.hidden = false; b.setAttribute('aria-expanded', 'true');
+      m.classList.add('xmenu'); m.xsel = { sel: sel, btn: b }; ctxKey = null; m.owner = b; m.hidden = false; b.setAttribute('aria-expanded', 'true');
       m.style.minWidth = Math.max(180, r.width) + 'px';
       var w = m.offsetWidth, hh = m.offsetHeight, top = r.bottom + 6;
       if (top + hh > innerHeight - 8) top = Math.max(8, r.top - hh - 6);

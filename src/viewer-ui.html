@@ -1386,7 +1386,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - hh - 8)) + 'px';
     if (navigator.vibrate && IS_PHONE) try { navigator.vibrate(15); } catch (e) {}
   }
-  function closeRowMenu() { var m = $('ctxMenu'); m.hidden = true; ctxKey = null; m.classList.remove('xmenu'); if (m.xsel) { m.xsel.btn.setAttribute('aria-expanded', 'false'); m.xsel = null; } }
+  function closeRowMenu() { var m = $('ctxMenu'); m.hidden = true; m.owner = null; ctxKey = null; m.classList.remove('xmenu'); if (m.xsel) { m.xsel.btn.setAttribute('aria-expanded', 'false'); m.xsel = null; } }
   $('ctxMenu').addEventListener('click', function (e) {
     var xi = e.target.closest('button[data-xi]');
     if (xi && $('ctxMenu').xsel) { var X = $('ctxMenu').xsel; closeRowMenu(); X.sel.selectedIndex = +xi.dataset.xi; X.sel.dispatchEvent(new Event('input', { bubbles: true })); X.sel.dispatchEvent(new Event('change', { bubbles: true })); xselSync(); return; }
@@ -1397,7 +1397,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     var k = ctxKey, op = b.dataset.op; closeRowMenu(); setMark(k, op);
     if (typeof sendLink === 'function') sendLink({ op: op, key: k }); // the PC that shared the board follows
   });
-  document.addEventListener('pointerdown', function (e) { if (!$('ctxMenu').hidden && !e.target.closest('#ctxMenu')) closeRowMenu(); }, true);
+  document.addEventListener('pointerdown', function (e) { var m = $('ctxMenu'); if (!m.hidden && !e.target.closest('#ctxMenu') && !(m.owner && m.owner.contains(e.target))) closeRowMenu(); }, true); // a tap on the list's own button is handled by that button (it closes the list)
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('ctxMenu').hidden) { e.stopPropagation(); closeRowMenu(); } }, true);
   $('bomList').addEventListener('contextmenu', function (e) {
     var tr = e.target.closest('tr[data-group]'); if (!tr) return;
@@ -2355,12 +2355,13 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   $('sideSel').onchange = function () { setSide(this.value); this.blur(); };
   // phone: our own small menu instead of the system list
   $('sideBtn').onclick = function () {
+    if (!$('ctxMenu').hidden && $('ctxMenu').owner === this) { closeRowMenu(); return; } // second tap closes
     var m = $('ctxMenu'), r = this.getBoundingClientRect(), ic = {
       top: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg>',
       bottom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>',
       both: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>' };
     m.innerHTML = [['top', 'Верх'], ['bottom', 'Низ (зеркально)'], ['both', 'Обе стороны']].map(function (o) { return '<button type="button" data-side="' + o[0] + '"' + (V.side === o[0] ? ' class="cur"' : '') + '>' + ic[o[0]] + ' ' + o[1] + '</button>'; }).join('');
-    ctxKey = null; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+    ctxKey = null; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.owner = this; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   };
   function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
   function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 1) % 4; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
@@ -2460,9 +2461,10 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     b.addEventListener('click', function (e) {
       e.preventDefault(); e.stopPropagation();
       var m = $('ctxMenu'), r = b.getBoundingClientRect();
+      if (!m.hidden && m.owner === b) { closeRowMenu(); return; } // second tap closes
       m.innerHTML = Array.prototype.map.call(sel.options, function (o, i) { return '<button type="button" data-xi="' + i + '"' + (i === sel.selectedIndex ? ' class="cur"' : '') + '><span></span>' + (i === sel.selectedIndex ? '<i>✓</i>' : '') + '</button>'; }).join('');
       Array.prototype.forEach.call(sel.options, function (o, i) { m.querySelector('[data-xi="' + i + '"] span').textContent = o.textContent; });
-      m.classList.add('xmenu'); m.xsel = { sel: sel, btn: b }; ctxKey = null; m.hidden = false; b.setAttribute('aria-expanded', 'true');
+      m.classList.add('xmenu'); m.xsel = { sel: sel, btn: b }; ctxKey = null; m.owner = b; m.hidden = false; b.setAttribute('aria-expanded', 'true');
       m.style.minWidth = Math.max(180, r.width) + 'px';
       var w = m.offsetWidth, hh = m.offsetHeight, top = r.bottom + 6;
       if (top + hh > innerHeight - 8) top = Math.max(8, r.top - hh - 6);

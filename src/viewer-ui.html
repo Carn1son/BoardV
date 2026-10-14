@@ -1262,6 +1262,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   function buildBom() {
     bomByKey = {}; bomIndex = [];
     M.parts.forEach(function (p) {
+      if (p.free) return; // a footprint placed on the board without the schematic is not a BOM line
       var key = (p.value || '').trim() + '\u0001' + (p.footprint || '').trim();
       var g = bomByKey[key];
       if (!g) { g = bomByKey[key] = { key: key, value: (p.value || '').trim(), footprint: (p.footprint || '').trim(), desc: p.desc || '', parts: [], set: {}, top: 0, bot: 0 }; bomIndex.push(g); }

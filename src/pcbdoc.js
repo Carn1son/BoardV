@@ -147,11 +147,9 @@ var PCBDOC = (function () {
       var sx = pdv.getInt32(b + 21, true) * U, sy = pdv.getInt32(b + 25, true) * U, hole = pdv.getInt32(b + 45, true) * U;
       nPads++;
       if (ci === NONE16 || ci >= comps.length) continue;
-      var c = comps[ci];
-      if (!c._ref) c._ref = (c.SOURCEDESIGNATOR || '').trim().replace(/\s+/g, '_') || ('NOREF' + (++noref));
-      var key = c._ref;
+      var c = comps[ci], key = ci; // one part per placed component: two footprints with the same designator never merge
       if (!parts[key]) {
-        parts[key] = { ref: key, bottom: /bottom/i.test(c.LAYER || ''), smd: true, pins: [],
+        parts[key] = { ref: '', bottom: /bottom/i.test(c.LAYER || ''), smd: true, pins: [],
                        value: values[ci] || '', footprint: c.PATTERN || '', desc: c.SOURCEDESCRIPTION || '' };
         order.push(key);
       }
@@ -169,6 +167,22 @@ var PCBDOC = (function () {
       parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(w, h) / 2),
                              w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr });
     }
+    // names: a footprint placed without a designator is "no designator"; a repeated designator stays on the copy that is wired from the schematic,
+    // the other copies get the letters only: "IC?", "T?"; same-looking names differ by invisible zero-width marks; footprints that are not from the schematic (no link, no nets) are kept out of the BOM
+    var byName = {}, used = {};
+    order.forEach(function (ci) {
+      var c = comps[ci], p = parts[ci], nm = (c.SOURCEDESIGNATOR || '').trim().replace(/\s+/g, '_');
+      p.free = !c.SOURCEUNIQUEID && p.pins.every(function (q) { return q.net === 'UNCONNECTED'; });
+      if (/^comment$/i.test(p.value)) p.value = '';
+      if (!nm) { p.ref = uniq('no designator'); return; }
+      (byName[nm] = byName[nm] || []).push(p);
+    });
+    Object.keys(byName).forEach(function (nm) {
+      var g = byName[nm].slice().sort(function (a, b) { return (a.free - b.free) || (netCount(b) - netCount(a)); });
+      g.forEach(function (p, i) { p.ref = i ? uniq((nm.replace(/\d.*$/, '') || nm) + '?') : nm; });
+    });
+    function uniq(base) { var r = base; while (used[r]) r += '\u200b'; used[r] = 1; return r; }
+    function netCount(p) { return p.pins.filter(function (q) { return q.net !== 'UNCONNECTED'; }).length; }
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
     return { parts: list, board: board, nPads: nPads,

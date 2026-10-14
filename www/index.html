@@ -546,7 +546,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.12 · 14.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.13 · 14.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -751,11 +751,9 @@ var PCBDOC = (function () {
       var sx = pdv.getInt32(b + 21, true) * U, sy = pdv.getInt32(b + 25, true) * U, hole = pdv.getInt32(b + 45, true) * U;
       nPads++;
       if (ci === NONE16 || ci >= comps.length) continue;
-      var c = comps[ci];
-      if (!c._ref) c._ref = (c.SOURCEDESIGNATOR || '').trim().replace(/\s+/g, '_') || ('NOREF' + (++noref));
-      var key = c._ref;
+      var c = comps[ci], key = ci; // one part per placed component: two footprints with the same designator never merge
       if (!parts[key]) {
-        parts[key] = { ref: key, bottom: /bottom/i.test(c.LAYER || ''), smd: true, pins: [],
+        parts[key] = { ref: '', bottom: /bottom/i.test(c.LAYER || ''), smd: true, pins: [],
                        value: values[ci] || '', footprint: c.PATTERN || '', desc: c.SOURCEDESCRIPTION || '' };
         order.push(key);
       }
@@ -773,6 +771,22 @@ var PCBDOC = (function () {
       parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(w, h) / 2),
                              w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr });
     }
+    // names: a footprint placed without a designator is "no designator"; a repeated designator stays on the copy that is wired from the schematic,
+    // the other copies get the letters only: "IC?", "T?"; same-looking names differ by invisible zero-width marks; footprints that are not from the schematic (no link, no nets) are kept out of the BOM
+    var byName = {}, used = {};
+    order.forEach(function (ci) {
+      var c = comps[ci], p = parts[ci], nm = (c.SOURCEDESIGNATOR || '').trim().replace(/\s+/g, '_');
+      p.free = !c.SOURCEUNIQUEID && p.pins.every(function (q) { return q.net === 'UNCONNECTED'; });
+      if (/^comment$/i.test(p.value)) p.value = '';
+      if (!nm) { p.ref = uniq('no designator'); return; }
+      (byName[nm] = byName[nm] || []).push(p);
+    });
+    Object.keys(byName).forEach(function (nm) {
+      var g = byName[nm].slice().sort(function (a, b) { return (a.free - b.free) || (netCount(b) - netCount(a)); });
+      g.forEach(function (p, i) { p.ref = i ? uniq((nm.replace(/\d.*$/, '') || nm) + '?') : nm; });
+    });
+    function uniq(base) { var r = base; while (used[r]) r += '\u200b'; used[r] = 1; return r; }
+    function netCount(p) { return p.pins.filter(function (q) { return q.net !== 'UNCONNECTED'; }).length; }
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
     return { parts: list, board: board, nPads: nPads,
@@ -1083,7 +1097,7 @@ var BV = (function () {
     // src: {pins: parsed ascii/ipc result or null, pnp: parsed pnp or null, outline: gerber result or null}
     var warnings = [];
     var parts = (src.pins ? src.pins.parts : []).map(function (p) {
-      return { ref: p.ref, bottom: p.bottom, smd: p.smd, pins: p.pins.map(function (q) { return Object.assign({}, q); }), fromPnp: false,
+      return { ref: p.ref, bottom: p.bottom, smd: p.smd, pins: p.pins.map(function (q) { return Object.assign({}, q); }), fromPnp: false, free: !!p.free,
                value: p.value || '', footprint: p.footprint || '', desc: p.desc || '' };
     });
     var byRef = {}; parts.forEach(function (p) { byRef[p.ref] = p; });
@@ -1274,7 +1288,7 @@ var BV = (function () {
     var d = JSON.parse(text);
     if (!d || !/^altium-boardview/.test(d.format || '')) throw new Error('Это не файл конвертера');
     var parts = d.parts.map(function (p) {
-      return { ref: p.ref, bottom: p.side === 'B', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
+      return { ref: p.ref, bottom: p.side === 'B', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '', free: !!p.free,
                pins: p.pins.map(function (q) { var o = { x: q[0], y: q[1], name: String(q[2]), net: q[3] || 'UNCONNECTED', r: q[4] == null ? NaN : q[4] };
                  if (q[5]) { o.w = q[5][0]; o.h = q[5][1]; o.rot = q[5][2] || 0; o.sh = q[5][3]; o.cr = q[5][4] || 0; } return o; }) };
     });
@@ -1286,7 +1300,7 @@ var BV = (function () {
       format: 'altium-boardview/1', name: name || '', units: 'mil',
       outline: b.outline.map(function (q) { return [r1(q[0]), r1(q[1])]; }),
       parts: b.parts.map(function (p) {
-        return { ref: p.ref, side: p.bottom ? 'B' : 'T', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
+        return { ref: p.ref, side: p.bottom ? 'B' : 'T', smd: !!p.smd, free: p.free ? 1 : undefined, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
                  pins: p.pins.map(function (q) { var a = [r1(q.x), r1(q.y), q.name, q.net, isFinite(q.r) ? r1(q.r) : null];
                    if (q.sh) a.push([Math.round(q.w * 100) / 100, Math.round(q.h * 100) / 100, Math.round(q.rot * 100) / 100, q.sh, q.cr]); return a; }) };
       })
@@ -2939,6 +2953,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function buildBom() {
     bomByKey = {}; bomIndex = [];
     M.parts.forEach(function (p) {
+      if (p.free) return; // a footprint placed on the board without the schematic is not a BOM line
       var key = (p.value || '').trim() + '\u0001' + (p.footprint || '').trim();
       var g = bomByKey[key];
       if (!g) { g = bomByKey[key] = { key: key, value: (p.value || '').trim(), footprint: (p.footprint || '').trim(), desc: p.desc || '', parts: [], set: {}, top: 0, bot: 0 }; bomIndex.push(g); }

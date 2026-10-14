@@ -22,9 +22,59 @@ var BV3D = (function () {
     function inflate(u8) {
       return new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer().then(function (b) { return new Uint8Array(b); });
     }
+    /* Some STEP files carry colours on solids that the reader does not hand back. Read the styles from the text and give
+       an uncoloured mesh the colour of the solid with the same number of faces (in file order). */
+    var NAMED = { red: [1, 0, 0], green: [0, 1, 0], blue: [0, 0, 1], yellow: [1, 1, 0], magenta: [1, 0, 1], cyan: [0, 1, 1], black: [0.05, 0.05, 0.05], white: [1, 1, 1] };
+    function stepColors(u8) {
+      var t = ''; for (var k = 0; k < u8.length; k += 65536) t += String.fromCharCode.apply(null, u8.subarray(k, Math.min(u8.length, k + 65536)));
+      if (t.indexOf('STYLED_ITEM') < 0) return null;
+      var E = {}, KEEP = /^(COLOUR_RGB|DRAUGHTING_PRE_DEFINED_COLOUR|FILL_AREA_STYLE_COLOUR|FILL_AREA_STYLE|SURFACE_STYLE_FILL_AREA|SURFACE_SIDE_STYLE|SURFACE_STYLE_USAGE|PRESENTATION_STYLE_ASSIGNMENT|STYLED_ITEM|OVER_RIDING_STYLED_ITEM|MANIFOLD_SOLID_BREP|BREP_WITH_VOIDS|CLOSED_SHELL|OPEN_SHELL|SHELL_BASED_SURFACE_MODEL)$/;
+      var re = /#(\d+)\s*=\s*([A-Z0-9_]+)\s*\(([^;]*)\)\s*;/g, m, order = [];
+      while ((m = re.exec(t))) if (KEEP.test(m[2])) { E[m[1]] = { t: m[2], a: m[3] }; if (/SOLID_BREP|BREP_WITH_VOIDS|SHELL_BASED_SURFACE_MODEL/.test(m[2])) order.push(m[1]); }
+      function refs(a) { return (a.match(/#\d+/g) || []).map(function (x) { return x.slice(1); }); }
+      var cc = {};
+      function colorOf(id, d) {
+        if (id in cc) return cc[id]; var e = E[id]; if (!e || d > 9) return null;
+        var c = null;
+        if (e.t === 'COLOUR_RGB') { var n = e.a.split(',').slice(1).map(parseFloat); if (n.length >= 3 && n.every(isFinite)) c = n.slice(0, 3); }
+        else if (e.t === 'DRAUGHTING_PRE_DEFINED_COLOUR') { var nm = /'([^']*)'/.exec(e.a); c = nm && NAMED[nm[1].toLowerCase()] || null; }
+        else { var r = refs(e.a); for (var i = 0; i < r.length && !c; i++) c = colorOf(r[i], d + 1); }
+        return (cc[id] = c);
+      }
+      var item = {};
+      Object.keys(E).forEach(function (id) {
+        var e = E[id]; if (e.t !== 'STYLED_ITEM' && e.t !== 'OVER_RIDING_STYLED_ITEM') return;
+        var r = refs(e.a), it = e.t === 'STYLED_ITEM' ? r[r.length - 1] : r[r.length - 2], st = r.filter(function (x) { return x !== it; });
+        for (var i = 0; i < st.length; i++) { var c = colorOf(st[i], 0); if (c) { item[it] = c; break; } }
+      });
+      var byN = {};
+      order.forEach(function (id) {
+        var e = E[id], shells = refs(e.a), faces = [];
+        shells.forEach(function (sid) { var sh = E[sid]; if (sh && /SHELL/.test(sh.t)) faces = faces.concat(refs(sh.a)); });
+        if (!faces.length) return;
+        var col = item[id] || shells.map(function (x) { return item[x]; }).filter(Boolean)[0] || null;
+        var fc = faces.map(function (f) { return item[f] || null; });
+        if (!col && !fc.some(Boolean)) col = null;
+        (byN[faces.length] = byN[faces.length] || []).push({ c: col, f: fc });
+      });
+      return byN;
+    }
+    function fixColors(meshes, raw) {
+      if (!meshes.some(function (me) { return !me.color && !(me.brep_faces || []).some(function (f) { return f.color; }); })) return;
+      var byN = null; try { byN = stepColors(raw); } catch (e) {} if (!byN) return;
+      var at = {};
+      meshes.forEach(function (me) {
+        var bf = me.brep_faces || []; if (me.color || bf.some(function (f) { return f.color; })) return;
+        var b = byN[bf.length]; if (!b || !b.length) return;
+        var s = b[(at[bf.length] = (at[bf.length] || 0)) % b.length]; at[bf.length]++;
+        if (s.c) me.color = s.c;
+        s.f.forEach(function (c, i) { if (c && bf[i]) bf[i].color = c; });
+      });
+    }
     function run(m) {
       ready.then(function () { return m.zlib ? inflate(m.data) : m.data; }).then(function (step) {
         var r = occt.ReadStepFile(step, { linearUnit: 'millimeter', linearDeflectionType: 'bounding_box_ratio', linearDeflection: 0.002, angularDeflection: 0.5 });
+        if (r && r.meshes) fixColors(r.meshes, step);
         // one geometry per colour for the whole model: a few draw calls instead of hundreds
         var G = {}, order = [];
         (r && r.meshes || []).forEach(function (me) {
@@ -93,17 +143,24 @@ var BV3D = (function () {
     host.appendChild(renderer.domElement);
     var scene = new T.Scene(); scene.background = new T.Color(opt.bg || '#15181a');
     var cam = new T.PerspectiveCamera(30, W / H, 0.1, 5000); cam.up.set(0, 0, 1);
-    scene.add(new T.HemisphereLight(0xffffff, 0x404040, 1.1));
-    var sun = new T.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, -80, 120); scene.add(sun);
-    var sun2 = new T.DirectionalLight(0xffffff, 0.6); sun2.position.set(80, 60, -120); scene.add(sun2);
+    scene.add(new T.HemisphereLight(0xffffff, 0x6a6a6a, 1.7));
+    var sun = new T.DirectionalLight(0xffffff, 2.3); sun.position.set(-60, -80, 120); scene.add(sun);
+    var sun2 = new T.DirectionalLight(0xffffff, 1.0); sun2.position.set(80, 60, -120); scene.add(sun2);
     var root = new T.Group(); scene.add(root);
 
     // board slab
     var bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
     M.outline.forEach(function (q) { bx0 = Math.min(bx0, q[0]); by0 = Math.min(by0, q[1]); bx1 = Math.max(bx1, q[0]); by1 = Math.max(by1, q[1]); });
     var shape = new T.Shape(); M.outline.forEach(function (q, i) { i ? shape.lineTo(q[0] * MIL, q[1] * MIL) : shape.moveTo(q[0] * MIL, q[1] * MIL); });
-    var slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 6 }),
-      new T.MeshStandardMaterial({ color: opt.mask || 0x1d5236, roughness: 0.55, metalness: 0.05 }));
+    // drilled holes go right through the board: through-hole pads and mounting holes
+    var drills = (M.holes || []).slice();
+    M.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.hole > 0) drills.push([q.x, q.y, q.hole]); }); });
+    drills = drills.filter(function (h) { return h[0] > bx0 && h[0] < bx1 && h[1] > by0 && h[1] < by1; }).slice(0, 4000);
+    drills.forEach(function (h) { var pa = new T.Path(); pa.absarc(h[0] * MIL, h[1] * MIL, h[2] / 2 * MIL, 0, Math.PI * 2, true); shape.holes.push(pa); });
+    var slab;
+    try { slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
+    catch (e) { shape.holes = []; drills = []; slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
+    slab.material = new T.MeshStandardMaterial({ color: new T.Color().setHex(opt.mask || 0x22704a, T.SRGBColorSpace), roughness: 0.5, metalness: 0.02 });
     slab.position.z = -THICK; root.add(slab);
     var cx = (bx0 + bx1) / 2 * MIL, cy = (by0 + by1) / 2 * MIL, span = Math.max(bx1 - bx0, by1 - by0) * MIL;
 
@@ -114,7 +171,28 @@ var BV3D = (function () {
       var c = document.createElement('canvas'); c.width = cw; c.height = ch;
       var g = c.getContext('2d');
       function X(x) { return (x * MIL - bx0 * MIL) * k; } function Y(y) { return (by1 * MIL - y * MIL) * k; }
-      g.fillStyle = opt.copper || '#d9b25a';
+      if (opt.silk !== false && M.silk) { // silkscreen first: the copper of the pads stays on top, as on a real board
+        g.strokeStyle = g.fillStyle = '#f3f3ee'; g.lineCap = 'round'; g.lineJoin = 'round';
+        (bottom ? M.silk.bot : M.silk.top).forEach(function (e) {
+          if (e[0] === 'l') { g.lineWidth = Math.max(1, e[5] * MIL * k); g.beginPath(); g.moveTo(X(e[1]), Y(e[2])); g.lineTo(X(e[3]), Y(e[4])); g.stroke(); }
+          else if (e[0] === 'a') {
+            var a0 = -deg(e[4]), a1 = -deg(e[5]); g.lineWidth = Math.max(1, e[6] * MIL * k); g.beginPath();
+            if (Math.abs(((e[5] - e[4]) % 360 + 360) % 360) < 1e-6) g.arc(X(e[1]), Y(e[2]), e[3] * MIL * k, 0, Math.PI * 2); else g.arc(X(e[1]), Y(e[2]), e[3] * MIL * k, a0, a1, true);
+            g.stroke();
+          } else if (e[0] === 'f') {
+            var fx = (e[1] + e[3]) / 2, fy = (e[2] + e[4]) / 2, fw = Math.abs(e[3] - e[1]) * MIL * k, fh = Math.abs(e[4] - e[2]) * MIL * k;
+            g.save(); g.translate(X(fx), Y(fy)); g.rotate(-deg(e[5])); g.fillRect(-fw / 2, -fh / 2, fw, fh); g.restore();
+          } else if (e[0] === 't') {
+            var hp = e[3] * MIL * k; if (hp < 2) return;
+            g.save(); g.translate(X(e[1]), Y(e[2])); g.rotate(-deg(e[4])); if (e[5]) g.scale(-1, 1);
+            g.font = (e[7] ? '700 ' : '600 ') + (hp * (e[8] ? 1 : 1.08)).toFixed(1) + 'px ' + (e[8] ? '"' + e[8].replace(/"/g, '') + '", ' : '') + 'Arial, sans-serif';
+            g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+            String(e[6]).split(/\r?\n/).forEach(function (ln, i, all) { g.fillText(ln, 0, -hp * 0.12 - (all.length - 1 - i) * hp * 1.25); });
+            g.restore();
+          }
+        });
+      }
+      g.fillStyle = opt.copper || '#e2bd66';
       M.parts.forEach(function (p) {
         if (!!p.bottom !== bottom && p.smd) return;
         p.pins.forEach(function (q) {
@@ -123,8 +201,9 @@ var BV3D = (function () {
           g.beginPath(); if (g.roundRect) g.roundRect(-w / 2, -h / 2, w, h, r); else g.rect(-w / 2, -h / 2, w, h); g.fill(); g.restore();
         });
       });
+      if (drills.length) { g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; drills.forEach(function (h) { g.beginPath(); g.arc(X(h[0]), Y(h[1]), h[2] / 2 * MIL * k, 0, Math.PI * 2); g.fill(); }); g.globalCompositeOperation = 'source-over'; }
       var tex = new T.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
-      var m = new T.Mesh(new T.PlaneGeometry(mmW, mmH), new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.45, metalness: 0.3, side: bottom ? T.BackSide : T.FrontSide, depthWrite: false }));
+      var m = new T.Mesh(new T.PlaneGeometry(mmW, mmH), new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.45, metalness: 0.15, side: bottom ? T.BackSide : T.FrontSide, depthWrite: false }));
       m.position.set(bx0 * MIL + mmW / 2, by0 * MIL + mmH / 2, bottom ? -THICK - 0.02 : 0.02); m.renderOrder = 1; root.add(m);
     }
     decal(false); decal(true);
@@ -253,7 +332,7 @@ var BV3D = (function () {
       req();
     }
     view();
-    return { info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries }; }, highlight: highlight, setBg: function (c) { scene.background = new T.Color(c); req(); },
+    return { silk: opt.silk !== false, info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries }; }, highlight: highlight, setBg: function (c) { scene.background = new T.Color(c); req(); },
       view: view, render: req, canvas: el, root: root, setAngles: function (th, ph, r) { V.th = th; V.ph = ph; if (r) V.r = span * r; req(); },
       target: function (x, y, z, r) { V.tx = x; V.ty = y; V.tz = z || 0; if (r) V.r = r; req(); },
       close: function () {

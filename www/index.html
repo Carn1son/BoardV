@@ -564,7 +564,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.15 · 14.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.16 · 14.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -753,7 +753,7 @@ var PCBDOC = (function () {
       }
     }
 
-    var parts = {}, order = [], noref = 0, nPads = 0;
+    var parts = {}, order = [], noref = 0, nPads = 0, holes = [];
     var pdv = new DataView(padData.buffer, padData.byteOffset, padData.byteLength), pp = 0;
     while (pp + 5 <= padData.length) {
       if (padData[pp] !== 2) break;
@@ -768,6 +768,7 @@ var PCBDOC = (function () {
       var x = pdv.getInt32(b + 13, true) * U, y = pdv.getInt32(b + 17, true) * U;
       var sx = pdv.getInt32(b + 21, true) * U, sy = pdv.getInt32(b + 25, true) * U, hole = pdv.getInt32(b + 45, true) * U;
       nPads++;
+      if (hole > 0 && (ci === NONE16 || ci >= comps.length)) holes.push([x, y, hole]); // a mounting hole without a component
       if (ci === NONE16 || ci >= comps.length) continue;
       var c = comps[ci], key = ci; // one part per placed component: two footprints with the same designator never merge
       if (!parts[key]) {
@@ -787,7 +788,7 @@ var PCBDOC = (function () {
       }
       if (!(w > 0 && h > 0)) { w = h = Math.max(4, Math.min(sx, sy)); }
       parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(w, h) / 2),
-                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr });
+                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr, hole: hole > 0 ? hole : 0 });
     }
     // names: a footprint placed without a designator is "no designator"; a repeated designator stays on the copy that is wired from the schematic,
     // the other copies get the letters only: "IC?", "T?"; same-looking names differ by invisible zero-width marks; footprints that are not from the schematic (no link, no nets) are kept out of the BOM
@@ -809,8 +810,41 @@ var PCBDOC = (function () {
     try { bodies3d(get, parts); } catch (e) {}
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
-    return { parts: list, board: board, nPads: nPads,
+    var silk = null; try { silk = silkscreen(get, comps, ws); } catch (e) {}
+    return { parts: list, board: board, nPads: nPads, holes: holes, silk: silk,
              info: comps.length + ' компонентов, ' + nPads + ' падов, ' + nets.length + ' цепей' + (withVal ? ', номиналы у ' + withVal : '') };
+  }
+  /* silkscreen (top / bottom overlay): lines, arcs, fills and texts, in mil; hidden designators and comments stay hidden */
+  function silkscreen(get, comps, ws) {
+    var out = { top: [], bot: [] };
+    function side(l) { return l === 33 ? out.top : l === 34 ? out.bot : null; }
+    function each(name, type, fn) {
+      var d = get(name); if (!d) return;
+      var dv = new DataView(d.buffer, d.byteOffset, d.byteLength), p = 0;
+      while (p + 5 <= d.length && d[p] === type) {
+        var len = dv.getUint32(p + 1, true), s = p + 5; if (s + len > d.length) break;
+        var L = side(d[s]); if (L) fn(L, dv, s, len, d);
+        p = s + len;
+        if (type === 5) { if (p + 4 > d.length) break; p += 4 + dv.getUint32(p, true); } // texts have a second subrecord
+      }
+    }
+    var U = 1 / 1e4;
+    each('Tracks6/Data', 4, function (L, dv, s) { L.push(['l', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getInt32(s + 25, true) * U, dv.getInt32(s + 29, true) * U]); });
+    each('Arcs6/Data', 1, function (L, dv, s) { L.push(['a', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getFloat64(s + 25, true), dv.getFloat64(s + 33, true), dv.getInt32(s + 41, true) * U]); });
+    each('Fills6/Data', 6, function (L, dv, s) { L.push(['f', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getInt32(s + 25, true) * U, dv.getFloat64(s + 29, true)]); });
+    each('Texts6/Data', 5, function (L, dv, s, len, d) {
+      var ci = dv.getUint16(s + 7, true), c = ci !== NONE16 ? comps[ci] : null, isC = len >= 123 && d[s + 40] !== 0, isD = len >= 123 && d[s + 41] !== 0;
+      if (c && isD && String(c.NAMEON).toUpperCase() === 'FALSE') return;
+      if (c && isC && String(c.COMMENTON).toUpperCase() !== 'TRUE') return;
+      var p2 = s + len, l2 = dv.getUint32(p2, true), wi = len >= 123 ? dv.getUint32(s + 115, true) : -1, text = '';
+      if (ws[wi] != null) text = ws[wi]; else if (l2 > 0) text = latin1(d, p2 + 5, Math.min(p2 + 5 + d[p2 + 4], p2 + 4 + l2));
+      if (!text || /^\./.test(text)) return;
+      var tt = len >= 123 ? d[s + 43] : 0, font = '';
+      if (tt === 1) { try { font = new TextDecoder('utf-16le').decode(d.subarray(s + 46, s + 110)).split('\0')[0]; } catch (e) {} }
+      L.push(['t', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getFloat64(s + 27, true), d[s + 35] !== 0,
+              text, tt === 1 && d[s + 44] !== 0, font, dv.getInt32(s + 36, true) * U]);
+    });
+    return out.top.length || out.bot.length ? out : null;
   }
   function mil(v) { var m = /^(-?[\d.eE+-]+)\s*(mil|mm)?$/.exec(String(v || '').trim()); if (!m) return 0; return +m[1] * (m[2] === 'mm' ? 1 / 0.0254 : 1); }
   function bodies3d(get, parts) {
@@ -1187,9 +1221,14 @@ var BV = (function () {
       if (p.bodies) p.bodies = p.bodies.map(function (b) { return Object.assign({}, b, { x: b.x + dx, y: b.y + dy, poly: b.poly.map(function (v) { return [v[0] + dx, v[1] + dy]; }) }); }); // 3D bodies move with the pads
     });
     outline = outline.map(function (q) { return [q[0] + dx, q[1] + dy]; });
+    var holes = (src.pins && src.pins.holes || []).map(function (h) { return [h[0] + dx, h[1] + dy, h[2]]; }), silk = null; // 3D: drilled holes and silkscreen move too
+    if (src.pins && src.pins.silk) {
+      var mv = function (e) { e = e.slice(); if (e[0] === 'l' || e[0] === 'f') { e[1] += dx; e[2] += dy; e[3] += dx; e[4] += dy; } else { e[1] += dx; e[2] += dy; } return e; };
+      silk = { top: src.pins.silk.top.map(mv), bot: src.pins.silk.bot.map(mv) };
+    }
     var nets = {};
     parts.forEach(function (p) { p.pins.forEach(function (q) { nets[q.net] = 1; }); });
-    return { parts: parts, outline: outline, warnings: warnings, w: x1 - x0 + 20, h: y1 - y0 + 20,
+    return { parts: parts, outline: outline, warnings: warnings, holes: holes, silk: silk, w: x1 - x0 + 20, h: y1 - y0 + 20,
              nPins: parts.reduce(function (s, p) { return s + p.pins.length; }, 0),
              nNets: Object.keys(nets).filter(function (n) { return n !== 'UNCONNECTED'; }).length };
   }
@@ -1380,7 +1419,7 @@ var BV = (function () {
   function parsePcbDoc(u8) {
     var P = typeof PCBDOC !== 'undefined' ? PCBDOC : require('./pcbdoc.js');
     var r = P.parse(u8);
-    return { parts: r.parts, outline: r.board ? asciiOutline(r.board) : null, info: r.info };
+    return { parts: r.parts, outline: r.board ? asciiOutline(r.board) : null, info: r.info, holes: r.holes, silk: r.silk };
   }
 
   /* ---------- writers ---------- */
@@ -1901,7 +1940,7 @@ var I18N = (function () {
   'use strict';
   var EN = {
     // ---- toolbar, panels
-    '3D-вид платы': '3D board view', '2D-вид платы': '2D board view', '3D-просмотр платы': '3D board view', 'Вид платы': 'Board view', '3D-вид': '3D view', '2D-вид': '2D view', 'Перспектива': 'Perspective', 'Закрыть 3D (Esc)': 'Close 3D (Esc)', 'Закрыть 3D': 'Close 3D', 'Загрузка 3D…': 'Loading 3D…', '3D-модели:': '3D models:', 'Не удалось открыть 3D': 'Could not open 3D',
+    '3D-вид платы': '3D board view', '2D-вид платы': '2D board view', '3D-просмотр платы': '3D board view', 'Шелкография в 3D': 'Silkscreen in 3D', 'Вид платы': 'Board view', '3D-вид': '3D view', '2D-вид': '2D view', 'Перспектива': 'Perspective', 'Закрыть 3D (Esc)': 'Close 3D (Esc)', 'Закрыть 3D': 'Close 3D', 'Загрузка 3D…': 'Loading 3D…', '3D-модели:': '3D models:', 'Не удалось открыть 3D': 'Could not open 3D',
     'Открыть файлы': 'Open files', 'Открыть файл': 'Open file', 'Открыть': 'Open', 'Сторона платы': 'Board side',
     'Верх': 'Top', 'Низ': 'Bottom', 'Обе': 'Both', 'Повернуть на 90° (R)': 'Rotate 90° (R)', 'Вписать плату': 'Fit board',
     'Показать или скрыть BOM справа': 'Show or hide the BOM on the right', 'Настройки': 'Settings', 'Закрыть настройки': 'Close settings',
@@ -2393,8 +2432,8 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     haloStyle: 'shadow', haloAlpha: 0.5, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
     selGlow: 1, selBreath: false, selDash: true, selDashSpeed: 0.2, selDim: true,
-    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true };
-  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d']; // themes do not touch these
+    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true, silk3d: true };
+  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d', 'silk3d']; // themes do not touch these
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
   var PRESETS = {
     'По умолчанию': { colors: {}, fx: {} },
@@ -2425,7 +2464,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
       ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
     ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
-      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['check', 'enable3d', '3D-просмотр платы']]]
+      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'silk3d', 'Шелкография в 3D']]]
   ];
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
@@ -2473,7 +2512,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     Object.keys(CFG.colors).forEach(function (k) { root.setProperty('--' + k, CFG.colors[k]); });
     root.setProperty('--canvas', CFG.colors[bgKey()]);
     FX = CFG.fx; ruleCache = null; readColors(); if (typeof req === 'function') req();
-    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) V3.setBg(C.canvas); } } // the 3D view follows the theme at once // 3D can be switched off completely
+    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) { if (V3.silk !== !!FX.silk3d) { V3.close(); V3 = null; open3d(); } else V3.setBg(C.canvas); } } } // the 3D view follows the theme at once // 3D can be switched off completely
     if (save) { CFG.savedAt = new Date().toISOString(); try { localStorage.setItem('bvr-config', JSON.stringify(CFG)); } catch (e) {} }
   }
   function themeFx(themefx, cur) { // a theme sets the look; control options are kept
@@ -2529,7 +2568,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var model = null, used = [], pinNames = true;
     try {
       if (by.json) { model = BV.readJson(by.json[0].text); used.push(by.json[0].name); }
-      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); used.push(by.pcbdoc[0].name); }
+      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); model.holes = pb.holes; model.silk = pb.silk; used.push(by.pcbdoc[0].name); }
       else if (by.bvr) { model = BV.readBvr(by.bvr[0].text); used.push(by.bvr[0].name); }
       else if (FMT.TYPES.some(function (t) { return by[t]; })) { var ft = FMT.TYPES.filter(function (t) { return by[t]; })[0]; model = FMT.read(ft, by[ft][0]); used.push(by[ft][0].name); pinNames = !/^(brd2|cst)$/.test(ft); }
       else if (by.ascpins) { model = FMT.readAsc(items); used = items.filter(function (i) { return /^asc/.test(i.type); }).map(function (i) { return i.name; }); }
@@ -4316,7 +4355,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     load3d().then(function () {
       if (box.hidden || V3) return;
       try {
-        V3 = BV3D.open(box, M, { bg: C.canvas, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
+        V3 = BV3D.open(box, M, { bg: C.canvas, silk: !!FX.silk3d, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
           lost: function () { if (V3) { V3.close(); V3 = null; open3d(); } }, progress: function (d, n) { $('v3dSt').textContent = n && d < n ? '3D-модели:' + ' ' + d + ' / ' + n : ''; } });
         box.insertBefore(V3.canvas, box.firstChild);
         if (S.part) { V3.highlight(S.part); v3dPickInfo(S.part); }

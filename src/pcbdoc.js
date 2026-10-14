@@ -131,7 +131,7 @@ var PCBDOC = (function () {
       }
     }
 
-    var parts = {}, order = [], noref = 0, nPads = 0;
+    var parts = {}, order = [], noref = 0, nPads = 0, holes = [];
     var pdv = new DataView(padData.buffer, padData.byteOffset, padData.byteLength), pp = 0;
     while (pp + 5 <= padData.length) {
       if (padData[pp] !== 2) break;
@@ -146,6 +146,7 @@ var PCBDOC = (function () {
       var x = pdv.getInt32(b + 13, true) * U, y = pdv.getInt32(b + 17, true) * U;
       var sx = pdv.getInt32(b + 21, true) * U, sy = pdv.getInt32(b + 25, true) * U, hole = pdv.getInt32(b + 45, true) * U;
       nPads++;
+      if (hole > 0 && (ci === NONE16 || ci >= comps.length)) holes.push([x, y, hole]); // a mounting hole without a component
       if (ci === NONE16 || ci >= comps.length) continue;
       var c = comps[ci], key = ci; // one part per placed component: two footprints with the same designator never merge
       if (!parts[key]) {
@@ -165,7 +166,7 @@ var PCBDOC = (function () {
       }
       if (!(w > 0 && h > 0)) { w = h = Math.max(4, Math.min(sx, sy)); }
       parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(w, h) / 2),
-                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr });
+                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr, hole: hole > 0 ? hole : 0 });
     }
     // names: a footprint placed without a designator is "no designator"; a repeated designator stays on the copy that is wired from the schematic,
     // the other copies get the letters only: "IC?", "T?"; same-looking names differ by invisible zero-width marks; footprints that are not from the schematic (no link, no nets) are kept out of the BOM
@@ -187,8 +188,41 @@ var PCBDOC = (function () {
     try { bodies3d(get, parts); } catch (e) {}
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
-    return { parts: list, board: board, nPads: nPads,
+    var silk = null; try { silk = silkscreen(get, comps, ws); } catch (e) {}
+    return { parts: list, board: board, nPads: nPads, holes: holes, silk: silk,
              info: comps.length + ' компонентов, ' + nPads + ' падов, ' + nets.length + ' цепей' + (withVal ? ', номиналы у ' + withVal : '') };
+  }
+  /* silkscreen (top / bottom overlay): lines, arcs, fills and texts, in mil; hidden designators and comments stay hidden */
+  function silkscreen(get, comps, ws) {
+    var out = { top: [], bot: [] };
+    function side(l) { return l === 33 ? out.top : l === 34 ? out.bot : null; }
+    function each(name, type, fn) {
+      var d = get(name); if (!d) return;
+      var dv = new DataView(d.buffer, d.byteOffset, d.byteLength), p = 0;
+      while (p + 5 <= d.length && d[p] === type) {
+        var len = dv.getUint32(p + 1, true), s = p + 5; if (s + len > d.length) break;
+        var L = side(d[s]); if (L) fn(L, dv, s, len, d);
+        p = s + len;
+        if (type === 5) { if (p + 4 > d.length) break; p += 4 + dv.getUint32(p, true); } // texts have a second subrecord
+      }
+    }
+    var U = 1 / 1e4;
+    each('Tracks6/Data', 4, function (L, dv, s) { L.push(['l', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getInt32(s + 25, true) * U, dv.getInt32(s + 29, true) * U]); });
+    each('Arcs6/Data', 1, function (L, dv, s) { L.push(['a', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getFloat64(s + 25, true), dv.getFloat64(s + 33, true), dv.getInt32(s + 41, true) * U]); });
+    each('Fills6/Data', 6, function (L, dv, s) { L.push(['f', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getInt32(s + 25, true) * U, dv.getFloat64(s + 29, true)]); });
+    each('Texts6/Data', 5, function (L, dv, s, len, d) {
+      var ci = dv.getUint16(s + 7, true), c = ci !== NONE16 ? comps[ci] : null, isC = len >= 123 && d[s + 40] !== 0, isD = len >= 123 && d[s + 41] !== 0;
+      if (c && isD && String(c.NAMEON).toUpperCase() === 'FALSE') return;
+      if (c && isC && String(c.COMMENTON).toUpperCase() !== 'TRUE') return;
+      var p2 = s + len, l2 = dv.getUint32(p2, true), wi = len >= 123 ? dv.getUint32(s + 115, true) : -1, text = '';
+      if (ws[wi] != null) text = ws[wi]; else if (l2 > 0) text = latin1(d, p2 + 5, Math.min(p2 + 5 + d[p2 + 4], p2 + 4 + l2));
+      if (!text || /^\./.test(text)) return;
+      var tt = len >= 123 ? d[s + 43] : 0, font = '';
+      if (tt === 1) { try { font = new TextDecoder('utf-16le').decode(d.subarray(s + 46, s + 110)).split('\0')[0]; } catch (e) {} }
+      L.push(['t', dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getFloat64(s + 27, true), d[s + 35] !== 0,
+              text, tt === 1 && d[s + 44] !== 0, font, dv.getInt32(s + 36, true) * U]);
+    });
+    return out.top.length || out.bot.length ? out : null;
   }
   function mil(v) { var m = /^(-?[\d.eE+-]+)\s*(mil|mm)?$/.exec(String(v || '').trim()); if (!m) return 0; return +m[1] * (m[2] === 'mm' ? 1 / 0.0254 : 1); }
   function bodies3d(get, parts) {

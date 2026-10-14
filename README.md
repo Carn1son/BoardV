@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/logo.png" width="640" alt="BoardV — .brd для старшеньких"></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.png"><img src="docs/logo-light.png" width="560" alt="BoardV — .brd для старшеньких"></picture></p>
 
 <p align="center">Просмотр плат Altium на ПК и телефоне: открываете <code>.PcbDoc</code> — и сразу видите детали, цепи, номиналы и BOM.</p>
 

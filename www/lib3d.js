@@ -295,7 +295,7 @@ var BV3D = (function () {
       var r = el.getBoundingClientRect(); place();
       ray.setFromCamera(new T.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
       var hits = ray.intersectObjects(root.children, false), part = null;
-      for (var i = 0; i < hits.length && !part; i++) { var o = hits[i].object; part = o.isInstancedMesh ? o.userData.parts[hits[i].instanceId] : o.userData.part || null; }
+      for (var i = 0; i < hits.length && !part; i++) { var o = hits[i].object; part = o.isInstancedMesh ? (o.userData.parts ? o.userData.parts[hits[i].instanceId] : null) : o.userData.part || null; }
       opt.pick(part);
     }
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
@@ -320,7 +320,7 @@ var BV3D = (function () {
           var k = mat.uuid; if (!hlMats[k]) { hlMats[k] = mat.clone(); hlMats[k].emissive = new T.Color(0x8a5c00); hlMats[k].polygonOffset = true; hlMats[k].polygonOffsetFactor = -1; hlMats[k].polygonOffsetUnits = -4; }
           var m = new T.Mesh(geo, hlMats[k]); m.raycast = function () {}; m.matrixAutoUpdate = false; m.matrix.copy(mx); root.add(m); hl.push(m);
         };
-        if (o.isInstancedMesh) o.userData.parts.forEach(function (q, i) { if (q === p) { var mx = new T.Matrix4(); o.getMatrixAt(i, mx); mk(o.geometry, o.material, mx); } });
+        if (o.isInstancedMesh && o.userData.parts) o.userData.parts.forEach(function (q, i) { if (q === p) { var mx = new T.Matrix4(); o.getMatrixAt(i, mx); mk(o.geometry, o.material, mx); } });
         else if (o.isMesh && o.userData.part === p) { o.updateMatrix(); mk(o.geometry, o.material, o.matrix); }
       });
       req();

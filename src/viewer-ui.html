@@ -756,7 +756,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     Object.keys(CFG.colors).forEach(function (k) { root.setProperty('--' + k, CFG.colors[k]); });
     root.setProperty('--canvas', CFG.colors[bgKey()]);
     FX = CFG.fx; ruleCache = null; readColors(); if (typeof req === 'function') req();
-    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else vswSync(); } // 3D can be switched off completely
+    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) V3.setBg(C.canvas); } } // the 3D view follows the theme at once // 3D can be switched off completely
     if (save) { CFG.savedAt = new Date().toISOString(); try { localStorage.setItem('bvr-config', JSON.stringify(CFG)); } catch (e) {} }
   }
   function themeFx(themefx, cur) { // a theme sets the look; control options are kept
@@ -982,6 +982,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function draw() {
     var animOn = !reduceMotion && ((S.net && (FX.netPulse || FX.netRipple)) || ((S.group || S.part) && !S.net && (FX.selBreath || FX.selDash)));
+    if (!$('v3d').hidden) return; // the 3D view covers the board: no 2D frames meanwhile
     if (animOn) req(); // next frame for glow, marching dashes, net pulse
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = C.canvas; ctx.fillRect(0, 0, W, H);
@@ -2561,19 +2562,20 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
 
   function closeProject() { // back to the empty field, on the PC and on the phone
     if (!M) return;
+    close3d(); if (window.BV3D) BV3D.reset(); // the 3D view and its memory go with the board
     if (HAS_SHARE && (LINKED || !$('shareDlg').hidden)) stopShare();
     if (LINK && !LINK.scan) dropLink();
     M = null; src = { files: [], valuesFrom: '', pinNames: true }; PART_OK = {}; netIndex = null; bomIndex = null; bomByKey = {};
     S.part = S.net = S.group = null; hover = null; $('tip').hidden = true; $('toast').hidden = true; setShared(false);
     $('q').value = ''; $('bq').value = ''; try { $('file').value = ''; } catch (e) {}
-    $('empty').hidden = false; $('fileName').textContent = ''; updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
+    $('empty').hidden = false; $('fileName').textContent = ''; vswSync(); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
     if (IS_PHONE) { SHEET.open = false; MSET = false; sheetApply(); } else setSettings(false);
     renderCard(); renderList(); status(); req();
   }
   function updCloseProj() { $('closeProj').hidden = !M; }
   function refreshAll(refit) {
     buildNetIndex();
-    $('empty').hidden = !!M; if (refit || !M) close3d(); vswSync(); applyLayout(false); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
+    $('empty').hidden = !!M; if (refit || !M) { close3d(); if (window.BV3D) BV3D.reset(); } // another board: the old 3D goes away completely vswSync(); applyLayout(false); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
     $('fileName').textContent = src.files.join(' + ');
     if (refit) { V.rot = IS_PHONE && H > W * 1.15 && M.w > M.h * 1.15 ? 1 : 0; setSide('top', true); fit(); } // phone held upright + wide board: turn it to fill the screen
     renderCard(); renderList(); status(); req();
@@ -2598,13 +2600,13 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       if (box.hidden || V3) return;
       try {
         V3 = BV3D.open(box, M, { bg: C.canvas, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
-          progress: function (d, n) { $('v3dSt').textContent = n && d < n ? '3D-модели:' + ' ' + d + ' / ' + n : ''; } });
+          lost: function () { if (V3) { V3.close(); V3 = null; open3d(); } }, progress: function (d, n) { $('v3dSt').textContent = n && d < n ? '3D-модели:' + ' ' + d + ' / ' + n : ''; } });
         box.insertBefore(V3.canvas, box.firstChild);
         if (S.part) { V3.highlight(S.part); v3dPickInfo(S.part); }
       } catch (e) { $('v3dSt').textContent = 'Не удалось открыть 3D'; }
     }, function () { $('v3dSt').textContent = 'Не удалось открыть 3D'; });
   }
-  function close3d() { if (V3) { V3.close(); V3 = null; } $('v3d').hidden = true; vswSync(); }
+  function close3d() { var was = !!V3; if (V3) { V3.close(); V3 = null; } $('v3d').hidden = true; vswSync(); if (was) req(); }
   function vswSync() {
     var on = !$('v3d').hidden;
     $('vsw').hidden = !(IS_PHONE && M && FX.enable3d);

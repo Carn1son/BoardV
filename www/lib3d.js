@@ -25,11 +25,29 @@ var BV3D = (function () {
     function run(m) {
       ready.then(function () { return m.zlib ? inflate(m.data) : m.data; }).then(function (step) {
         var r = occt.ReadStepFile(step, { linearUnit: 'millimeter', linearDeflectionType: 'bounding_box_ratio', linearDeflection: 0.002, angularDeflection: 0.5 });
-        var out = [], tr = [];
+        // one geometry per colour for the whole model: a few draw calls instead of hundreds
+        var G = {}, order = [];
         (r && r.meshes || []).forEach(function (me) {
-          var p = new Float32Array(me.attributes.position.array), n = me.attributes.normal ? new Float32Array(me.attributes.normal.array) : null, ix = new Uint32Array(me.index.array);
-          var fc = (me.brep_faces || []).filter(function (f) { return f.color; }).map(function (f) { return [f.first, f.last, f.color[0], f.color[1], f.color[2]]; });
-          out.push({ p: p, n: n, i: ix, c: me.color || null, f: fc }); tr.push(p.buffer, ix.buffer); if (n) tr.push(n.buffer);
+          var P = me.attributes.position.array, N = me.attributes.normal ? me.attributes.normal.array : null, I = me.index.array, nt = I.length / 3;
+          var tc = new Array(nt), base = me.color ? me.color.join(',') : '';
+          for (var t = 0; t < nt; t++) tc[t] = base;
+          (me.brep_faces || []).forEach(function (f) { if (f.color) for (var t2 = f.first; t2 <= f.last && t2 < nt; t2++) tc[t2] = f.color.join(','); });
+          var used = {};
+          for (var t3 = 0; t3 < nt; t3++) (used[tc[t3]] = used[tc[t3]] || []).push(t3);
+          Object.keys(used).forEach(function (k) {
+            var g = G[k]; if (!g) { g = G[k] = { c: k ? k.split(',').map(Number) : null, P: [], N: [], I: [], nv: 0, hasN: true }; order.push(k); }
+            var off = g.nv; g.P.push(P); g.N.push(N); if (!N) g.hasN = false; g.nv += P.length / 3;
+            var tris = used[k], ix = new Uint32Array(tris.length * 3);
+            for (var q = 0; q < tris.length; q++) { var b0 = tris[q] * 3; ix[q * 3] = I[b0] + off; ix[q * 3 + 1] = I[b0 + 1] + off; ix[q * 3 + 2] = I[b0 + 2] + off; }
+            g.I.push(ix);
+          });
+        });
+        var out = [], tr = [];
+        function cat(list, n, Ctor) { var a = new Ctor(n), o = 0; list.forEach(function (x) { a.set(x, o); o += x.length; }); return a; }
+        order.forEach(function (k) {
+          var g = G[k], p = cat(g.P, g.nv * 3, Float32Array), n = g.hasN ? cat(g.N, g.nv * 3, Float32Array) : null;
+          var ni = g.I.reduce(function (s, x) { return s + x.length; }, 0), i = cat(g.I, ni, Uint32Array);
+          out.push({ p: p, n: n, i: i, c: g.c }); tr.push(p.buffer, i.buffer); if (n) tr.push(n.buffer);
         });
         postMessage({ id: m.id, meshes: out }, tr);
       }).catch(function (e) { postMessage({ id: m.id, error: String(e && e.message || e) }); });
@@ -48,9 +66,12 @@ var BV3D = (function () {
     var bin = atob(BV3D_OCCT_WASM), u8 = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     worker.postMessage({ wasm: u8 }, [u8.buffer]);
-    worker.onmessage = function (e) { var j = jobs[e.data.id]; delete jobs[e.data.id]; if (j) j(e.data); };
+    worker.onmessage = function (e) { var j = jobs[e.data.id]; delete jobs[e.data.id]; if (j) j(e.data); idleCheck(); };
     return worker;
   }
+  var idleT = 0;
+  function idleCheck() { clearTimeout(idleT); idleT = setTimeout(function () { if (!Object.keys(jobs).length) reset(); }, 3000); } // nothing left to read: free the STEP reader
+  function reset() { if (worker) { worker.terminate(); worker = null; } jobs = {}; clearTimeout(idleT); }
   function tessellate(bytes) { // -> Promise of [{p, n, i, c}] in model millimetres
     return new Promise(function (res) {
       var w = getWorker(); if (!w) { res(null); return; }
@@ -62,22 +83,10 @@ var BV3D = (function () {
   /* ---------- helpers ---------- */
   function altiumColor(v) { return ((v & 255) << 16) | (v & 0xff00) | ((v >> 16) & 255); } // Altium stores 0xBBGGRR
   function deg(a) { return (a || 0) * Math.PI / 180; }
-  function partBox(p) { // pads bounding box in mm
-    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    p.pins.forEach(function (q) { var ex = (q.w ? Math.max(q.w, q.h) : 2 * q.r) / 2; x0 = Math.min(x0, q.x - ex); x1 = Math.max(x1, q.x + ex); y0 = Math.min(y0, q.y - ex); y1 = Math.max(y1, q.y + ex); });
-    return [x0 * MIL, y0 * MIL, x1 * MIL, y1 * MIL];
-  }
-
-  function coreBox(p) { // a body that sits on the inner halves of its pads, so the copper still shows around it
-    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, m = Infinity;
-    p.pins.forEach(function (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); m = Math.min(m, q.w ? Math.min(q.w, q.h) : 2 * q.r); });
-    var e = (isFinite(m) ? m : 20) * 0.5, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, hw = Math.max(8, (x1 - x0) / 2 + e * (x1 - x0 > 0 ? 0.3 : 1)), hh = Math.max(8, (y1 - y0) / 2 + e * (y1 - y0 > 0 ? 0.3 : 1));
-    return [(cx - hw) * MIL, (cy - hh) * MIL, (cx + hw) * MIL, (cy + hh) * MIL];
-  }
   /* ---------- the view ---------- */
   function open(host, M, opt) {
     opt = opt || {};
-    var T = THREE, W = host.clientWidth || 300, H = host.clientHeight || 300, dpr = Math.min(2, window.devicePixelRatio || 1);
+    var T = THREE, W = host.clientWidth || 300, H = host.clientHeight || 300, dpr = Math.min(1.75, window.devicePixelRatio || 1);
     var renderer = new T.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: !!opt.keep });
     renderer.setPixelRatio(dpr); renderer.setSize(W, H);
     if ('outputColorSpace' in renderer) renderer.outputColorSpace = T.SRGBColorSpace;
@@ -114,89 +123,58 @@ var BV3D = (function () {
           g.beginPath(); if (g.roundRect) g.roundRect(-w / 2, -h / 2, w, h, r); else g.rect(-w / 2, -h / 2, w, h); g.fill(); g.restore();
         });
       });
-      g.fillStyle = '#f2f2ec'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      M.parts.forEach(function (p) {
-        if (!!p.bottom !== bottom) return;
-        var b = partBox(p), w = (b[2] - b[0]) * k, h = (b[3] - b[1]) * k, fs = Math.min(Math.max(w, h) / Math.max(3, p.ref.length) * 1.4, Math.min(w, h) * 0.5, 2.2 * k);
-        if (fs < 6) return;
-        g.save(); g.translate(X((b[0] + b[2]) / 2 / MIL), Y((b[1] + b[3]) / 2 / MIL)); if (h > w * 1.3) g.rotate(-Math.PI / 2);
-        if (bottom) g.scale(-1, 1); // read the right way round from below
-        g.font = '600 ' + fs + 'px sans-serif'; g.fillText(p.ref, 0, 0); g.restore();
-      });
       var tex = new T.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
       var m = new T.Mesh(new T.PlaneGeometry(mmW, mmH), new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.45, metalness: 0.3, side: bottom ? T.BackSide : T.FrontSide, depthWrite: false }));
       m.position.set(bx0 * MIL + mmW / 2, by0 * MIL + mmH / 2, bottom ? -THICK - 0.02 : 0.02); m.renderOrder = 1; root.add(m);
     }
     decal(false); decal(true);
 
-    // components
-    var cache = M._mesh3d || (M._mesh3d = {}), pending = 0, done = 0, alive = true;
-    var bodyMat = new T.MeshStandardMaterial({ color: 0x2b2d2f, roughness: 0.6, metalness: 0.1 });
-    function placeStep(p, b, meshes) {
-      var grp = new T.Group();
-      meshes.forEach(function (me) {
-        var geo = new T.BufferGeometry();
-        geo.setAttribute('position', new T.BufferAttribute(me.p, 3));
-        if (me.n) geo.setAttribute('normal', new T.BufferAttribute(me.n, 3)); else geo.computeVertexNormals();
-        geo.setIndex(new T.BufferAttribute(me.i, 1));
-        var base = me.c || [0.62, 0.62, 0.62];
-        function mat(c) { var col = new T.Color(); col.setRGB(c[0], c[1], c[2], T.SRGBColorSpace); return new T.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.15, side: T.DoubleSide }); }
-        if (me.f && me.f.length) { // colours set on single faces of the model
-          var mats = [mat(base)], ntri = me.i.length / 3, at = 0;
-          me.f.sort(function (a, b) { return a[0] - b[0]; }).forEach(function (f) {
-            if (f[0] > at) geo.addGroup(at * 3, (f[0] - at) * 3, 0);
-            mats.push(mat([f[2], f[3], f[4]])); geo.addGroup(f[0] * 3, (f[1] - f[0] + 1) * 3, mats.length - 1); at = f[1] + 1;
-          });
-          if (at < ntri) geo.addGroup(at * 3, (ntri - at) * 3, 0);
-          grp.add(new T.Mesh(geo, mats));
-        } else grp.add(new T.Mesh(geo, mat(base)));
-      });
-      // Altium: model rotations X, Y, Z about its origin, then to the board point; bottom bodies are flipped under the board
-      var inner = new T.Group(); inner.add(grp);
-      grp.rotation.order = 'ZYX'; grp.rotation.set(deg(b.rx), deg(b.ry), deg(b.rz + b.rot));
-      var outer = new T.Group(); outer.add(inner);
+    // components: every STEP model is read once and drawn with instancing (one draw call per model colour for all its copies)
+    var cache = M._mesh3d || (M._mesh3d = {}), pending = 0, done = 0, alive = true, inst = {}, picks = [];
+    var bodyMat = new T.MeshStandardMaterial({ color: 0x2b2d2f, roughness: 0.6, metalness: 0.1 }), mats = {};
+    function matFor(c) { var k = c ? c.join(',') : ''; if (!mats[k]) { var col = new T.Color(); if (c) col.setRGB(c[0], c[1], c[2], T.SRGBColorSpace); else col.setHex(0x9e9e9e); mats[k] = new T.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.15, side: T.DoubleSide }); } return mats[k]; }
+    function bodyMatrix(b) { // Altium: model rotations X, Y, Z about its origin, then to the board point; bottom bodies are turned under the board
+      var g = new T.Object3D(), inner = new T.Object3D(), outer = new T.Object3D();
+      g.rotation.order = 'ZYX'; g.rotation.set(deg(b.rx), deg(b.ry), deg(b.rz + b.rot)); inner.add(g); outer.add(inner);
       if (b.bottom) { inner.rotation.x = Math.PI; outer.position.set(b.x * MIL, b.y * MIL, -THICK - b.dz * MIL); }
       else outer.position.set(b.x * MIL, b.y * MIL, b.dz * MIL);
-      outer.userData.part = p; root.add(outer); return outer;
+      outer.updateMatrixWorld(true); return g.matrixWorld.clone();
     }
-    function placeBox(p, b, color) { // extruded body outline, or the pads box when the file has no body
-      var poly = b && b.poly && b.poly.length >= 3 ? b.poly : null, z0 = b ? b.z0 * MIL : 0, z1 = b && b.z1 > 0 ? b.z1 * MIL : 0, geo;
-      if (poly) {
-        var s = new T.Shape(); poly.forEach(function (q, i) { i ? s.lineTo(q[0] * MIL, q[1] * MIL) : s.moveTo(q[0] * MIL, q[1] * MIL); });
-        if (!z1) z1 = 1; geo = new T.ExtrudeGeometry(s, { depth: Math.max(0.05, z1 - z0), bevelEnabled: false });
-      } else {
-        var bb = coreBox(p), w = bb[2] - bb[0], h = bb[3] - bb[1], hz = z1 || Math.max(0.3, Math.min(2.5, Math.min(w, h) * 0.45));
-        geo = new T.BoxGeometry(w, h, hz); geo.translate((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, hz / 2); z0 = 0; z1 = hz;
-      }
-      if (color == null && !b) color = /^C\d/i.test(p.ref) ? 0xb48a52 : /^(R|L)\d/i.test(p.ref) ? 0x2a2a2a : null;
-      var mat = color == null ? bodyMat : new T.MeshStandardMaterial({ color: new T.Color().setHex(color, T.SRGBColorSpace), roughness: 0.6, metalness: 0.1, transparent: b && b.alpha < 1, opacity: b ? b.alpha : 1 });
-      var m = new T.Mesh(geo, mat);
-      if (poly) m.position.z = z0;
-      var bottom = b ? b.bottom : p.bottom;
-      if (bottom) { m.scale.z = -1; m.position.z = -THICK - (poly ? z0 : 0); }
+    function build(key) {
+      var e = inst[key], groups = cache[key] && cache[key].meshes; if (!groups || !groups.length) return;
+      e.geos = groups.map(function (gr) {
+        var geo = new T.BufferGeometry();
+        geo.setAttribute('position', new T.BufferAttribute(gr.p, 3));
+        if (gr.n) geo.setAttribute('normal', new T.BufferAttribute(gr.n, 3)); geo.setIndex(new T.BufferAttribute(gr.i, 1));
+        if (!gr.n) geo.computeVertexNormals();
+        var im = new T.InstancedMesh(geo, matFor(gr.c), e.list.length);
+        e.list.forEach(function (it, i) { im.setMatrixAt(i, it.m); });
+        im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.userData.parts = e.list.map(function (it) { return it.p; });
+        root.add(im); return geo;
+      });
+    }
+    function placeBox(p, b, color) { // an extruded body outline from the file
+      var s = new T.Shape(), z0 = b.z0 * MIL, z1 = b.z1 > 0 ? b.z1 * MIL : 1;
+      b.poly.forEach(function (q, i) { i ? s.lineTo(q[0] * MIL, q[1] * MIL) : s.moveTo(q[0] * MIL, q[1] * MIL); });
+      var key = color + ':' + (b.alpha < 1 ? b.alpha : 1);
+      if (!mats[key]) mats[key] = new T.MeshStandardMaterial({ color: new T.Color().setHex(color, T.SRGBColorSpace), roughness: 0.6, metalness: 0.1, transparent: b.alpha < 1, opacity: b.alpha });
+      var m = new T.Mesh(new T.ExtrudeGeometry(s, { depth: Math.max(0.05, z1 - z0), bevelEnabled: false }), mats[key]);
+      m.position.z = z0; if (b.bottom) { m.scale.z = -1; m.position.z = -THICK - z0; }
       m.userData.part = p; root.add(m); return m;
     }
     M.parts.forEach(function (p) {
-      var bs = (p.bodies || []).filter(function (b) { return b.type === 1 ? !!b.step : b.poly && b.poly.length >= 3; });
-      if (!bs.length) return; // no 3D data for this part in the file: bare pads only
-      bs.forEach(function (b) {
-        if (b.type !== 1) { placeBox(p, b, altiumColor(b.color)); return; }
-        var key = b.id;
-        if (cache[key] && cache[key].meshes) { placeStep(p, b, cache[key].meshes); return; }
-        var stub = placeBox(p, { poly: b.poly, z0: b.z0, z1: b.z1, bottom: b.bottom, alpha: 0.35 }, 0x6b7378);
-        pending++;
-        if (!cache[key]) {
-          var bytes = b.step && b.step();
-          cache[key] = { wait: [], promise: bytes ? tessellate(bytes) : Promise.resolve(null) };
-          cache[key].promise.then(function (meshes) { cache[key].meshes = meshes; });
-        }
-        cache[key].promise.then(function (meshes) {
-          done++; if (!alive) return;
-          if (meshes && meshes.length) { root.remove(stub); placeStep(p, b, meshes); }
-          else stub.material.opacity = 1;
-          if (opt.progress) opt.progress(done, pending); req();
-        });
+      (p.bodies || []).forEach(function (b) {
+        if (b.type !== 1) { if (b.poly && b.poly.length >= 3) placeBox(p, b, altiumColor(b.color)); return; }
+        if (!b.step) return; // no 3D data for this part in the file: bare pads only
+        var key = b.ck || b.id; // same model (by checksum) = read once
+        (inst[key] = inst[key] || { list: [], b: b }).list.push({ p: p, m: bodyMatrix(b) });
       });
+    });
+    Object.keys(inst).forEach(function (key) {
+      if (cache[key] && cache[key].meshes) { build(key); return; }
+      pending++;
+      if (!cache[key]) { var bytes = inst[key].b.step(); cache[key] = { promise: bytes ? tessellate(bytes) : Promise.resolve(null) }; cache[key].promise.then(function (g) { cache[key].meshes = g; }); }
+      cache[key].promise.then(function () { done++; if (!alive) return; build(key); if (lit) { var l = lit; lit = null; highlight(l); } if (opt.progress) opt.progress(done, pending); req(); });
     });
     if (opt.progress) opt.progress(0, pending);
 
@@ -243,40 +221,49 @@ var BV3D = (function () {
       if (!tap || !opt.pick) return;
       var r = el.getBoundingClientRect(); place();
       ray.setFromCamera(new T.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
-      var hits = ray.intersectObjects(root.children, true), part = null;
-      for (var i = 0; i < hits.length && !part; i++) for (var o = hits[i].object; o && !part; o = o.parent) if (o.userData.part) part = o.userData.part;
+      var hits = ray.intersectObjects(root.children, false), part = null;
+      for (var i = 0; i < hits.length && !part; i++) { var o = hits[i].object; part = o.isInstancedMesh ? o.userData.parts[hits[i].instanceId] : o.userData.part || null; }
       opt.pick(part);
     }
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     el.addEventListener('wheel', function (e) { e.preventDefault(); V.r = Math.max(span * 0.03, Math.min(span * 8, V.r * Math.exp(e.deltaY * 0.0012))); req(); }, { passive: false });
     el.addEventListener('dblclick', function () { view(); });
-    function resize() { W = host.clientWidth; H = host.clientHeight; if (!W || !H) return; renderer.setSize(W, H); cam.aspect = W / H; req(); }
+    function resize() { // redraw in the same frame: a resized canvas is blank until it is drawn again
+      W = host.clientWidth; H = host.clientHeight; if (!W || !H || !alive) return;
+      var d = Math.min(1.75, window.devicePixelRatio || 1); if (d !== dpr) { dpr = d; renderer.setPixelRatio(dpr); }
+      renderer.setSize(W, H); cam.aspect = W / H; place(); renderer.render(scene, cam);
+    }
+    window.addEventListener('resize', resize);
+    // the GPU can drop the picture (window moved to another screen, app in background): build the view again
+    el.addEventListener('webglcontextlost', function (e) { e.preventDefault(); if (alive && opt.lost) setTimeout(opt.lost, 0); });
     var ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null; if (ro) ro.observe(host);
-    var lit = null;
-    function highlight(p) { // a warm glow on the selected part
+    var lit = null, hl = [], hlMats = {};
+    function highlight(p) { // a warm glow on the selected part: extra copies of its geometry drawn over it
       if (lit === p) return; lit = p;
-      root.children.forEach(function (o) {
-        var on = !!p && o.userData.part === p;
-        o.traverse(function (m) {
-          if (!m.isMesh || !m.material) return;
-          if (on && !m.userData.own) { m.material = Array.isArray(m.material) ? m.material.map(function (x) { return x.clone(); }) : m.material.clone(); m.userData.own = true; }
-          if (m.userData.own) [].concat(m.material).forEach(function (x) { if (x.emissive) x.emissive.setHex(on ? 0x7a5200 : 0x000000); });
-        });
+      hl.forEach(function (m) { root.remove(m); }); hl = [];
+      if (p) root.children.forEach(function (o) {
+        var mk = function (geo, mat, mx) {
+          var k = mat.uuid; if (!hlMats[k]) { hlMats[k] = mat.clone(); hlMats[k].emissive = new T.Color(0x8a5c00); hlMats[k].polygonOffset = true; hlMats[k].polygonOffsetFactor = -1; hlMats[k].polygonOffsetUnits = -4; }
+          var m = new T.Mesh(geo, hlMats[k]); m.raycast = function () {}; m.matrixAutoUpdate = false; m.matrix.copy(mx); root.add(m); hl.push(m);
+        };
+        if (o.isInstancedMesh) o.userData.parts.forEach(function (q, i) { if (q === p) { var mx = new T.Matrix4(); o.getMatrixAt(i, mx); mk(o.geometry, o.material, mx); } });
+        else if (o.isMesh && o.userData.part === p) { o.updateMatrix(); mk(o.geometry, o.material, o.matrix); }
       });
       req();
     }
-    var keep = placeStep; placeStep = function (p, b, meshes) { var o = keep(p, b, meshes); if (lit === p) { lit = null; highlight(p); } return o; };
     view();
-    return { highlight: highlight,
+    return { info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries }; }, highlight: highlight, setBg: function (c) { scene.background = new T.Color(c); req(); },
       view: view, render: req, canvas: el, root: root, setAngles: function (th, ph, r) { V.th = th; V.ph = ph; if (r) V.r = span * r; req(); },
       target: function (x, y, z, r) { V.tx = x; V.ty = y; V.tz = z || 0; if (r) V.r = r; req(); },
       close: function () {
-        alive = false; if (ro) ro.disconnect(); cancelAnimationFrame(raf);
-        scene.traverse(function (o) { if (o.geometry) o.geometry.dispose(); [].concat(o.material || []).forEach(function (x) { if (x.map) x.map.dispose(); x.dispose(); }); });
+        alive = false; if (ro) ro.disconnect(); window.removeEventListener('resize', resize); cancelAnimationFrame(raf);
+        hl.forEach(function (m) { root.remove(m); });
+        scene.traverse(function (o) { if (o.geometry) o.geometry.dispose(); [].concat(o.material || []).forEach(function (x) { if (x.map) x.map.dispose(); x.dispose(); }); if (o.isInstancedMesh && o.dispose) o.dispose(); });
+        Object.keys(hlMats).forEach(function (k) { hlMats[k].dispose(); }); renderer.forceContextLoss && renderer.forceContextLoss();
         renderer.dispose(); if (el.parentNode) el.parentNode.removeChild(el);
       }
     };
   }
-  return { open: open, hasModels: function (M) { return M.parts.some(function (p) { return p.bodies && p.bodies.some(function (b) { return b.step; }); }); } };
+  return { open: open, reset: reset, hasModels: function (M) { return M.parts.some(function (p) { return p.bodies && p.bodies.some(function (b) { return b.step; }); }); } };
 })();

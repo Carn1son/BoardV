@@ -209,7 +209,7 @@ var PCBDOC = (function () {
                 color: +(o.BODYCOLOR3D || 8421504), alpha: o.BODYOPACITY3D == null ? 1 : +o.BODYOPACITY3D,
                 x: mil(o['MODEL.2D.X']), y: mil(o['MODEL.2D.Y']), rot: +(o['MODEL.2D.ROTATION'] || 0),
                 rx: +(o['MODEL.3D.ROTX'] || 0), ry: +(o['MODEL.3D.ROTY'] || 0), rz: +(o['MODEL.3D.ROTZ'] || 0), dz: mil(o['MODEL.3D.DZ']),
-                id: o.MODELID || '', name: o['MODEL.NAME'] || '' };
+                id: o.MODELID || '', name: o['MODEL.NAME'] || '', ck: o['MODEL.CHECKSUM'] ? o['MODEL.CHECKSUM'] + '|' + (o['MODEL.NAME'] || '') : '' };
       if (b.type === 1 && o['MODEL.EMBED'] === 'TRUE' && b.id in models) b.step = step(models[b.id]);
       (part.bodies = part.bodies || []).push(b);
     }

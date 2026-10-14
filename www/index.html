@@ -546,7 +546,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.10 · 11.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.11 · 14.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -761,7 +761,17 @@ var PCBDOC = (function () {
       }
       if (hole > 0) parts[key].smd = false;
       var nn = net !== NONE16 && net < nets.length ? nets[net] : '';
-      parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(sx, sy) / 2) });
+      // real copper shape: bottom pads use the bottom-layer size and shape; round + "alt" 9 is a rounded rectangle
+      var bot = padData[b] === 32, w = bot ? pdv.getInt32(b + 37, true) * U : sx, h = bot ? pdv.getInt32(b + 41, true) * U : sy, shp = padData[b + (bot ? 51 : 49)];
+      var rot = pdv.getFloat64(b + 52, true), s5 = sub[5], li = bot ? 31 : 0, sh = 'rr', cr = 0.5;
+      if (shp === 2) sh = 'r'; else if (shp === 3) sh = 'oct';
+      else if (shp === 1) {
+        if (s5[1] >= 596 && padData[s5[0] + 532 + li] === 9) { sh = 'rr'; cr = padData[s5[0] + 564 + li] / 100; }
+        else sh = Math.abs(w - h) < 0.01 ? 'c' : 'o';
+      }
+      if (!(w > 0 && h > 0)) { w = h = Math.max(4, Math.min(sx, sy)); }
+      parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(w, h) / 2),
+                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr });
     }
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
@@ -1265,7 +1275,8 @@ var BV = (function () {
     if (!d || !/^altium-boardview/.test(d.format || '')) throw new Error('Это не файл конвертера');
     var parts = d.parts.map(function (p) {
       return { ref: p.ref, bottom: p.side === 'B', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
-               pins: p.pins.map(function (q) { return { x: q[0], y: q[1], name: String(q[2]), net: q[3] || 'UNCONNECTED', r: q[4] == null ? NaN : q[4] }; }) };
+               pins: p.pins.map(function (q) { var o = { x: q[0], y: q[1], name: String(q[2]), net: q[3] || 'UNCONNECTED', r: q[4] == null ? NaN : q[4] };
+                 if (q[5]) { o.w = q[5][0]; o.h = q[5][1]; o.rot = q[5][2] || 0; o.sh = q[5][3]; o.cr = q[5][4] || 0; } return o; }) };
     });
     var m = finalize(parts, d.outline); m.title = d.name || ''; return m;
   }
@@ -1276,7 +1287,8 @@ var BV = (function () {
       outline: b.outline.map(function (q) { return [r1(q[0]), r1(q[1])]; }),
       parts: b.parts.map(function (p) {
         return { ref: p.ref, side: p.bottom ? 'B' : 'T', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
-                 pins: p.pins.map(function (q) { return [r1(q.x), r1(q.y), q.name, q.net, isFinite(q.r) ? r1(q.r) : null]; }) };
+                 pins: p.pins.map(function (q) { var a = [r1(q.x), r1(q.y), q.name, q.net, isFinite(q.r) ? r1(q.r) : null];
+                   if (q.sh) a.push([Math.round(q.w * 100) / 100, Math.round(q.h * 100) / 100, Math.round(q.rot * 100) / 100, q.sh, q.cr]); return a; }) };
       })
     });
   }
@@ -1696,8 +1708,12 @@ var FMT = (function () {
       Array.prototype.forEach.call(lib.getElementsByTagName('package'), function (p) {
         var pads = [];
         Array.prototype.forEach.call(p.childNodes, function (c) {
-          if (c.nodeName === 'smd') pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: Math.min(f(c, 'dx'), f(c, 'dy')) / 2, smd: true, bottom: A(c, 'layer') === '16' });
-          else if (c.nodeName === 'pad') { var dia = f(c, 'diameter') || f(c, 'drill') * 1.6; pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: dia / 2, smd: false }); }
+          var prot = parseFloat((A(c, 'rot') || '').replace(/[^0-9.\-]/g, '')) || 0;
+          if (c.nodeName === 'smd') { var rn = f(c, 'roundness'); pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: Math.min(f(c, 'dx'), f(c, 'dy')) / 2, smd: true, bottom: A(c, 'layer') === '16',
+            w: f(c, 'dx'), h: f(c, 'dy'), rot: prot, sh: rn >= 100 ? (f(c, 'dx') === f(c, 'dy') ? 'c' : 'o') : rn > 0 ? 'rr' : 'r', cr: rn / 100 }); }
+          else if (c.nodeName === 'pad') { var dia = f(c, 'diameter') || f(c, 'drill') * 1.6, ps = A(c, 'shape') || 'round';
+            pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: dia / 2, smd: false, w: ps === 'long' || ps === 'offset' ? dia * 2 : dia, h: dia, rot: prot,
+              sh: ps === 'square' ? 'r' : ps === 'octagon' ? 'oct' : ps === 'long' || ps === 'offset' ? 'o' : 'c', cr: 0 }); }
         });
         pk[ln + '\u0001' + A(p, 'name')] = pads; if (urn) pk[urn + '\u0001' + A(p, 'name')] = pads;
       });
@@ -1716,7 +1732,9 @@ var FMT = (function () {
       var p = { ref: name, bottom: smd && (mir ? !pads[0].bottom : !!pads[0].bottom), smd: smd, value: A(el, 'value') || '', footprint: A(el, 'package') || '', desc: '', pins: [] };
       pads.forEach(function (q) {
         var x = q.x * cs - q.y * sn, y = q.x * sn + q.y * cs; if (mir) x = -x; // rotate, then mirror for the bottom side
-        p.pins.push({ x: (ex + x) * MM, y: (ey + y) * MM, name: q.name, net: net[name + '\u0001' + q.name] || 'UNCONNECTED', r: q.r * MM });
+        var a = q.rot + ang * 180 / Math.PI;
+        p.pins.push({ x: (ex + x) * MM, y: (ey + y) * MM, name: q.name, net: net[name + '\u0001' + q.name] || 'UNCONNECTED', r: q.r * MM,
+                      w: q.w * MM, h: q.h * MM, rot: mir ? -a : a, sh: q.sh, cr: q.cr });
       });
       parts.push(p);
     });
@@ -1772,7 +1790,9 @@ var FMT = (function () {
         if (pd[2] === 'np_thru_hole' && !nt) return; // mounting hole
         var px = +pa[1], py = +pa[2], x = fx + px * cs + py * sn, y = fy - px * sn + py * cs; // KiCad: Y down, angles counter-clockwise on screen
         var netName = nt ? (nt.length > 2 ? sv(nt[2]) : (typeof nt[1] === 'object' ? sv(nt[1]) : netNames[nt[1]])) : '';
-        pins.push({ x: x * MM, y: -y * MM, name: name, net: netName || 'UNCONNECTED', r: Math.min(+sz[1], +sz[2]) / 2 * MM });
+        var ks = pd[3], sh = ks === 'rect' ? 'r' : ks === 'circle' ? 'c' : ks === 'oval' ? (+sz[1] === +sz[2] ? 'c' : 'o') : 'rr', rr = kid(pd, 'roundrect_rratio');
+        pins.push({ x: x * MM, y: -y * MM, name: name, net: netName || 'UNCONNECTED', r: Math.min(+sz[1], +sz[2]) / 2 * MM,
+                    w: +sz[1] * MM, h: +sz[2] * MM, rot: +(pa[3] || 0), sh: sh, cr: ks === 'roundrect' ? Math.min(1, 2 * (rr ? +rr[1] : 0.25)) : 0.3 });
       });
       if (!pins.length) return;
       parts.push({ ref: ref || '?', bottom: smd && /^B\./.test(layer), smd: smd, value: val, footprint: String(sv(fp[1]) || '').split(':').pop(), desc: '', pins: pins });
@@ -2310,7 +2330,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   var DEF_COLORS = Object.assign({}, GRAND, { canvasDay: '#e7eae8', canvas: '#1b1d1c', board: '#3a3e3d', board2: '#4a4f4d', edge: '#8d9491', outline: '#d4d8d6', partfill: '#d4d8d6',
     pin: '#f4f6f5', pwr: '#6d0f14', gnd: '#9aa19e', nc: '#141615', dim: '#5a605e' });
   var DEF_FX = { boardGlow: 0, boardGrad: false, edgeW: 1.2, farAlpha: 0.13,
-    pinShape: 'rsquare', pinGlow: 0, pwrGlow: 0, gndGlow: 0,
+    pinGlow: 0, pwrGlow: 0, gndGlow: 0,
     outlineAlpha: 0.5, outlineW: 1, cornerR: 3, partFill: 0, labelScale: 1, showValues: true, showPinNums: true,
     haloStyle: 'shadow', haloAlpha: 0.5, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
@@ -2320,23 +2340,23 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
   var PRESETS = {
     'По умолчанию': { colors: {}, fx: {} },
-    'Гранд': { colors: G_(), fx: { pinShape: 'circle' } },
+    'Гранд': { colors: G_(), fx: {} },
     'Классика': { colors: G_({ pin: '#d39a52', pwr: '#9b5de5', gnd: '#4d7a62', nc: '#4a524e', refc: '#cfd8d3', valc: '#f2b544', sel: '#ff4d78', selhere: '#f2b544', selfar: '#f2b544' }),
-      fx: { pinShape: 'circle', cornerR: 0, selGlow: 0, selBreath: false, selDash: false } },
+      fx: { cornerR: 0, selGlow: 0, selBreath: false, selDash: false } },
     'Ночь': { colors: G_({ canvas: '#000000', board: '#000000', edge: '#d8d8a0', outline: '#9a9a9a', pin: '#5b7bff', pwr: '#ff4040', gnd: '#2c3c9c', nc: '#4c4c4c', refc: '#e0e0e0', valc: '#a0a0a0', sel: '#ffff00', dim: '#2e2e2e', selhere: '#ffff00', selfar: '#ffff00' }),
-      fx: { cornerR: 0, pinShape: 'square', outlineAlpha: 0.8, selGlow: 0 } },
-    'Темная': { colors: G_({ canvas: '#000000', board: '#060606', edge: '#5f5f5f', outline: '#9a9a9a', botpart: '#6f9be0', pin: '#d9d9d9', pwr: '#c62828', gnd: '#2e7d32', nc: '#6a6a6a', refc: '#ffffff', valc: '#b5b5b5', sel: '#ffeb3b', dim: '#3a3a3a' }), fx: { pinShape: 'circle' } },
-    'Синяя': { colors: G_({ canvas: '#070b12', board: '#0b1d3a', board2: '#14305e', edge: '#6a8cc4', outline: '#c9d6ee', pin: '#f1f4fa', pwr: '#8f1d22', gnd: '#7f8da3', nc: '#8c9ab3', valc: '#d7e2f5', dim: '#3d4c66' }), fx: { boardGrad: true, pinShape: 'circle' } },
-    'Красная': { colors: G_({ canvas: '#0d0606', board: '#3b0b0e', board2: '#5a1217', edge: '#d98b8f', outline: '#f0d2d3', pin: '#fff5f5', pwr: '#ffc23d', gnd: '#b69a9b', nc: '#c29c9e', valc: '#f6dfe0', sel: '#7df9ff', dim: '#5e3638', selhere: '#7df9ff', selfar: '#7df9ff' }), fx: { boardGrad: true, pinShape: 'circle' } },
+      fx: { cornerR: 0, outlineAlpha: 0.8, selGlow: 0 } },
+    'Темная': { colors: G_({ canvas: '#000000', board: '#060606', edge: '#5f5f5f', outline: '#9a9a9a', botpart: '#6f9be0', pin: '#d9d9d9', pwr: '#c62828', gnd: '#2e7d32', nc: '#6a6a6a', refc: '#ffffff', valc: '#b5b5b5', sel: '#ffeb3b', dim: '#3a3a3a' }), fx: {} },
+    'Синяя': { colors: G_({ canvas: '#070b12', board: '#0b1d3a', board2: '#14305e', edge: '#6a8cc4', outline: '#c9d6ee', pin: '#f1f4fa', pwr: '#8f1d22', gnd: '#7f8da3', nc: '#8c9ab3', valc: '#d7e2f5', dim: '#3d4c66' }), fx: { boardGrad: true } },
+    'Красная': { colors: G_({ canvas: '#0d0606', board: '#3b0b0e', board2: '#5a1217', edge: '#d98b8f', outline: '#f0d2d3', pin: '#fff5f5', pwr: '#ffc23d', gnd: '#b69a9b', nc: '#c29c9e', valc: '#f6dfe0', sel: '#7df9ff', dim: '#5e3638', selhere: '#7df9ff', selfar: '#7df9ff' }), fx: { boardGrad: true } },
     'Светлая': { colors: G_({ canvas: '#e7eae8', board: '#f8f9f7', board2: '#eef1ef', edge: '#6b7570', outline: '#56605b', partfill: '#56605b', botpart: '#2f63b8', pin: '#2b2f2d', pwr: '#b71c1c', gnd: '#7d8784', nc: '#9aa19e', refc: '#111312', valc: '#4a524e', sel: '#e0a100', dim: '#c9cecb', selhere: '#000000', selfar: '#000000' }),
-      fx: { pinShape: 'circle', selGlow: 4, farAlpha: 0.2, outlineAlpha: 0.7 } },
+      fx: { selGlow: 4, farAlpha: 0.2, outlineAlpha: 0.7 } },
     'Неон': { colors: G_({ canvas: '#05030a', board: '#0d0820', board2: '#1a0f3d', edge: '#00e5ff', outline: '#ff2bd6', partfill: '#ff2bd6', botpart: '#00e5ff', pin: '#e0fbff', pwr: '#ff2b6d', gnd: '#5b62c9', nc: '#6c5f9c', refc: '#ffffff', valc: '#9ff6ff', sel: '#39ff14', dim: '#2a2440', selhere: '#00e5ff', selfar: '#ff2bd6' }),
-      fx: { pinShape: 'circle', boardGlow: 18, boardGrad: true, pinGlow: 4, pwrGlow: 8, selGlow: 22, cornerR: 5, outlineAlpha: 0.8, partFill: 0.06 } }
+      fx: { boardGlow: 18, boardGrad: true, pinGlow: 4, pwrGlow: 8, selGlow: 22, cornerR: 5, outlineAlpha: 0.8, partFill: 0.06 } }
   };
   var SCHEMA = [
     ['Область: фон и подложка', [['color', 'canvas', 'Фон окна'], ['color', 'board', 'Подложка платы'], ['check', 'boardGrad', 'Градиент подложки'], ['color', 'board2', 'Второй цвет градиента'],
       ['color', 'edge', 'Контур платы'], ['range', 'edgeW', 'Толщина контура', 0.5, 4, 0.1], ['range', 'boardGlow', 'Свечение контура', 0, 40, 1], ['range', 'farAlpha', 'Видимость обратной стороны', 0, 0.6, 0.01]]],
-    ['Контакты', [['select', 'pinShape', 'Форма контактов', [['circle', 'Круг'], ['rsquare', 'Скруглённый квадрат'], ['square', 'Квадрат']]],
+    ['Контакты', [
       ['color', 'pin', 'Сигнальные'], ['color', 'pwr', 'Питание'], ['color', 'gnd', 'Земля'], ['color', 'nc', 'Не подключённые (обводка)'],
       ['range', 'pinGlow', 'Свечение сигнальных', 0, 20, 1], ['range', 'pwrGlow', 'Свечение питания', 0, 20, 1], ['range', 'gndGlow', 'Свечение земли', 0, 20, 1]]],
     ['Компоненты', [['color', 'outline', 'Обводка компонента'], ['color', 'botpart', 'Обводка нижних (режим «Обе»)'], ['range', 'outlineW', 'Толщина обводки компонента', 0.5, 4, 0.1],
@@ -2516,8 +2536,68 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function visible(p) { return V.side === 'both' || (V.side === 'bottom') === !!p.bottom; }
   function partRect(p) { // screen rect
     var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    p.pins.forEach(function (q) { var s = w2s(q.x, q.y), r = q.r * V.k; x0 = Math.min(x0, s[0] - r); x1 = Math.max(x1, s[0] + r); y0 = Math.min(y0, s[1] - r); y1 = Math.max(y1, s[1] + r); });
+    p.pins.forEach(function (q) { var s = w2s(q.x, q.y), e = padExt(q), ex = (V.rot % 2 ? e[1] : e[0]) * V.k, ey = (V.rot % 2 ? e[0] : e[1]) * V.k;
+      x0 = Math.min(x0, s[0] - ex); x1 = Math.max(x1, s[0] + ex); y0 = Math.min(y0, s[1] - ey); y1 = Math.max(y1, s[1] + ey); });
     var m = Math.max(2, 6 * V.k); return [x0 - m, y0 - m, x1 + m, y1 + m];
+  }
+  function padExt(q) { // half extents of the pad along the board axes (world units)
+    if (q._e) return q._e;
+    if (!q.sh) return (q._e = [q.r, q.r]);
+    var a = (q.rot || 0) * Math.PI / 180, c = Math.abs(Math.cos(a)), n = Math.abs(Math.sin(a));
+    return (q._e = [c * q.w / 2 + n * q.h / 2, n * q.w / 2 + c * q.h / 2]);
+  }
+  function padDist(q, wx, wy) { // distance (world) from a point to the pad edge; negative inside
+    if (!q.sh) return Math.hypot(wx - q.x, wy - q.y) - q.r;
+    var a = (q.rot || 0) * Math.PI / 180, c = Math.cos(a), n = Math.sin(a), dx = wx - q.x, dy = wy - q.y;
+    var u = Math.abs(dx * c + dy * n) - q.w / 2, v = Math.abs(-dx * n + dy * c) - q.h / 2;
+    return u > 0 && v > 0 ? Math.hypot(u, v) : Math.max(u, v);
+  }
+  /* pin-1 key: only on ICs, transformers and LEDs. Pins on two sides (or one row) get a bar in the middle of the key end, anything else a dot by pin 1 */
+  function keyKind(p) {
+    var ref = String(p.ref || '').toUpperCase(), txt = (p.value + ' ' + p.footprint + ' ' + p.desc).toUpperCase(), n = p.pins.length;
+    if (n < 2) return null;
+    if (/^(LED|HL|VL)\d/.test(ref) || (/^V?D\d/.test(ref) && /LED|СВЕТОДИОД/.test(txt))) return 'led';
+    if (/^(T|TR|TV|TX|XFMR)\d/.test(ref)) return 'xf';
+    if (/^(U|IC|DA|DD|DS|DU)\d/.test(ref) || (/^D\d/.test(ref) && n >= 5)) return 'ic';
+    return null;
+  }
+  function partKey(p) {
+    if (p._key !== undefined) return p._key;
+    p._key = null;
+    var kind = keyKind(p); if (!kind) return null;
+    var pins = p.pins, p1 = null;
+    function by(re) { for (var i = 0; i < pins.length; i++) if (re.test(String(pins[i].name).trim())) return pins[i]; return null; }
+    if (kind === 'led') p1 = by(/^(K|C|CATHODE|KATHODE|-)$/i);
+    p1 = p1 || by(/^0*1$/) || by(/^A0*1$/i) || pins.slice().sort(function (a, b) { return natCmp(a.name, b.name); })[0];
+    var hs = pins.map(function (q) { return q.r; }).sort(function (a, b) { return a - b; }), med = hs[hs.length >> 1] || 5;
+    var body = pins.filter(function (q) { return q === p1 || pins.length <= 3 || q.r <= med * 2.5; }); // exposed pads and tabs do not count
+    var th = ((p1.rot || 0) % 90) * Math.PI / 180, c = Math.cos(th), n = Math.sin(th);
+    function U(q) { return q.x * c + q.y * n; } function Vv(q) { return -q.x * n + q.y * c; }
+    var u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity, tol = Math.max(2, med * 0.9);
+    body.forEach(function (q) { var u = U(q), v = Vv(q); u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); });
+    var onU = body.every(function (q) { var u = U(q); return Math.abs(u - u0) < tol || Math.abs(u - u1) < tol; });
+    var onV = body.every(function (q) { var v = Vv(q); return Math.abs(v - v0) < tol || Math.abs(v - v1) < tol; });
+    var alongU = null; // the key end lies along u (true) or v (false); null: dot
+    if (v1 - v0 < tol) alongU = true; else if (u1 - u0 < tol) alongU = false;
+    else if (onU && onV) alongU = (u1 - u0) >= (v1 - v0); else if (onV) alongU = true; else if (onU) alongU = false;
+    if (alongU !== null) {
+      var t = alongU ? U(p1) : Vv(p1), mid = alongU ? (u0 + u1) / 2 : (v0 + v1) / 2, sg = t <= mid ? -1 : 1;
+      var dir = alongU ? [c * sg, n * sg] : [-n * sg, c * sg], across = [-dir[1], dir[0]];
+      var aMax = -Infinity, bMin = Infinity, bMax = -Infinity;
+      pins.forEach(function (q) {
+        var e = padExt(q), ea = Math.abs(dir[0]) * e[0] + Math.abs(dir[1]) * e[1], eb = Math.abs(across[0]) * e[0] + Math.abs(across[1]) * e[1];
+        var pa = q.x * dir[0] + q.y * dir[1], pb = q.x * across[0] + q.y * across[1];
+        aMax = Math.max(aMax, pa + ea); bMin = Math.min(bMin, pb - eb); bMax = Math.max(bMax, pb + eb);
+      });
+      return (p._key = { line: true, a: aMax, b: (bMin + bMax) / 2, len: (bMax - bMin) * 0.36, dir: dir, across: across });
+    }
+    var cx = 0, cy = 0; body.forEach(function (q) { cx += q.x; cy += q.y; }); cx /= body.length; cy /= body.length;
+    var dx = cx - p1.x, dy = cy - p1.y, dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    var e1 = padExt(p1), ext = Math.abs(dx) * e1[0] + Math.abs(dy) * e1[1], dr = Math.max(3, med * 0.55), gap = Math.max(2, med * 0.6);
+    function free(x, y) { return pins.every(function (q) { return padDist(q, x, y) > dr + gap * 0.3; }); }
+    var d = ext + gap + dr, x = p1.x + dx * d, y = p1.y + dy * d;
+    if (!free(x, y)) { x = p1.x - dx * d; y = p1.y - dy * d; }
+    return (p._key = { line: false, x: x, y: y, r: dr });
   }
   function centerOnPart(p, zoom) {
     var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -2571,7 +2651,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       if (SEL && SEL[p.ref]) return; // drawn by the selection pass
       ctx.lineWidth = FX.outlineW;
       ctx.strokeStyle = off(p) ? C.dim : (V.side === 'both' && p.bottom ? C.botpart : C.outline);
-      ctx.globalAlpha = off(p) ? 0.7 : hovP ? 1 : FX.outlineAlpha;
+      ctx.globalAlpha = off(p) ? (selDim && !dim ? 0.3 : 0.7) : hovP ? 1 : FX.outlineAlpha;
       rrect(r[0], r[1], r[2] - r[0], r[3] - r[1]); ctx.stroke();
       ctx.globalAlpha = 1;
     });
@@ -2594,12 +2674,28 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
         ctx.restore();
       });
     }
+    // pin-1 keys
+    near.forEach(function (p) {
+      var k = partKey(p); if (!k) return;
+      var r = partRect(p); if (Math.min(r[2] - r[0], r[3] - r[1]) < 12) return;
+      var col = off(p) ? C.dim : (SEL && SEL[p.ref]) ? C.selhere : (V.side === 'both' && p.bottom ? C.botpart : C.outline);
+      ctx.save(); ctx.globalAlpha = off(p) ? (selDim && !dim ? 0.3 : 0.7) : Math.max(0.85, FX.outlineAlpha);
+      if (k.line) {
+        var gapW = Math.max(2 / V.k, 6) * 0.5, a = k.a + gapW, h = k.len / 2;
+        var s1 = w2s(k.dir[0] * a + k.across[0] * (k.b - h), k.dir[1] * a + k.across[1] * (k.b - h)), s2 = w2s(k.dir[0] * a + k.across[0] * (k.b + h), k.dir[1] * a + k.across[1] * (k.b + h));
+        ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.6, FX.outlineW * 1.8); ctx.strokeStyle = col;
+        ctx.beginPath(); ctx.moveTo(s1[0], s1[1]); ctx.lineTo(s2[0], s2[1]); ctx.stroke();
+      } else {
+        var sd = w2s(k.x, k.y); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sd[0], sd[1], Math.max(1.4, k.r * V.k), 0, 6.2832); ctx.fill();
+      }
+      ctx.restore();
+    });
     // pins
     near.forEach(function (p) {
       p.pins.forEach(function (q) {
         var hv = hover && hover.pin === q ? 1 : 0, nc = q.net === 'UNCONNECTED';
         if (S.net && q.net === S.net) return; // drawn last, on top
-        if (off(p)) { dot(q, nc ? C.dim : C.dim, hv, 0, nc); return; }
+        if (off(p)) { if (selDim && !dim) ctx.globalAlpha = 0.3; dot(q, C.dim, hv, 0, nc); ctx.globalAlpha = 1; return; }
         if (nc) { dot(q, C.nc, hv, 0, true); return; }
         var custom = netRuleColor(q.net);
         if (custom) dot(q, custom, hv, FX.pinGlow);
@@ -2616,13 +2712,13 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       });
     }
     function netPin(q, a) {
-      var s = w2s(q.x, q.y), rr = Math.max(1.6, q.r * V.k);
+      var rr = Math.max(1.6, q.r * V.k);
       ctx.save(); ctx.globalAlpha = a;
       if (FX.netGlow > 0) { ctx.shadowColor = C.sel; ctx.shadowBlur = FX.netGlow * (FX.netPulse ? 0.4 + 0.6 * pulse : 1); }
-      pinPath(s, rr); ctx.fillStyle = C.sel; ctx.fill();
+      padPath(q, 0); ctx.fillStyle = C.sel; ctx.fill();
       ctx.shadowBlur = 0;
-      if (FX.netPulse) { ctx.lineWidth = 2; ctx.strokeStyle = C.sel; pinPath(s, rr + 2.5 + 1.5 * pulse); ctx.stroke(); }
-      if (phase >= 0) { ctx.globalAlpha = a * (1 - phase) * 0.8; ctx.lineWidth = 1.5; ctx.strokeStyle = C.sel; pinPath(s, rr + 3 + Math.max(10, rr) * 1.6 * phase); ctx.stroke(); }
+      if (FX.netPulse) { ctx.lineWidth = 2; ctx.strokeStyle = C.sel; padPath(q, 2.5 + 1.5 * pulse); ctx.stroke(); }
+      if (phase >= 0) { ctx.globalAlpha = a * (1 - phase) * 0.8; ctx.lineWidth = 1.5; ctx.strokeStyle = C.sel; padPath(q, 3 + Math.max(10, rr) * 1.6 * phase); ctx.stroke(); }
       ctx.restore();
     }
     // labels
@@ -2637,18 +2733,19 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       var tw = ctx.measureText(p.ref).width;
       if (tw > len) { fs *= len / tw; ctx.font = '600 ' + fs + 'px ' + mono; }
       if (fs < 6.5) return;
-      var cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, pOff = off(p);
-      var showVal = FX.showValues && p.value && thick > fs * 2.7;
-      if (FX.showValues && p.value && !showVal && thick / 2.7 >= 5.5) { fs = thick / 2.7; ctx.font = '600 ' + fs + 'px ' + mono; showVal = true; } // thin part: smaller text so the value still fits
+      var cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, pOff = off(p), quiet = pOff && selDim && !dim; // a component is selected: the others keep only a readable designator
+      var showVal = !quiet && FX.showValues && p.value && thick > fs * 2.7;
+      if (!quiet && FX.showValues && p.value && !showVal && thick / 2.7 >= 5.5) { fs = thick / 2.7; ctx.font = '600 ' + fs + 'px ' + mono; showVal = true; } // thin part: smaller text so the value still fits
       ctx.save(); ctx.translate(cx, cy); if (vertical) ctx.rotate(-Math.PI / 2);
       ctx.lineJoin = 'round';
-      haloText(p.ref, showVal ? -fs * 0.6 : 0, pOff ? C.dim : C.refc, fs);
+      haloText(p.ref, showVal ? -fs * 0.6 : 0, pOff && !quiet ? C.dim : C.refc, fs);
       if (showVal) {
         var vfs = fs * 0.85, v = p.value; ctx.font = '400 ' + vfs + 'px ' + mono;
         while (v.length > 2 && ctx.measureText(v).width > len) v = v.slice(0, -2) + '…';
         if (ctx.measureText(v).width <= len) haloText(v, fs * 0.65, pOff ? C.dim : C.valc, vfs);
       }
       ctx.restore();
+      if (quiet) return;
       p.pins.forEach(function (q) {
         if (q.net !== 'UNCONNECTED') return;
         var rr = q.r * V.k; if (rr < 7) return;
@@ -2682,12 +2779,12 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       ctx.restore();
     }
     function dot(q, col, ring, glowPx, hollow) {
-      var s = w2s(q.x, q.y), rr = Math.max(1.3, q.r * V.k);
-      pinPath(s, rr);
+      var rr = Math.max(1.3, q.r * V.k);
+      padPath(q, 0);
       if (hollow) { ctx.lineWidth = Math.max(1, Math.min(2, rr * 0.25)); ctx.strokeStyle = col; ctx.stroke(); } // unconnected: outline only
       else if (glowPx > 0) { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = glowPx; ctx.fillStyle = col; ctx.fill(); ctx.restore(); }
       else { ctx.fillStyle = col; ctx.fill(); }
-      if (ring) { ctx.lineWidth = 1.5; ctx.strokeStyle = C.refc; pinPath(s, rr + 2.5); ctx.stroke(); }
+      if (ring) { ctx.lineWidth = 1.5; ctx.strokeStyle = C.refc; padPath(q, 2.5); ctx.stroke(); }
     }
   }
   // rounded rectangle path; radius from settings, never more than a quarter of the short side
@@ -2700,11 +2797,24 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
     ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
   }
-  function pinPath(s, rr) {
+  // the pad's real copper shape (rect, circle, oval, rounded rect, octagon) from the board file; a rounded square when the file has no shape
+  function rrPath(x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function padPath(q, grow) {
+    var s = w2s(q.x, q.y); grow = grow || 0;
     ctx.beginPath();
-    if (FX.pinShape === 'square') ctx.rect(s[0] - rr, s[1] - rr, rr * 2, rr * 2);
-    else if (FX.pinShape === 'rsquare') { var k = rr * 0.5; ctx.moveTo(s[0] - rr + k, s[1] - rr); ctx.arcTo(s[0] + rr, s[1] - rr, s[0] + rr, s[1] + rr, k); ctx.arcTo(s[0] + rr, s[1] + rr, s[0] - rr, s[1] + rr, k); ctx.arcTo(s[0] - rr, s[1] + rr, s[0] - rr, s[1] - rr, k); ctx.arcTo(s[0] - rr, s[1] - rr, s[0] + rr, s[1] - rr, k); ctx.closePath(); }
-    else ctx.arc(s[0], s[1], rr, 0, 6.2832);
+    if (!q.sh) { var rr = Math.max(1.3, q.r * V.k) + grow; rrPath(s[0] - rr, s[1] - rr, rr * 2, rr * 2, rr * 0.5); return; }
+    var a = (q.rot || 0) * Math.PI / 180, c = Math.cos(a), n = Math.sin(a), e1 = w2s(q.x + c, q.y + n), e2 = w2s(q.x - n, q.y + c), k = V.k;
+    var hw0 = Math.max(1.3, q.w / 2 * k), hh0 = Math.max(1.3, q.h / 2 * k), hw = hw0 + grow, hh = hh0 + grow, m0 = Math.min(hw0, hh0);
+    ctx.setTransform(dpr * (e1[0] - s[0]) / k, dpr * (e1[1] - s[1]) / k, dpr * (e2[0] - s[0]) / k, dpr * (e2[1] - s[1]) / k, dpr * s[0], dpr * s[1]); // pad axes, pixel units
+    if (q.sh === 'c') ctx.arc(0, 0, Math.max(hw, hh), 0, 6.2832);
+    else if (q.sh === 'r') ctx.rect(-hw, -hh, hw * 2, hh * 2);
+    else if (q.sh === 'o') rrPath(-hw, -hh, hw * 2, hh * 2, m0 + grow);
+    else if (q.sh === 'oct') { var ch = m0 * 0.5; ctx.moveTo(-hw + ch, -hh); ctx.lineTo(hw - ch, -hh); ctx.lineTo(hw, -hh + ch); ctx.lineTo(hw, hh - ch); ctx.lineTo(hw - ch, hh); ctx.lineTo(-hw + ch, hh); ctx.lineTo(-hw, hh - ch); ctx.lineTo(-hw, -hh + ch); ctx.closePath(); }
+    else rrPath(-hw, -hh, hw * 2, hh * 2, m0 * Math.min(1, q.cr == null ? 0.5 : q.cr) + grow);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   function isLight(c) { // relative brightness of a #rrggbb colour
     var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c).trim()); if (!m) return true;
@@ -2714,10 +2824,10 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
 
   /* ---------- hit test ---------- */
   function hit(mx, my) {
-    var best = null, bd = 6;
+    var best = null, bd = 6, w = s2w(mx, my);
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
-      p.pins.forEach(function (q) { var s = w2s(q.x, q.y), d = Math.hypot(s[0] - mx, s[1] - my) - Math.max(1.3, q.r * V.k); if (d < bd) { bd = d; best = { part: p, pin: q }; } });
+      p.pins.forEach(function (q) { var d = padDist(q, w[0], w[1]) * V.k; if (d < bd) { bd = d; best = { part: p, pin: q }; } });
     });
     if (best) return best;
     var area = Infinity, bp = null;

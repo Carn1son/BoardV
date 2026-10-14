@@ -157,7 +157,17 @@ var PCBDOC = (function () {
       }
       if (hole > 0) parts[key].smd = false;
       var nn = net !== NONE16 && net < nets.length ? nets[net] : '';
-      parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(sx, sy) / 2) });
+      // real copper shape: bottom pads use the bottom-layer size and shape; round + "alt" 9 is a rounded rectangle
+      var bot = padData[b] === 32, w = bot ? pdv.getInt32(b + 37, true) * U : sx, h = bot ? pdv.getInt32(b + 41, true) * U : sy, shp = padData[b + (bot ? 51 : 49)];
+      var rot = pdv.getFloat64(b + 52, true), s5 = sub[5], li = bot ? 31 : 0, sh = 'rr', cr = 0.5;
+      if (shp === 2) sh = 'r'; else if (shp === 3) sh = 'oct';
+      else if (shp === 1) {
+        if (s5[1] >= 596 && padData[s5[0] + 532 + li] === 9) { sh = 'rr'; cr = padData[s5[0] + 564 + li] / 100; }
+        else sh = Math.abs(w - h) < 0.01 ? 'c' : 'o';
+      }
+      if (!(w > 0 && h > 0)) { w = h = Math.max(4, Math.min(sx, sy)); }
+      parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(w, h) / 2),
+                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr });
     }
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;

@@ -278,8 +278,12 @@ var FMT = (function () {
       Array.prototype.forEach.call(lib.getElementsByTagName('package'), function (p) {
         var pads = [];
         Array.prototype.forEach.call(p.childNodes, function (c) {
-          if (c.nodeName === 'smd') pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: Math.min(f(c, 'dx'), f(c, 'dy')) / 2, smd: true, bottom: A(c, 'layer') === '16' });
-          else if (c.nodeName === 'pad') { var dia = f(c, 'diameter') || f(c, 'drill') * 1.6; pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: dia / 2, smd: false }); }
+          var prot = parseFloat((A(c, 'rot') || '').replace(/[^0-9.\-]/g, '')) || 0;
+          if (c.nodeName === 'smd') { var rn = f(c, 'roundness'); pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: Math.min(f(c, 'dx'), f(c, 'dy')) / 2, smd: true, bottom: A(c, 'layer') === '16',
+            w: f(c, 'dx'), h: f(c, 'dy'), rot: prot, sh: rn >= 100 ? (f(c, 'dx') === f(c, 'dy') ? 'c' : 'o') : rn > 0 ? 'rr' : 'r', cr: rn / 100 }); }
+          else if (c.nodeName === 'pad') { var dia = f(c, 'diameter') || f(c, 'drill') * 1.6, ps = A(c, 'shape') || 'round';
+            pads.push({ name: A(c, 'name'), x: f(c, 'x'), y: f(c, 'y'), r: dia / 2, smd: false, w: ps === 'long' || ps === 'offset' ? dia * 2 : dia, h: dia, rot: prot,
+              sh: ps === 'square' ? 'r' : ps === 'octagon' ? 'oct' : ps === 'long' || ps === 'offset' ? 'o' : 'c', cr: 0 }); }
         });
         pk[ln + '\u0001' + A(p, 'name')] = pads; if (urn) pk[urn + '\u0001' + A(p, 'name')] = pads;
       });
@@ -298,7 +302,9 @@ var FMT = (function () {
       var p = { ref: name, bottom: smd && (mir ? !pads[0].bottom : !!pads[0].bottom), smd: smd, value: A(el, 'value') || '', footprint: A(el, 'package') || '', desc: '', pins: [] };
       pads.forEach(function (q) {
         var x = q.x * cs - q.y * sn, y = q.x * sn + q.y * cs; if (mir) x = -x; // rotate, then mirror for the bottom side
-        p.pins.push({ x: (ex + x) * MM, y: (ey + y) * MM, name: q.name, net: net[name + '\u0001' + q.name] || 'UNCONNECTED', r: q.r * MM });
+        var a = q.rot + ang * 180 / Math.PI;
+        p.pins.push({ x: (ex + x) * MM, y: (ey + y) * MM, name: q.name, net: net[name + '\u0001' + q.name] || 'UNCONNECTED', r: q.r * MM,
+                      w: q.w * MM, h: q.h * MM, rot: mir ? -a : a, sh: q.sh, cr: q.cr });
       });
       parts.push(p);
     });
@@ -354,7 +360,9 @@ var FMT = (function () {
         if (pd[2] === 'np_thru_hole' && !nt) return; // mounting hole
         var px = +pa[1], py = +pa[2], x = fx + px * cs + py * sn, y = fy - px * sn + py * cs; // KiCad: Y down, angles counter-clockwise on screen
         var netName = nt ? (nt.length > 2 ? sv(nt[2]) : (typeof nt[1] === 'object' ? sv(nt[1]) : netNames[nt[1]])) : '';
-        pins.push({ x: x * MM, y: -y * MM, name: name, net: netName || 'UNCONNECTED', r: Math.min(+sz[1], +sz[2]) / 2 * MM });
+        var ks = pd[3], sh = ks === 'rect' ? 'r' : ks === 'circle' ? 'c' : ks === 'oval' ? (+sz[1] === +sz[2] ? 'c' : 'o') : 'rr', rr = kid(pd, 'roundrect_rratio');
+        pins.push({ x: x * MM, y: -y * MM, name: name, net: netName || 'UNCONNECTED', r: Math.min(+sz[1], +sz[2]) / 2 * MM,
+                    w: +sz[1] * MM, h: +sz[2] * MM, rot: +(pa[3] || 0), sh: sh, cr: ks === 'roundrect' ? Math.min(1, 2 * (rr ? +rr[1] : 0.25)) : 0.3 });
       });
       if (!pins.length) return;
       parts.push({ ref: ref || '?', bottom: smd && /^B\./.test(layer), smd: smd, value: val, footprint: String(sv(fp[1]) || '').split(':').pop(), desc: '', pins: pins });

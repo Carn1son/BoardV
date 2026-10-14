@@ -491,7 +491,8 @@ var BV = (function () {
     if (!d || !/^altium-boardview/.test(d.format || '')) throw new Error('Это не файл конвертера');
     var parts = d.parts.map(function (p) {
       return { ref: p.ref, bottom: p.side === 'B', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
-               pins: p.pins.map(function (q) { return { x: q[0], y: q[1], name: String(q[2]), net: q[3] || 'UNCONNECTED', r: q[4] == null ? NaN : q[4] }; }) };
+               pins: p.pins.map(function (q) { var o = { x: q[0], y: q[1], name: String(q[2]), net: q[3] || 'UNCONNECTED', r: q[4] == null ? NaN : q[4] };
+                 if (q[5]) { o.w = q[5][0]; o.h = q[5][1]; o.rot = q[5][2] || 0; o.sh = q[5][3]; o.cr = q[5][4] || 0; } return o; }) };
     });
     var m = finalize(parts, d.outline); m.title = d.name || ''; return m;
   }
@@ -502,7 +503,8 @@ var BV = (function () {
       outline: b.outline.map(function (q) { return [r1(q[0]), r1(q[1])]; }),
       parts: b.parts.map(function (p) {
         return { ref: p.ref, side: p.bottom ? 'B' : 'T', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
-                 pins: p.pins.map(function (q) { return [r1(q.x), r1(q.y), q.name, q.net, isFinite(q.r) ? r1(q.r) : null]; }) };
+                 pins: p.pins.map(function (q) { var a = [r1(q.x), r1(q.y), q.name, q.net, isFinite(q.r) ? r1(q.r) : null];
+                   if (q.sh) a.push([Math.round(q.w * 100) / 100, Math.round(q.h * 100) / 100, Math.round(q.rot * 100) / 100, q.sh, q.cr]); return a; }) };
       })
     });
   }

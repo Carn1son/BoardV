@@ -1,7 +1,7 @@
 {
   "name": "boardv",
   "productName": "BoardV",
-  "version": "2100.2.17",
+  "version": "2100.2.18",
   "description": "BoardV — просмотр плат Altium",
   "author": "carnison",
   "main": "main.js",

@@ -146,11 +146,9 @@ var BV3D = (function () {
     var drills = (M.holes || []).slice();
     M.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.hole > 0) drills.push([q.x, q.y, q.hole]); }); });
     drills = drills.filter(function (h) { return h[0] > bx0 && h[0] < bx1 && h[1] > by0 && h[1] < by1; });
-    var cut = drills.filter(function (h) { return h[2] * MIL >= 1.5; }).sort(function (a, b) { return b[2] - a[2]; }).slice(0, 48); // mounting holes go right through
-    cut.forEach(function (h) { var pa = new T.Path(); pa.absarc(h[0] * MIL, h[1] * MIL, h[2] / 2 * MIL, 0, Math.PI * 2, true); shape.holes.push(pa); });
     var slab;
     try { slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
-    catch (e) { shape.holes = []; cut = []; slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
+    catch (e) { shape.holes = []; slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
     slab.material = [new T.MeshStandardMaterial({ color: new T.Color().setHex(opt.mask || 0x2f6b3e, T.SRGBColorSpace), roughness: 0.55, metalness: 0.02 }),
                      new T.MeshStandardMaterial({ color: new T.Color().setHex(0x6e8c3a, T.SRGBColorSpace), roughness: 0.7, metalness: 0 })]; // mask faces, FR4 edge
     slab.position.z = -THICK; root.add(slab);
@@ -172,13 +170,27 @@ var BV3D = (function () {
           g.beginPath(); if (g.roundRect) g.roundRect(-w / 2, -h / 2, w, h, r); else g.rect(-w / 2, -h / 2, w, h); g.fill(); g.restore();
         });
       });
-      g.fillStyle = '#141414'; drills.forEach(function (h) { if (cut.indexOf(h) < 0) { g.beginPath(); g.arc(X(h[0]), Y(h[1]), h[2] / 2 * MIL * k, 0, Math.PI * 2); g.fill(); } });
-      if (cut.length) { g.globalCompositeOperation = 'destination-out'; cut.forEach(function (h) { g.beginPath(); g.arc(X(h[0]), Y(h[1]), h[2] / 2 * MIL * k, 0, Math.PI * 2); g.fill(); }); g.globalCompositeOperation = 'source-over'; }
+      if (drills.length) { g.globalCompositeOperation = 'destination-out'; drills.forEach(function (h) { g.beginPath(); g.arc(X(h[0]), Y(h[1]), h[2] / 2 * MIL * k, 0, Math.PI * 2); g.fill(); }); g.globalCompositeOperation = 'source-over'; }
       var tex = new T.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
       var m = new T.Mesh(new T.PlaneGeometry(mmW, mmH), new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.45, metalness: 0.15, side: bottom ? T.BackSide : T.FrontSide, depthWrite: false }));
       m.position.set(bx0 * MIL + mmW / 2, by0 * MIL + mmH / 2, bottom ? -THICK - 0.02 : 0.02); m.renderOrder = 1; root.add(m);
     }
     decal(false); decal(true);
+    /* every hole goes right through without cutting it out of the board geometry (thousands of cut holes would freeze the page):
+       the mask faces get a see-through mask at the holes, and each hole gets a plated wall, all walls in one draw call */
+    if (drills.length) {
+      var mmW = (bx1 - bx0) * MIL, mmH = (by1 - by0) * MIL, ka = Math.min(4096 / mmW, 4096 / mmH, 40);
+      var ac = document.createElement('canvas'); ac.width = Math.ceil(mmW * ka); ac.height = Math.ceil(mmH * ka);
+      var ag = ac.getContext('2d'); ag.fillStyle = '#fff'; ag.fillRect(0, 0, ac.width, ac.height); ag.fillStyle = '#000';
+      drills.forEach(function (h) { ag.beginPath(); ag.arc((h[0] - bx0) * MIL * ka, (by1 - h[1]) * MIL * ka, h[2] / 2 * MIL * ka, 0, Math.PI * 2); ag.fill(); });
+      var at = new T.CanvasTexture(ac); at.repeat.set(1 / mmW, 1 / mmH); at.offset.set(-bx0 * MIL / mmW, -by0 * MIL / mmH); // the board's face UVs are millimetres
+      slab.material[0].alphaMap = at; slab.material[0].alphaTest = 0.5; slab.material[0].side = T.DoubleSide; slab.material[0].needsUpdate = true;
+      var wall = new T.CylinderGeometry(1, 1, THICK, 20, 1, true); wall.rotateX(Math.PI / 2); wall.translate(0, 0, -THICK / 2);
+      var walls = new T.InstancedMesh(wall, new T.MeshStandardMaterial({ color: new T.Color().setHex(0xb8964e, T.SRGBColorSpace), roughness: 0.45, metalness: 0.4, side: T.DoubleSide }), drills.length);
+      var mx = new T.Matrix4();
+      drills.forEach(function (h, i) { var r = h[2] / 2 * MIL; mx.makeScale(r, r, 1); mx.setPosition(h[0] * MIL, h[1] * MIL, 0); walls.setMatrixAt(i, mx); });
+      walls.instanceMatrix.needsUpdate = true; walls.computeBoundingSphere(); walls.raycast = function () {}; root.add(walls);
+    }
 
     // components: every STEP model is read once and drawn with instancing (one draw call per model colour for all its copies)
     var cache = M._mesh3d || (M._mesh3d = {}), pending = 0, done = 0, alive = true, inst = {}, picks = [];

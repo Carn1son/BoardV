@@ -676,8 +676,8 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     haloStyle: 'shadow', haloAlpha: 0.5, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
     selGlow: 1, selBreath: false, selDash: true, selDashSpeed: 0.2, selDim: true,
-    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true, silk3d: true };
-  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d', 'silk3d']; // themes do not touch these
+    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true };
+  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d']; // themes do not touch these
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
   var PRESETS = {
     'По умолчанию': { colors: {}, fx: {} },
@@ -708,7 +708,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
       ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
     ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
-      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'silk3d', 'Шелкография в 3D']]]
+      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['check', 'enable3d', '3D-просмотр платы']]]
   ];
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
@@ -756,7 +756,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     Object.keys(CFG.colors).forEach(function (k) { root.setProperty('--' + k, CFG.colors[k]); });
     root.setProperty('--canvas', CFG.colors[bgKey()]);
     FX = CFG.fx; ruleCache = null; readColors(); if (typeof req === 'function') req();
-    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) { if (V3.silk !== !!FX.silk3d) { V3.close(); V3 = null; open3d(); } else V3.setBg(C.canvas); } } } // the 3D view follows the theme at once // 3D can be switched off completely
+    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) V3.setBg(C.canvas); } } // the 3D view follows the theme at once // 3D can be switched off completely
     if (save) { CFG.savedAt = new Date().toISOString(); try { localStorage.setItem('bvr-config', JSON.stringify(CFG)); } catch (e) {} }
   }
   function themeFx(themefx, cur) { // a theme sets the look; control options are kept
@@ -812,7 +812,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     var model = null, used = [], pinNames = true;
     try {
       if (by.json) { model = BV.readJson(by.json[0].text); used.push(by.json[0].name); }
-      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); model.holes = pb.holes; model.silk = pb.silk; used.push(by.pcbdoc[0].name); }
+      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); model.holes = pb.holes; used.push(by.pcbdoc[0].name); }
       else if (by.bvr) { model = BV.readBvr(by.bvr[0].text); used.push(by.bvr[0].name); }
       else if (FMT.TYPES.some(function (t) { return by[t]; })) { var ft = FMT.TYPES.filter(function (t) { return by[t]; })[0]; model = FMT.read(ft, by[ft][0]); used.push(by[ft][0].name); pinNames = !/^(brd2|cst)$/.test(ft); }
       else if (by.ascpins) { model = FMT.readAsc(items); used = items.filter(function (i) { return /^asc/.test(i.type); }).map(function (i) { return i.name; }); }
@@ -2575,7 +2575,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   function updCloseProj() { $('closeProj').hidden = !M; }
   function refreshAll(refit) {
     buildNetIndex();
-    $('empty').hidden = !!M; if (refit || !M) { close3d(); if (window.BV3D) BV3D.reset(); } // another board: the old 3D goes away completely vswSync(); applyLayout(false); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
+    $('empty').hidden = !!M; if (refit || !M) { close3d(); if (window.BV3D) BV3D.reset(); } /* another board: the old 3D goes away completely */ vswSync(); applyLayout(false); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
     $('fileName').textContent = src.files.join(' + ');
     if (refit) { V.rot = IS_PHONE && H > W * 1.15 && M.w > M.h * 1.15 ? 1 : 0; setSide('top', true); fit(); } // phone held upright + wide board: turn it to fill the screen
     renderCard(); renderList(); status(); req();
@@ -2599,7 +2599,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     load3d().then(function () {
       if (box.hidden || V3) return;
       try {
-        V3 = BV3D.open(box, M, { bg: C.canvas, silk: !!FX.silk3d, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
+        V3 = BV3D.open(box, M, { bg: C.canvas, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
           lost: function () { if (V3) { V3.close(); V3 = null; open3d(); } }, progress: function (d, n) { $('v3dSt').textContent = n && d < n ? '3D-модели:' + ' ' + d + ' / ' + n : ''; } });
         box.insertBefore(V3.canvas, box.firstChild);
         if (S.part) { V3.highlight(S.part); v3dPickInfo(S.part); }

@@ -345,14 +345,10 @@ var BV = (function () {
       if (p.bodies) p.bodies = p.bodies.map(function (b) { return Object.assign({}, b, { x: b.x + dx, y: b.y + dy, poly: b.poly.map(function (v) { return [v[0] + dx, v[1] + dy]; }) }); }); // 3D bodies move with the pads
     });
     outline = outline.map(function (q) { return [q[0] + dx, q[1] + dy]; });
-    var holes = (src.pins && src.pins.holes || []).map(function (h) { return [h[0] + dx, h[1] + dy, h[2]]; }), silk = null; // 3D: drilled holes and silkscreen move too
-    if (src.pins && src.pins.silk) {
-      var mv = function (e) { e = e.slice(); if (e[0] === 'l' || e[0] === 'f') { e[1] += dx; e[2] += dy; e[3] += dx; e[4] += dy; } else { e[1] += dx; e[2] += dy; } return e; };
-      silk = { top: src.pins.silk.top.map(mv), bot: src.pins.silk.bot.map(mv) };
-    }
+    var holes = (src.pins && src.pins.holes || []).map(function (h) { return [h[0] + dx, h[1] + dy, h[2]]; }); // 3D: drilled holes move too
     var nets = {};
     parts.forEach(function (p) { p.pins.forEach(function (q) { nets[q.net] = 1; }); });
-    return { parts: parts, outline: outline, warnings: warnings, holes: holes, silk: silk, w: x1 - x0 + 20, h: y1 - y0 + 20,
+    return { parts: parts, outline: outline, warnings: warnings, holes: holes, w: x1 - x0 + 20, h: y1 - y0 + 20,
              nPins: parts.reduce(function (s, p) { return s + p.pins.length; }, 0),
              nNets: Object.keys(nets).filter(function (n) { return n !== 'UNCONNECTED'; }).length };
   }
@@ -543,7 +539,7 @@ var BV = (function () {
   function parsePcbDoc(u8) {
     var P = typeof PCBDOC !== 'undefined' ? PCBDOC : require('./pcbdoc.js');
     var r = P.parse(u8);
-    return { parts: r.parts, outline: r.board ? asciiOutline(r.board) : null, info: r.info, holes: r.holes, silk: r.silk };
+    return { parts: r.parts, outline: r.board ? asciiOutline(r.board) : null, info: r.info, holes: r.holes };
   }
 
   /* ---------- writers ---------- */

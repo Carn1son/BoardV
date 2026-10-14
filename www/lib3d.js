@@ -155,12 +155,14 @@ var BV3D = (function () {
     // drilled holes go right through the board: through-hole pads and mounting holes
     var drills = (M.holes || []).slice();
     M.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.hole > 0) drills.push([q.x, q.y, q.hole]); }); });
-    drills = drills.filter(function (h) { return h[0] > bx0 && h[0] < bx1 && h[1] > by0 && h[1] < by1; }).slice(0, 4000);
-    drills.forEach(function (h) { var pa = new T.Path(); pa.absarc(h[0] * MIL, h[1] * MIL, h[2] / 2 * MIL, 0, Math.PI * 2, true); shape.holes.push(pa); });
+    drills = drills.filter(function (h) { return h[0] > bx0 && h[0] < bx1 && h[1] > by0 && h[1] < by1; });
+    var cut = drills.filter(function (h) { return h[2] * MIL >= 1.5; }).sort(function (a, b) { return b[2] - a[2]; }).slice(0, 48); // mounting holes go right through
+    cut.forEach(function (h) { var pa = new T.Path(); pa.absarc(h[0] * MIL, h[1] * MIL, h[2] / 2 * MIL, 0, Math.PI * 2, true); shape.holes.push(pa); });
     var slab;
     try { slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
-    catch (e) { shape.holes = []; drills = []; slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
-    slab.material = new T.MeshStandardMaterial({ color: new T.Color().setHex(opt.mask || 0x22704a, T.SRGBColorSpace), roughness: 0.5, metalness: 0.02 });
+    catch (e) { shape.holes = []; cut = []; slab = new T.Mesh(new T.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false, curveSegments: 10 }), null); }
+    slab.material = [new T.MeshStandardMaterial({ color: new T.Color().setHex(opt.mask || 0x2f6b3e, T.SRGBColorSpace), roughness: 0.55, metalness: 0.02 }),
+                     new T.MeshStandardMaterial({ color: new T.Color().setHex(0x6e8c3a, T.SRGBColorSpace), roughness: 0.7, metalness: 0 })]; // mask faces, FR4 edge
     slab.position.z = -THICK; root.add(slab);
     var cx = (bx0 + bx1) / 2 * MIL, cy = (by0 + by1) / 2 * MIL, span = Math.max(bx1 - bx0, by1 - by0) * MIL;
 
@@ -171,27 +173,6 @@ var BV3D = (function () {
       var c = document.createElement('canvas'); c.width = cw; c.height = ch;
       var g = c.getContext('2d');
       function X(x) { return (x * MIL - bx0 * MIL) * k; } function Y(y) { return (by1 * MIL - y * MIL) * k; }
-      if (opt.silk !== false && M.silk) { // silkscreen first: the copper of the pads stays on top, as on a real board
-        g.strokeStyle = g.fillStyle = '#f3f3ee'; g.lineCap = 'round'; g.lineJoin = 'round';
-        (bottom ? M.silk.bot : M.silk.top).forEach(function (e) {
-          if (e[0] === 'l') { g.lineWidth = Math.max(1, e[5] * MIL * k); g.beginPath(); g.moveTo(X(e[1]), Y(e[2])); g.lineTo(X(e[3]), Y(e[4])); g.stroke(); }
-          else if (e[0] === 'a') {
-            var a0 = -deg(e[4]), a1 = -deg(e[5]); g.lineWidth = Math.max(1, e[6] * MIL * k); g.beginPath();
-            if (Math.abs(((e[5] - e[4]) % 360 + 360) % 360) < 1e-6) g.arc(X(e[1]), Y(e[2]), e[3] * MIL * k, 0, Math.PI * 2); else g.arc(X(e[1]), Y(e[2]), e[3] * MIL * k, a0, a1, true);
-            g.stroke();
-          } else if (e[0] === 'f') {
-            var fx = (e[1] + e[3]) / 2, fy = (e[2] + e[4]) / 2, fw = Math.abs(e[3] - e[1]) * MIL * k, fh = Math.abs(e[4] - e[2]) * MIL * k;
-            g.save(); g.translate(X(fx), Y(fy)); g.rotate(-deg(e[5])); g.fillRect(-fw / 2, -fh / 2, fw, fh); g.restore();
-          } else if (e[0] === 't') {
-            var hp = e[3] * MIL * k; if (hp < 2) return;
-            g.save(); g.translate(X(e[1]), Y(e[2])); g.rotate(-deg(e[4])); if (e[5]) g.scale(-1, 1);
-            g.font = (e[7] ? '700 ' : '600 ') + (hp * (e[8] ? 1 : 1.08)).toFixed(1) + 'px ' + (e[8] ? '"' + e[8].replace(/"/g, '') + '", ' : '') + 'Arial, sans-serif';
-            g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-            String(e[6]).split(/\r?\n/).forEach(function (ln, i, all) { g.fillText(ln, 0, -hp * 0.12 - (all.length - 1 - i) * hp * 1.25); });
-            g.restore();
-          }
-        });
-      }
       g.fillStyle = opt.copper || '#e2bd66';
       M.parts.forEach(function (p) {
         if (!!p.bottom !== bottom && p.smd) return;
@@ -201,7 +182,8 @@ var BV3D = (function () {
           g.beginPath(); if (g.roundRect) g.roundRect(-w / 2, -h / 2, w, h, r); else g.rect(-w / 2, -h / 2, w, h); g.fill(); g.restore();
         });
       });
-      if (drills.length) { g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; drills.forEach(function (h) { g.beginPath(); g.arc(X(h[0]), Y(h[1]), h[2] / 2 * MIL * k, 0, Math.PI * 2); g.fill(); }); g.globalCompositeOperation = 'source-over'; }
+      g.fillStyle = '#141414'; drills.forEach(function (h) { if (cut.indexOf(h) < 0) { g.beginPath(); g.arc(X(h[0]), Y(h[1]), h[2] / 2 * MIL * k, 0, Math.PI * 2); g.fill(); } });
+      if (cut.length) { g.globalCompositeOperation = 'destination-out'; cut.forEach(function (h) { g.beginPath(); g.arc(X(h[0]), Y(h[1]), h[2] / 2 * MIL * k, 0, Math.PI * 2); g.fill(); }); g.globalCompositeOperation = 'source-over'; }
       var tex = new T.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
       var m = new T.Mesh(new T.PlaneGeometry(mmW, mmH), new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.45, metalness: 0.15, side: bottom ? T.BackSide : T.FrontSide, depthWrite: false }));
       m.position.set(bx0 * MIL + mmW / 2, by0 * MIL + mmH / 2, bottom ? -THICK - 0.02 : 0.02); m.renderOrder = 1; root.add(m);
@@ -211,7 +193,7 @@ var BV3D = (function () {
     // components: every STEP model is read once and drawn with instancing (one draw call per model colour for all its copies)
     var cache = M._mesh3d || (M._mesh3d = {}), pending = 0, done = 0, alive = true, inst = {}, picks = [];
     var bodyMat = new T.MeshStandardMaterial({ color: 0x2b2d2f, roughness: 0.6, metalness: 0.1 }), mats = {};
-    function matFor(c) { var k = c ? c.join(',') : ''; if (!mats[k]) { var col = new T.Color(); if (c) col.setRGB(c[0], c[1], c[2], T.SRGBColorSpace); else col.setHex(0x9e9e9e); mats[k] = new T.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.15, side: T.DoubleSide }); } return mats[k]; }
+    function matFor(c) { var k = c ? c.join(',') : ''; if (!mats[k]) { var col = new T.Color(); if (c) col.setRGB(c[0], c[1], c[2], T.SRGBColorSpace); else col.setHex(0xd6d6d6, T.SRGBColorSpace); mats[k] = new T.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.15, side: T.DoubleSide }); } return mats[k]; }
     function bodyMatrix(b) { // Altium: model rotations X, Y, Z about its origin, then to the board point; bottom bodies are turned under the board
       var g = new T.Object3D(), inner = new T.Object3D(), outer = new T.Object3D();
       g.rotation.order = 'ZYX'; g.rotation.set(deg(b.rx), deg(b.ry), deg(b.rz + b.rot)); inner.add(g); outer.add(inner);
@@ -332,7 +314,7 @@ var BV3D = (function () {
       req();
     }
     view();
-    return { silk: opt.silk !== false, info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries }; }, highlight: highlight, setBg: function (c) { scene.background = new T.Color(c); req(); },
+    return { info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries }; }, highlight: highlight, setBg: function (c) { scene.background = new T.Color(c); req(); },
       view: view, render: req, canvas: el, root: root, setAngles: function (th, ph, r) { V.th = th; V.ph = ph; if (r) V.r = span * r; req(); },
       target: function (x, y, z, r) { V.tx = x; V.ty = y; V.tz = z || 0; if (r) V.r = r; req(); },
       close: function () {

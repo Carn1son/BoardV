@@ -1056,16 +1056,16 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       var tw = ctx.measureText(p.ref).width;
       if (tw > len) { fs *= len / tw; ctx.font = '600 ' + fs + 'px ' + mono; }
       if (fs < 6.5) return;
-      var cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, pOff = off(p), quiet = pOff && selDim && !dim; // a component is selected: the others keep only a readable designator
-      var showVal = !quiet && FX.showValues && p.value && thick > fs * 2.7;
-      if (!quiet && FX.showValues && p.value && !showVal && thick / 2.7 >= 5.5) { fs = thick / 2.7; ctx.font = '600 ' + fs + 'px ' + mono; showVal = true; } // thin part: smaller text so the value still fits
+      var cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, pOff = off(p), quiet = pOff && selDim && !dim; // a component is selected: the others keep a readable designator and value
+      var showVal = FX.showValues && p.value && thick > fs * 2.7;
+      if (FX.showValues && p.value && !showVal && thick / 2.7 >= 5.5) { fs = thick / 2.7; ctx.font = '600 ' + fs + 'px ' + mono; showVal = true; } // thin part: smaller text so the value still fits
       ctx.save(); ctx.translate(cx, cy); if (vertical) ctx.rotate(-Math.PI / 2);
       ctx.lineJoin = 'round';
       haloText(p.ref, showVal ? -fs * 0.6 : 0, pOff && !quiet ? C.dim : C.refc, fs);
       if (showVal) {
         var vfs = fs * 0.85, v = p.value; ctx.font = '400 ' + vfs + 'px ' + mono;
         while (v.length > 2 && ctx.measureText(v).width > len) v = v.slice(0, -2) + '…';
-        if (ctx.measureText(v).width <= len) haloText(v, fs * 0.65, pOff ? C.dim : C.valc, vfs);
+        if (ctx.measureText(v).width <= len) haloText(v, fs * 0.65, pOff && !quiet ? C.dim : C.valc, vfs);
       }
       ctx.restore();
       if (quiet) return;

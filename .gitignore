@@ -1,0 +1,11 @@
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/www/
+electron/node_modules/
+electron/dist/
+electron/www/
+src/out/
+src/build/
+src/BoardV.html
+src/dist/BoardV.html

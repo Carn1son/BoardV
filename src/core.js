@@ -108,22 +108,17 @@ var BV = (function () {
                sa: num(b['SA' + i]), ea: num(b['EA' + i]) });
     }
     if (v.length < 3) return null;
+    // as in KiCad's importer: a round vertex is an arc from SA to EA (counter-clockwise) around (CX, CY),
+    // walked from whichever end lies at the vertex point; a point every 1.5° keeps round boards round
     var pts = [];
     for (var k = 0; k < v.length; k++) {
-      var a = v[k], n = v[(k + 1) % v.length];
-      pts.push([a.x, a.y]);
-      if (a.kind === '1' && isFinite(a.r) && a.r > 0) {
-        var a0 = Math.atan2(a.y - a.cy, a.x - a.cx), a1 = Math.atan2(n.y - a.cy, n.x - a.cx);
-        var ccw = a1 - a0; while (ccw <= 0) ccw += 2 * Math.PI;
-        var cw = ccw - 2 * Math.PI;
-        // choose direction matching SA->EA span
-        var span = isFinite(a.sa) && isFinite(a.ea) ? ((a.ea - a.sa + 360) % 360 || 360) * Math.PI / 180 : Math.min(ccw, -cw);
-        var sweep = Math.abs(ccw - span) <= Math.abs(-cw - span) ? ccw : cw;
-        for (var s = 1; s < 16; s++) {
-          var ang = a0 + sweep * s / 16;
-          pts.push([a.cx + a.r * Math.cos(ang), a.cy + a.r * Math.sin(ang)]);
-        }
-      }
+      var a = v[k];
+      if (a.kind !== '0' && a.kind !== '' && isFinite(a.r) && a.r > 0 && isFinite(a.sa) && isFinite(a.ea)) {
+        var sa = a.sa * Math.PI / 180, sw = ((a.ea - a.sa) % 360 + 360) % 360; if (sw < 1e-6) sw = 360; sw *= Math.PI / 180;
+        var p0 = [a.cx + a.r * Math.cos(sa), a.cy + a.r * Math.sin(sa)], p1 = [a.cx + a.r * Math.cos(sa + sw), a.cy + a.r * Math.sin(sa + sw)];
+        var fwd = Math.hypot(p0[0] - a.x, p0[1] - a.y) <= Math.hypot(p1[0] - a.x, p1[1] - a.y), ns = Math.max(2, Math.ceil(sw / (1.5 * Math.PI / 180)));
+        for (var s = 0; s <= ns; s++) { var t = fwd ? s / ns : 1 - s / ns, ang = sa + sw * t; pts.push([a.cx + a.r * Math.cos(ang), a.cy + a.r * Math.sin(ang)]); }
+      } else pts.push([a.x, a.y]);
     }
     pts.push(pts[0]);
     return pts;
@@ -255,7 +250,7 @@ var BV = (function () {
           var r = Math.hypot(cx - ox, cy - oy), a0 = Math.atan2(cy - oy, cx - ox), a1 = Math.atan2(ny - oy, nx - ox);
           var sw = a1 - a0;
           if (mode === 3) { while (sw <= 0) sw += 2 * Math.PI; } else { while (sw >= 0) sw -= 2 * Math.PI; }
-          for (var s = 1; s <= 16; s++) cur.push([ox + r * Math.cos(a0 + sw * s / 16), oy + r * Math.sin(a0 + sw * s / 16)]);
+          for (var s = 1, ns = Math.max(8, Math.ceil(Math.abs(sw) / 0.026)); s <= ns; s++) cur.push([ox + r * Math.cos(a0 + sw * s / ns), oy + r * Math.sin(a0 + sw * s / ns)]);
           cur[cur.length - 1] = [nx, ny];
         }
       }
@@ -299,7 +294,7 @@ var BV = (function () {
     // src: {pins: parsed ascii/ipc result or null, pnp: parsed pnp or null, outline: gerber result or null}
     var warnings = [];
     var parts = (src.pins ? src.pins.parts : []).map(function (p) {
-      return { ref: p.ref, bottom: p.bottom, smd: p.smd, pins: p.pins.map(function (q) { return Object.assign({}, q); }), fromPnp: false, free: !!p.free,
+      return { ref: p.ref, bottom: p.bottom, smd: p.smd, pins: p.pins.map(function (q) { return Object.assign({}, q); }), fromPnp: false, free: !!p.free, bodies: p.bodies, rot: p.rot,
                value: p.value || '', footprint: p.footprint || '', desc: p.desc || '' };
     });
     var byRef = {}; parts.forEach(function (p) { byRef[p.ref] = p; });
@@ -345,7 +340,10 @@ var BV = (function () {
     outline.forEach(function (q) { ext(q[0], q[1]); });
     // shift so everything is positive, integer mils
     var dx = -x0 + 10, dy = -y0 + 10;
-    parts.forEach(function (p) { p.pins.forEach(function (q) { q.x += dx; q.y += dy; }); });
+    parts.forEach(function (p) {
+      p.pins.forEach(function (q) { q.x += dx; q.y += dy; });
+      if (p.bodies) p.bodies = p.bodies.map(function (b) { return Object.assign({}, b, { x: b.x + dx, y: b.y + dy, poly: b.poly.map(function (v) { return [v[0] + dx, v[1] + dy]; }) }); }); // 3D bodies move with the pads
+    });
     outline = outline.map(function (q) { return [q[0] + dx, q[1] + dy]; });
     var nets = {};
     parts.forEach(function (p) { p.pins.forEach(function (q) { nets[q.net] = 1; }); });
@@ -490,7 +488,7 @@ var BV = (function () {
     var d = JSON.parse(text);
     if (!d || !/^altium-boardview/.test(d.format || '')) throw new Error('Это не файл конвертера');
     var parts = d.parts.map(function (p) {
-      return { ref: p.ref, bottom: p.side === 'B', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '', free: !!p.free,
+      return { ref: p.ref, bottom: p.side === 'B', smd: !!p.smd, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '', free: !!p.free, rot: p.rot,
                pins: p.pins.map(function (q) { var o = { x: q[0], y: q[1], name: String(q[2]), net: q[3] || 'UNCONNECTED', r: q[4] == null ? NaN : q[4] };
                  if (q[5]) { o.w = q[5][0]; o.h = q[5][1]; o.rot = q[5][2] || 0; o.sh = q[5][3]; o.cr = q[5][4] || 0; } return o; }) };
     });
@@ -502,7 +500,7 @@ var BV = (function () {
       format: 'altium-boardview/1', name: name || '', units: 'mil',
       outline: b.outline.map(function (q) { return [r1(q[0]), r1(q[1])]; }),
       parts: b.parts.map(function (p) {
-        return { ref: p.ref, side: p.bottom ? 'B' : 'T', smd: !!p.smd, free: p.free ? 1 : undefined, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
+        return { ref: p.ref, side: p.bottom ? 'B' : 'T', smd: !!p.smd, free: p.free ? 1 : undefined, rot: p.rot || undefined, value: p.value || '', footprint: p.footprint || '', desc: p.desc || '',
                  pins: p.pins.map(function (q) { var a = [r1(q.x), r1(q.y), q.name, q.net, isFinite(q.r) ? r1(q.r) : null];
                    if (q.sh) a.push([Math.round(q.w * 100) / 100, Math.round(q.h * 100) / 100, Math.round(q.rot * 100) / 100, q.sh, q.cr]); return a; }) };
       })

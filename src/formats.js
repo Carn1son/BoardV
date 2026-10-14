@@ -251,7 +251,7 @@ var FMT = (function () {
   function arcPts(x1, y1, x2, y2, cx, cy) {
     var r = Math.hypot(x1 - cx, y1 - cy), a0 = Math.atan2(y1 - cy, x1 - cx), a1 = Math.atan2(y2 - cy, x2 - cx), pts = [];
     if (a1 <= a0) a1 += Math.PI * 2;
-    var n = Math.max(2, Math.ceil((a1 - a0) / 0.15));
+    var n = Math.max(2, Math.ceil((a1 - a0) / 0.026));
     for (var i = 0; i <= n; i++) { var a = a0 + (a1 - a0) * i / n; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
     pts[0] = [x1, y1]; pts[pts.length - 1] = [x2, y2]; return pts;
   }
@@ -299,7 +299,7 @@ var FMT = (function () {
       var rot = A(el, 'rot') || 'R0', mir = /M/.test(rot), ang = (parseFloat(rot.replace(/[^0-9.\-]/g, '')) || 0) * Math.PI / 180;
       var cs = Math.cos(ang), sn = Math.sin(ang), ex = f(el, 'x'), ey = f(el, 'y'), name = A(el, 'name');
       var smd = pads.some(function (q) { return q.smd; });
-      var p = { ref: name, bottom: smd && (mir ? !pads[0].bottom : !!pads[0].bottom), smd: smd, value: A(el, 'value') || '', footprint: A(el, 'package') || '', desc: '', pins: [] };
+      var p = { ref: name, bottom: smd && (mir ? !pads[0].bottom : !!pads[0].bottom), smd: smd, rot: (mir ? -1 : 1) * ang * 180 / Math.PI, value: A(el, 'value') || '', footprint: A(el, 'package') || '', desc: '', pins: [] };
       pads.forEach(function (q) {
         var x = q.x * cs - q.y * sn, y = q.x * sn + q.y * cs; if (mir) x = -x; // rotate, then mirror for the bottom side
         var a = q.rot + ang * 180 / Math.PI;
@@ -322,7 +322,7 @@ var FMT = (function () {
   function curve(a, b, deg) { // Eagle arc between two points with the given sweep
     var t = deg * Math.PI / 180, dx = b[0] - a[0], dy = b[1] - a[1], ch = Math.hypot(dx, dy); if (!ch) return [a, b];
     var r = ch / 2 / Math.sin(Math.abs(t) / 2), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, h = Math.sqrt(Math.max(0, r * r - ch * ch / 4)) * (Math.abs(t) > Math.PI ? -1 : 1);
-    var s = t > 0 ? 1 : -1, cx = mx - s * h * dy / ch, cy = my + s * h * dx / ch, a0 = Math.atan2(a[1] - cy, a[0] - cx), pts = [], n = Math.max(2, Math.ceil(Math.abs(t) / 0.15));
+    var s = t > 0 ? 1 : -1, cx = mx - s * h * dy / ch, cy = my + s * h * dx / ch, a0 = Math.atan2(a[1] - cy, a[0] - cx), pts = [], n = Math.max(2, Math.ceil(Math.abs(t) / 0.026));
     for (var i = 0; i <= n; i++) { var aa = a0 + t * i / n; pts.push([cx + r * Math.cos(aa), cy + r * Math.sin(aa)]); }
     pts[0] = a; pts[pts.length - 1] = b; return pts;
   }
@@ -348,7 +348,8 @@ var FMT = (function () {
     var netNames = {}; kids(root, 'net').forEach(function (n) { netNames[n[1]] = sv(n[2]); });
     var parts = [];
     kids(root, 'footprint').concat(kids(root, 'module')).forEach(function (fp) {
-      var at = kid(fp, 'at') || ['at', 0, 0], fx = +at[1], fy = +at[2], frot = +(at[3] || 0), layer = sv((kid(fp, 'layer') || [])[1]) || 'F.Cu';
+      var tf = kid(fp, 'transform'), tt = tf && kid(tf, 'translate'), trr = tf && kid(tf, 'rotate'); // KiCad 10 writes (transform (translate x y) (rotate a)) instead of (at x y a)
+      var at = kid(fp, 'at') || (tt ? ['at', tt[1], tt[2], trr ? trr[1] : 0] : ['at', 0, 0]), fx = +at[1], fy = +at[2], frot = +(at[3] || 0), layer = sv((kid(fp, 'layer') || [])[1]) || 'F.Cu';
       var ref = '', val = '';
       kids(fp, 'property').forEach(function (p) { if (sv(p[1]) === 'Reference') ref = sv(p[2]); if (sv(p[1]) === 'Value') val = sv(p[2]); });
       kids(fp, 'fp_text').forEach(function (p) { if (p[1] === 'reference' && !ref) ref = sv(p[2]); if (p[1] === 'value' && !val) val = sv(p[2]); });
@@ -365,7 +366,7 @@ var FMT = (function () {
                     w: +sz[1] * MM, h: +sz[2] * MM, rot: +(pa[3] || 0), sh: sh, cr: ks === 'roundrect' ? Math.min(1, 2 * (rr ? +rr[1] : 0.25)) : 0.3 });
       });
       if (!pins.length) return;
-      parts.push({ ref: ref || '?', bottom: smd && /^B\./.test(layer), smd: smd, value: val, footprint: String(sv(fp[1]) || '').split(':').pop(), desc: '', pins: pins });
+      parts.push({ ref: ref || '?', bottom: smd && /^B\./.test(layer), smd: smd, rot: frot, value: val, footprint: String(sv(fp[1]) || '').split(':').pop(), desc: '', pins: pins });
     });
     if (!parts.length) fail('В файле KiCad не нашлось деталей');
     var segs = [];
@@ -385,7 +386,7 @@ var FMT = (function () {
     var uy = ((a[0] * a[0] + a[1] * a[1]) * (b[0] - m[0]) + (m[0] * m[0] + m[1] * m[1]) * (a[0] - b[0]) + (b[0] * b[0] + b[1] * b[1]) * (m[0] - a[0])) / d;
     var r = Math.hypot(a[0] - ux, a[1] - uy), t0 = Math.atan2(a[1] - uy, a[0] - ux), tm = Math.atan2(m[1] - uy, m[0] - ux), t1 = Math.atan2(b[1] - uy, b[0] - ux);
     function norm(x) { while (x < t0) x += 2 * Math.PI; while (x >= t0 + 2 * Math.PI) x -= 2 * Math.PI; return x; }
-    var em = norm(tm), e1 = norm(t1), sweep = em < e1 ? e1 - t0 : e1 - t0 - 2 * Math.PI, n = Math.max(2, Math.ceil(Math.abs(sweep) / 0.15)), pts = [];
+    var em = norm(tm), e1 = norm(t1), sweep = em < e1 ? e1 - t0 : e1 - t0 - 2 * Math.PI, n = Math.max(2, Math.ceil(Math.abs(sweep) / 0.026)), pts = [];
     for (var i = 0; i <= n; i++) { var t = t0 + sweep * i / n; pts.push([ux + r * Math.cos(t), uy + r * Math.sin(t)]); }
     pts[0] = a; pts[pts.length - 1] = b; return pts;
   }

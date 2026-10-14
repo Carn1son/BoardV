@@ -25,6 +25,17 @@ def lib():
     return pcb + '\n' + core + '\n' + fmts + '\n' + i18n + '\n' + parts + '\n' + vendor
 
 
+def lib3d():
+    """three.js + the 3D view + occt-import-js (STEP reader) with its wasm as base64; loaded only when 3D is opened"""
+    import base64
+    v = os.path.join(ROOT, 'vendor')
+    three = open(os.path.join(v, 'three.min.js')).read()
+    occt = open(os.path.join(v, 'occt-import-js.js')).read()
+    wasm = base64.b64encode(open(os.path.join(v, 'occt-import-js.wasm'), 'rb').read()).decode()
+    view = open(os.path.join(ROOT, 'view3d.js')).read()
+    return (three + '\n;var BV3D_OCCT_SRC = ' + json.dumps(occt) + ';\nvar BV3D_OCCT_WASM = "' + wasm + '";\n' + view)
+
+
 def logo_uri(px=96):
     import base64, io
     from PIL import Image
@@ -1022,7 +1033,7 @@ PROJECT_README = '''<p align="center"><img src="src/logo.png" width="120" alt="B
 - Для закрытых форматов (Allegro `.brd`, ASUS `.fz`, XZZ `.pcb`, `.cae`) программа объясняет, что именно экспортировать, чтобы файл открылся.
 
 ### Плата и цепи
-- Верх, низ (зеркально) или обе стороны, поворот, переворот платы.
+- Верх, низ (зеркально) или обе стороны, поворот, переворот платы. Скруглённые края платы и компоненты, повёрнутые на любой угол, рисуются точно.
 - Площадки рисуются **по-настоящему**: форма (прямоугольник, круг, овал, скруглённый прямоугольник, восьмиугольник), размер и поворот берутся из файла платы (.PcbDoc, KiCad, Eagle).
 - **Ключ** у микросхем, трансформаторов и светодиодов: черта посередине стороны первого вывода, если выводы с двух сторон, или точка у первого вывода, если выводы с трёх-четырёх сторон.
 - При выделении компонента остальные приглушаются, но их обозначения остаются читаемыми.
@@ -1031,6 +1042,12 @@ PROJECT_README = '''<p align="center"><img src="src/logo.png" width="120" alt="B
 - Поиск по деталям, цепям и номиналам.
 - Карточка детали: позиционное обозначение, номинал, корпус, пины и их цепи. Рядом с номиналом и именем цепи есть кнопки **копирования** и **поиска даташита** (Google, `"название" filetype:pdf`).
 - Любой текст в карточке и списках копируется правой кнопкой мыши или долгим нажатием на телефоне.
+
+### 3D-просмотр
+- Объёмный вид платы: на ПК клавиша **3** (обратно — **2**), на телефоне переключатель 2D / 3D над платой.
+- Из Altium .PcbDoc берутся **настоящие 3D-модели** (вшитые STEP) и тела компонентов, с их цветами. Нажатие на компонент выделяет его и показывает в карточке.
+- Если в файле нет 3D-моделей (boardview-форматы, KiCad, Eagle), показываются плата и голые площадки.
+- 3D можно полностью отключить в настройках (*Управление → 3D-просмотр платы*).
 
 ### BOM
 - Панель BOM справа: клик по позиции показывает все места установки сверху и снизу платы.
@@ -1091,6 +1108,7 @@ def main():
     write(os.path.join(pwa, 'index.html'), full_doc(PWA_HEAD, PWA_BODY))
     write(os.path.join(pwa, 'manifest.webmanifest'), json.dumps(MANIFEST, ensure_ascii=False, indent=2))
     write(os.path.join(pwa, 'sw.js'), SW)
+    write(os.path.join(pwa, 'lib3d.js'), lib3d())
     shutil.copy(cfg, os.path.join(pwa, 'BoardV-config.js'))
     write(os.path.join(pwa, 'build-info.js'), "// replaced by the app build with its version\nwindow.BV_BUILD = { version: '%s', label: '%s', day: '%s', app: 'web' };\n" % (VSEM, VLABEL, VDATE))
     for f in ('icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-256.png'):

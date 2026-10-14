@@ -456,6 +456,16 @@ html.mobile .cp-sv { height: 210px; }
 .cp-row input { flex: 1 1 0; width: 0; min-width: 0; font: inherit; font-family: var(--f-mono); font-size: 15px; text-transform: uppercase; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); }
 .cp-row .btn { min-height: 42px; padding: 0 16px; }
 .cp-row .btn.primary { min-width: 96px; }
+/* 3D view over the board */
+.v3d { position: absolute; inset: 0; z-index: 6; background: var(--bg); }
+.v3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.v3dst { position: absolute; left: 12px; top: 10px; z-index: 2; font-size: 12px; color: var(--muted); text-shadow: 0 1px 2px rgba(0,0,0,.5); pointer-events: none; }
+.vsw { position: absolute; right: 10px; top: 10px; z-index: 8; display: flex; padding: 3px; gap: 2px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.vsw button { width: 42px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; transition: background .15s, color .15s; }
+.vsw button svg { width: 28px; height: 20px; display: block; }
+.vsw button[aria-pressed=true] { background: var(--accent); color: #1a1406; }
+.v3dpick { position: absolute; left: 10px; bottom: 10px; z-index: 2; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); font-family: var(--f-mono); font-size: 13px; max-width: calc(100% - 20px); }
+.v3dpick b { color: var(--accent); margin-right: 8px; }
 * { -webkit-tap-highlight-color: transparent; }
 button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focus:not(:focus-visible), [tabindex]:focus:not(:focus-visible) { outline: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -507,6 +517,14 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
           <div class="note" id="emptyN">Перетащи файл в окно или нажми, чтобы выбрать</div>
           <button type="button" class="btn" id="scanEmpty" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg><span>Открыть с компьютера по QR</span></button>
         </div>
+      </div>
+      <div class="v3d" id="v3d" hidden>
+        <span class="v3dst" id="v3dSt"></span>
+        <div class="v3dpick" id="v3dPick" hidden></div>
+      </div>
+      <div class="vsw" id="vsw" role="group" aria-label="Вид платы" hidden>
+        <button type="button" data-vw="2d" aria-pressed="true" aria-label="2D-вид"><svg viewBox="0 0 28 20" aria-hidden="true"><rect x="3" y="3" width="22" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="7" y="7" width="6" height="6" rx="1" fill="currentColor"/><circle cx="18" cy="8" r="1.4" fill="currentColor"/><circle cx="21" cy="8" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/><circle cx="21" cy="12" r="1.4" fill="currentColor"/></svg></button>
+        <button type="button" data-vw="3d" aria-pressed="false" aria-label="3D-вид"><svg viewBox="0 0 28 20" aria-hidden="true"><path d="M2 11.5 L14 5 L26 11.5 L14 18 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 11.5 V13.5 L14 20 L26 13.5 V11.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" opacity=".7"/><path d="M8.5 10.2 L13 7.8 L16.5 9.7 L12 12.1 Z" fill="currentColor"/><path d="M12 12.1 V10.4 M16.5 9.7 V8" stroke="currentColor" stroke-width="1.2"/><circle cx="18.5" cy="12.6" r="1.2" fill="currentColor"/><circle cx="21" cy="11.3" r="1.2" fill="currentColor"/></svg></button>
       </div>
       <div class="tip" id="tip" hidden></div>
       <div class="toast" id="toast" role="alert" hidden></div>
@@ -658,8 +676,8 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     haloStyle: 'shadow', haloAlpha: 0.5, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
     selGlow: 1, selBreath: false, selDash: true, selDashSpeed: 0.2, selDim: true,
-    autoFit: false, wheelInvert: false, zoomSpeed: 1 };
-  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed']; // themes do not touch these
+    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true };
+  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d']; // themes do not touch these
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
   var PRESETS = {
     'По умолчанию': { colors: {}, fx: {} },
@@ -690,14 +708,14 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
       ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
     ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
-      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей']]]
+      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['check', 'enable3d', '3D-просмотр платы']]]
   ];
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
     ['rotate', 'Поворот на 90°'], ['fit', 'Вписать плату'], ['clear', 'Сбросить выбор / закрыть настройки'], ['zoomIn', 'Приблизить'], ['zoomOut', 'Отдалить'],
     ['bom', 'Показать / скрыть BOM'], ['settings', 'Открыть / закрыть настройки'], ['ui', 'Оформление: День / Ночь'], ['values', 'Номиналы на плате вкл/выкл'],
-    ['pinNums', 'Номера пинов вкл/выкл'], ['open', 'Открыть файл']];
-  var DEF_KEYS = { search: ['Ctrl+KeyF'], flip: ['Space'], top: [], bottom: [], both: ['KeyB'], cycle: ['KeyL'], rotate: ['KeyR'], fit: ['KeyF'], clear: ['Escape'],
+    ['pinNums', 'Номера пинов вкл/выкл'], ['open', 'Открыть файл'], ['view3d', '3D-вид платы'], ['view2d', '2D-вид платы']];
+  var DEF_KEYS = { view3d: ['Digit3', 'Numpad3'], view2d: ['Digit2', 'Numpad2'], search: ['Ctrl+KeyF'], flip: ['Space'], top: [], bottom: [], both: ['KeyB'], cycle: ['KeyL'], rotate: ['KeyR'], fit: ['KeyF'], clear: ['Escape'],
     zoomIn: ['Equal', 'NumpadAdd'], zoomOut: ['Minus', 'NumpadSubtract'], bom: [], settings: [], ui: [], values: [], pinNums: [], open: ['Ctrl+KeyO'] };
   var KEYNAME = { Space: 'Пробел', Escape: 'Esc', Slash: '/', Backslash: '\\', Period: '.', Comma: ',', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']',
     Minus: '-', Equal: '=', Backquote: '`', Enter: 'Enter', Tab: 'Tab', Backspace: '⌫', Delete: 'Del', Insert: 'Ins', Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn',
@@ -738,6 +756,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     Object.keys(CFG.colors).forEach(function (k) { root.setProperty('--' + k, CFG.colors[k]); });
     root.setProperty('--canvas', CFG.colors[bgKey()]);
     FX = CFG.fx; ruleCache = null; readColors(); if (typeof req === 'function') req();
+    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else vswSync(); } // 3D can be switched off completely
     if (save) { CFG.savedAt = new Date().toISOString(); try { localStorage.setItem('bvr-config', JSON.stringify(CFG)); } catch (e) {} }
   }
   function themeFx(themefx, cur) { // a theme sets the look; control options are kept
@@ -863,6 +882,34 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       x0 = Math.min(x0, s[0] - ex); x1 = Math.max(x1, s[0] + ex); y0 = Math.min(y0, s[1] - ey); y1 = Math.max(y1, s[1] + ey); });
     var m = Math.max(2, 6 * V.k); return [x0 - m, y0 - m, x1 + m, y1 + m];
   }
+  /* the component's own axes, so a part placed at any angle gets an outline turned with it */
+  function partFrame(p) {
+    if (p._fr) return p._fr;
+    var a = isFinite(p.rot) ? +p.rot : NaN;
+    if (!isFinite(a)) { var q0 = p.pins.filter(function (q) { return q.sh; })[0]; a = q0 ? q0.rot || 0 : 0; }
+    a = ((a % 90) + 90) % 90; if (a > 45) a -= 90;
+    var t = a * Math.PI / 180, c = Math.cos(t), n = Math.sin(t), u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+    p.pins.forEach(function (q) {
+      var u = q.x * c + q.y * n, v = -q.x * n + q.y * c, hw = q.sh ? q.w / 2 : q.r, hh = q.sh ? q.h / 2 : q.r, r = (q.sh ? (q.rot || 0) * Math.PI / 180 : 0) - t;
+      var eu = Math.abs(Math.cos(r)) * hw + Math.abs(Math.sin(r)) * hh, ev = Math.abs(Math.sin(r)) * hw + Math.abs(Math.cos(r)) * hh;
+      u0 = Math.min(u0, u - eu); u1 = Math.max(u1, u + eu); v0 = Math.min(v0, v - ev); v1 = Math.max(v1, v + ev);
+    });
+    return (p._fr = { c: c, n: n, u0: u0, u1: u1, v0: v0, v1: v1 });
+  }
+  function frameCorners(p, growPx) { // screen corners: (u0,v0) (u1,v0) (u1,v1) (u0,v1)
+    var f = partFrame(p), m = Math.max(2 / V.k, 6) + (growPx || 0) / V.k;
+    return [[f.u0 - m, f.v0 - m], [f.u1 + m, f.v0 - m], [f.u1 + m, f.v1 + m], [f.u0 - m, f.v1 + m]].map(function (uv) { return w2s(uv[0] * f.c - uv[1] * f.n, uv[0] * f.n + uv[1] * f.c); });
+  }
+  function framePath(p, growPx, extra) { // the outline as a rounded polygon
+    var k = frameCorners(p, growPx), side = Math.min(Math.hypot(k[1][0] - k[0][0], k[1][1] - k[0][1]), Math.hypot(k[3][0] - k[0][0], k[3][1] - k[0][1]));
+    var r = Math.max(0, Math.min((FX.cornerR || 0) + (extra || 0), side / 4));
+    ctx.beginPath();
+    if (r <= 0.3) { ctx.moveTo(k[0][0], k[0][1]); for (var i = 1; i < 4; i++) ctx.lineTo(k[i][0], k[i][1]); ctx.closePath(); return; }
+    var m01 = [(k[0][0] + k[1][0]) / 2, (k[0][1] + k[1][1]) / 2]; ctx.moveTo(m01[0], m01[1]);
+    for (var j = 1; j <= 4; j++) { var a = k[j % 4], b = k[(j + 1) % 4]; ctx.arcTo(a[0], a[1], b[0], b[1], r); }
+    ctx.closePath();
+  }
+  function inFrame(p, mx, my) { var f = partFrame(p), w = s2w(mx, my), m = Math.max(2 / V.k, 6), u = w[0] * f.c + w[1] * f.n, v = -w[0] * f.n + w[1] * f.c; return u >= f.u0 - m && u <= f.u1 + m && v >= f.v0 - m && v <= f.v1 + m; }
   function padExt(q) { // half extents of the pad along the board axes (world units)
     if (q._e) return q._e;
     if (!q.sh) return (q._e = [q.r, q.r]);
@@ -970,12 +1017,12 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     near.forEach(function (p) {
       var r = partRect(p), hovP = hover && hover.part === p && !hover.pin;
       if (r[2] - r[0] < 1.5 && r[3] - r[1] < 1.5) return;
-      if (FX.partFill > 0 && !off(p)) { ctx.globalAlpha = FX.partFill; ctx.fillStyle = V.side === 'both' && p.bottom ? C.botpart : C.partfill; rrect(r[0], r[1], r[2] - r[0], r[3] - r[1]); ctx.fill(); ctx.globalAlpha = 1; }
+      if (FX.partFill > 0 && !off(p)) { ctx.globalAlpha = FX.partFill; ctx.fillStyle = V.side === 'both' && p.bottom ? C.botpart : C.partfill; framePath(p, 0, 0); ctx.fill(); ctx.globalAlpha = 1; }
       if (SEL && SEL[p.ref]) return; // drawn by the selection pass
       ctx.lineWidth = FX.outlineW;
       ctx.strokeStyle = off(p) ? C.dim : (V.side === 'both' && p.bottom ? C.botpart : C.outline);
       ctx.globalAlpha = off(p) ? (selDim && !dim ? 0.3 : 0.7) : hovP ? 1 : FX.outlineAlpha;
-      rrect(r[0], r[1], r[2] - r[0], r[3] - r[1]); ctx.stroke();
+      framePath(p, 0, 0); ctx.stroke();
       ctx.globalAlpha = 1;
     });
     if (SEL) { // this layer: solid frame + glow; opposite layer: marching dashes
@@ -984,13 +1031,13 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
         var p = SEL[k], r = partRect(p), x = r[0] - pad, y = r[1] - pad, w = r[2] - r[0] + 2 * pad, h = r[3] - r[1] + 2 * pad;
         ctx.save();
         if (!!p.bottom === homeBottom) {
-          ctx.globalAlpha = 0.12; ctx.fillStyle = C.selhere; rrect(x, y, w, h, 2); ctx.fill(); ctx.globalAlpha = 1;
+          ctx.globalAlpha = 0.12; ctx.fillStyle = C.selhere; framePath(p, pad, 2); ctx.fill(); ctx.globalAlpha = 1;
           if (glow > 0) { ctx.shadowColor = C.selhere; ctx.shadowBlur = glow; }
-          ctx.lineWidth = 2; ctx.strokeStyle = C.selhere; rrect(x, y, w, h, 2); ctx.stroke();
+          ctx.lineWidth = 2; ctx.strokeStyle = C.selhere; framePath(p, pad, 2); ctx.stroke();
           if (glow > 0) { ctx.shadowBlur = glow * 0.5; ctx.stroke(); }
         } else {
           ctx.setLineDash([7, 4]); ctx.lineDashOffset = -dashOff;
-          rrect(x, y, w, h, 2);
+          framePath(p, pad, 2);
           ctx.lineWidth = 3.5; ctx.strokeStyle = C.canvas; ctx.globalAlpha = 0.7; ctx.stroke();
           ctx.lineWidth = 1.8; ctx.strokeStyle = C.selfar; ctx.globalAlpha = 1; ctx.stroke();
         }
@@ -1047,19 +1094,21 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     // labels
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     near.forEach(function (p) {
-      var r = partRect(p), w = r[2] - r[0], h = r[3] - r[1];
+      var k4 = frameCorners(p, 0), w = Math.hypot(k4[1][0] - k4[0][0], k4[1][1] - k4[0][1]), h = Math.hypot(k4[3][0] - k4[0][0], k4[3][1] - k4[0][1]);
       if (Math.min(w, h) < 8) return;
       var vertical = h > w * 1.3, len = (vertical ? h : w) - 4, thick = vertical ? w : h;
+      var ax = vertical ? [k4[3][0] - k4[0][0], k4[3][1] - k4[0][1]] : [k4[1][0] - k4[0][0], k4[1][1] - k4[0][1]], ang = Math.atan2(ax[1], ax[0]);
+      if (ang >= Math.PI / 2 - 1e-6) ang -= Math.PI; if (ang < -Math.PI / 2 - 1e-6) ang += Math.PI; // always readable
       // measured fit: the designator never leaves the component outline
       var fs = Math.min(16, thick * 0.42) * FX.labelScale;
       ctx.font = '600 ' + fs + 'px ' + mono;
       var tw = ctx.measureText(p.ref).width;
       if (tw > len) { fs *= len / tw; ctx.font = '600 ' + fs + 'px ' + mono; }
       if (fs < 6.5) return;
-      var cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, pOff = off(p), quiet = pOff && selDim && !dim; // a component is selected: the others keep a readable designator and value
+      var cx = (k4[0][0] + k4[2][0]) / 2, cy = (k4[0][1] + k4[2][1]) / 2, pOff = off(p), quiet = pOff && selDim && !dim; // a component is selected: the others keep a readable designator and value
       var showVal = FX.showValues && p.value && thick > fs * 2.7;
       if (FX.showValues && p.value && !showVal && thick / 2.7 >= 5.5) { fs = thick / 2.7; ctx.font = '600 ' + fs + 'px ' + mono; showVal = true; } // thin part: smaller text so the value still fits
-      ctx.save(); ctx.translate(cx, cy); if (vertical) ctx.rotate(-Math.PI / 2);
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
       ctx.lineJoin = 'round';
       haloText(p.ref, showVal ? -fs * 0.6 : 0, pOff && !quiet ? C.dim : C.refc, fs);
       if (showVal) {
@@ -1156,8 +1205,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     var area = Infinity, bp = null;
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
-      var r = partRect(p);
-      if (mx >= r[0] && mx <= r[2] && my >= r[1] && my <= r[3]) { var a = (r[2] - r[0]) * (r[3] - r[1]); if (a < area) { area = a; bp = p; } }
+      if (inFrame(p, mx, my)) { var f = partFrame(p), a = (f.u1 - f.u0) * (f.v1 - f.v0); if (a < area) { area = a; bp = p; } }
     });
     return bp ? { part: bp } : null;
   }
@@ -1233,7 +1281,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       if (!IS_PHONE) { // a phone has no keyboard; only the keys people need most
         h += '<div class="keys">';
         ACTIONS.forEach(function (a) {
-          if (['search', 'flip', 'cycle', 'rotate', 'fit', 'clear'].indexOf(a[0]) < 0) return;
+          if (['search', 'flip', 'cycle', 'rotate', 'fit', 'clear', 'view3d', 'view2d'].indexOf(a[0]) < 0 || (/^view/.test(a[0]) && !FX.enable3d)) return;
           var ks = CFG.keys[a[0]] || []; if (ks.length) h += '<kbd>' + esc(keyLabel(ks[0])) + '</kbd><span>' + esc(a[1]) + '</span>';
         });
         h += '</div>';
@@ -2473,6 +2521,8 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     else if (a === 'ui') setUi(UI === 'dark' ? 'light' : 'dark');
     else if (a === 'values' || a === 'pinNums') { var k = a === 'values' ? 'showValues' : 'showPinNums'; CFG.fx[k] = !CFG.fx[k]; applyCfg(true); if (SETOPEN) buildSettings(); flash((a === 'values' ? 'Номиналы ' : 'Номера пинов ') + (CFG.fx[k] ? 'показаны' : 'скрыты')); }
     else if (a === 'open') $('file').click();
+    else if (a === 'view3d') { if (FX.enable3d) open3d(); }
+    else if (a === 'view2d') close3d();
   }
   function actionFor(combo) { for (var i = 0; i < ACTIONS.length; i++) if ((CFG.keys[ACTIONS[i][0]] || []).indexOf(combo) >= 0) return ACTIONS[i][0]; return null; }
   document.addEventListener('keydown', function (e) {
@@ -2523,14 +2573,49 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   function updCloseProj() { $('closeProj').hidden = !M; }
   function refreshAll(refit) {
     buildNetIndex();
-    $('empty').hidden = !!M; applyLayout(false); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
+    $('empty').hidden = !!M; if (refit || !M) close3d(); vswSync(); applyLayout(false); updShareBtn(); updPartScan(); updCloseProj(); updBomExport();
     $('fileName').textContent = src.files.join(' + ');
     if (refit) { V.rot = IS_PHONE && H > W * 1.15 && M.w > M.h * 1.15 ? 1 : 0; setSide('top', true); fit(); } // phone held upright + wide board: turn it to fill the screen
     renderCard(); renderList(); status(); req();
   }
 
+  /* ---------- 3D view: three.js + STEP models, loaded on first use from lib3d.js ---------- */
+  var V3 = null, lib3d = null;
+  function load3d() {
+    if (window.BV3D) return Promise.resolve();
+    if (lib3d) return lib3d;
+    lib3d = new Promise(function (res, rej) { var sc = document.createElement('script'); sc.src = 'lib3d.js'; sc.onload = res; sc.onerror = function () { lib3d = null; rej(); }; document.head.appendChild(sc); });
+    return lib3d;
+  }
+  function v3dPickInfo(p) {
+    var el = $('v3dPick'); el.hidden = !p; if (!p) return;
+    el.innerHTML = '<b></b><span></span>'; el.querySelector('b').textContent = p.ref; el.querySelector('span').textContent = [p.value, p.footprint].filter(Boolean).join(' · ');
+  }
+  function open3d() {
+    if (!M || V3 || !FX.enable3d) return;
+    var box = $('v3d'); box.hidden = false; vswSync(); $('v3dSt').textContent = 'Загрузка 3D…'; v3dPickInfo(null);
+    load3d().then(function () {
+      if (box.hidden || V3) return;
+      try {
+        V3 = BV3D.open(box, M, { bg: C.canvas, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
+          progress: function (d, n) { $('v3dSt').textContent = n && d < n ? '3D-модели:' + ' ' + d + ' / ' + n : ''; } });
+        box.insertBefore(V3.canvas, box.firstChild);
+        if (S.part) { V3.highlight(S.part); v3dPickInfo(S.part); }
+      } catch (e) { $('v3dSt').textContent = 'Не удалось открыть 3D'; }
+    }, function () { $('v3dSt').textContent = 'Не удалось открыть 3D'; });
+  }
+  function close3d() { if (V3) { V3.close(); V3 = null; } $('v3d').hidden = true; vswSync(); }
+  function vswSync() {
+    var on = !$('v3d').hidden;
+    $('vsw').hidden = !(IS_PHONE && M && FX.enable3d);
+    $('vsw').querySelectorAll('[data-vw]').forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.vw === '3d') === on)); });
+  }
+  $('vsw').addEventListener('click', function (e) { var b = e.target.closest('[data-vw]'); if (!b) return; if (b.dataset.vw === '3d') open3d(); else close3d(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('v3d').hidden) { e.stopPropagation(); close3d(); } }, true);
+
   // Android back button / swipe: close the topmost thing inside BoardV; false = nothing open, the app may close
   window.bvBack = function () {
+    if (!$('v3d').hidden) { close3d(); return true; }
     if (!$('cpick').hidden) { $('cpCancel').click(); return true; }
     if (!$('ctxMenu').hidden) { closeRowMenu(); return true; }
     if (!$('scanDlg').hidden) { closeScanner(); return true; }

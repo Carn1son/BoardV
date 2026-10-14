@@ -149,7 +149,7 @@ var PCBDOC = (function () {
       if (ci === NONE16 || ci >= comps.length) continue;
       var c = comps[ci], key = ci; // one part per placed component: two footprints with the same designator never merge
       if (!parts[key]) {
-        parts[key] = { ref: '', bottom: /bottom/i.test(c.LAYER || ''), smd: true, pins: [],
+        parts[key] = { ref: '', bottom: /bottom/i.test(c.LAYER || ''), smd: true, pins: [], rot: parseFloat(c.ROTATION) || 0,
                        value: values[ci] || '', footprint: c.PATTERN || '', desc: c.SOURCEDESCRIPTION || '' };
         order.push(key);
       }
@@ -183,10 +183,36 @@ var PCBDOC = (function () {
     });
     function uniq(base) { var r = base; while (used[r]) r += '\u200b'; used[r] = 1; return r; }
     function netCount(p) { return p.pins.filter(function (q) { return q.net !== 'UNCONNECTED'; }).length; }
+    // 3D: component bodies (extruded outlines and embedded STEP models), attached to their parts
+    try { bodies3d(get, parts); } catch (e) {}
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
     return { parts: list, board: board, nPads: nPads,
              info: comps.length + ' компонентов, ' + nPads + ' падов, ' + nets.length + ' цепей' + (withVal ? ', номиналы у ' + withVal : '') };
+  }
+  function mil(v) { var m = /^(-?[\d.eE+-]+)\s*(mil|mm)?$/.exec(String(v || '').trim()); if (!m) return 0; return +m[1] * (m[2] === 'mm' ? 1 / 0.0254 : 1); }
+  function bodies3d(get, parts) {
+    var d = get('ComponentBodies6/Data'); if (!d) return;
+    var models = {}, md = get('Models/Data');
+    if (md) propRecords(md).forEach(function (r, i) { if (r.ID) models[r.ID] = i; });
+    var dv = new DataView(d.buffer, d.byteOffset, d.byteLength), p = 0, cache = {};
+    function step(i) { return function () { if (!(i in cache)) cache[i] = get('Models/' + i); return cache[i]; }; } // zlib-packed STEP, read on demand
+    while (p + 5 <= d.length) {
+      var len = dv.getUint32(p + 1, true), s0 = p + 5; p = s0 + len;
+      if (len < 26 || p > d.length) break;
+      var ci = dv.getUint16(s0 + 7, true), pl = dv.getUint32(s0 + 18, true), part = parts[ci];
+      if (!part || s0 + 22 + pl > p) continue;
+      var e = s0 + 22 + pl, end = e; if (pl && d[e - 1] === 0) end--;
+      var o = props(latin1(d, s0 + 22, end)), poly = [];
+      if (p - e >= 4) { var n = dv.getUint32(e, true); for (var k = 0; k < n && e + 4 + k * 16 + 16 <= p; k++) poly.push([dv.getFloat64(e + 4 + k * 16, true) / 1e4, dv.getFloat64(e + 12 + k * 16, true) / 1e4]); }
+      var b = { type: +(o['MODEL.MODELTYPE'] || 0), poly: poly, z0: mil(o.STANDOFFHEIGHT), z1: mil(o.OVERALLHEIGHT), bottom: o.BODYPROJECTION === '1',
+                color: +(o.BODYCOLOR3D || 8421504), alpha: o.BODYOPACITY3D == null ? 1 : +o.BODYOPACITY3D,
+                x: mil(o['MODEL.2D.X']), y: mil(o['MODEL.2D.Y']), rot: +(o['MODEL.2D.ROTATION'] || 0),
+                rx: +(o['MODEL.3D.ROTX'] || 0), ry: +(o['MODEL.3D.ROTY'] || 0), rz: +(o['MODEL.3D.ROTZ'] || 0), dz: mil(o['MODEL.3D.DZ']),
+                id: o.MODELID || '', name: o['MODEL.NAME'] || '' };
+      if (b.type === 1 && o['MODEL.EMBED'] === 'TRUE' && b.id in models) b.step = step(models[b.id]);
+      (part.bodies = part.bodies || []).push(b);
+    }
   }
   return { isCfb: isCfb, readCfb: readCfb, parse: parse };
 })();

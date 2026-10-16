@@ -821,7 +821,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
         var p = by.ascii ? by.ascii[0] : by.ipc356[0];
         var s = { pins: by.ascii ? BV.parseAscii(p.text) : BV.parseIpc356(p.text) };
         if (by.gerber) try { s.outline = BV.parseGerber(by.gerber[0].text); used.push(by.gerber[0].name); } catch (e) {}
-        var b = BV.build(s); model = BV.finalize(b.parts, b.outline); used.unshift(p.name);
+        var b = BV.build(s); model = BV.finalize(b.parts, b.outline); model.holes = b.holes; used.unshift(p.name);
       }
     } catch (e) { showError('Не удалось открыть файл', e.message); return; }
     if (!model && !meta.length && by.locked) { showError(by.locked[0].error, by.locked[0].detail); return; }
@@ -926,7 +926,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   function keyKind(p) {
     var ref = String(p.ref || '').toUpperCase(), txt = (p.value + ' ' + p.footprint + ' ' + p.desc).toUpperCase(), n = p.pins.length;
     if (n < 2) return null;
-    if (/^(LED|HL|VL)\d/.test(ref) || (/^V?D\d/.test(ref) && /LED|СВЕТОДИОД/.test(txt))) return 'led';
+    if (/^(LED|HL|VL)\d/.test(ref) || (/^V?D\d/.test(ref) && /LED|СВЕТОДИОД/.test(txt)) || (/^DS\d/.test(ref) && n <= 4)) return 'led'; // DS with a few pins: an indicator LED
     if (/^(T|TR|TV|TX|XFMR)\d/.test(ref)) return 'xf';
     if (/^(U|IC|DA|DD|DS|DU)\d/.test(ref) || (/^D\d/.test(ref) && n >= 5)) return 'ic';
     return null;
@@ -955,7 +955,8 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       var dir = alongU ? [c * sg, n * sg] : [-n * sg, c * sg], across = [-dir[1], dir[0]];
       var aMax = -Infinity, bMin = Infinity, bMax = -Infinity;
       pins.forEach(function (q) {
-        var e = padExt(q), ea = Math.abs(dir[0]) * e[0] + Math.abs(dir[1]) * e[1], eb = Math.abs(across[0]) * e[0] + Math.abs(across[1]) * e[1];
+        var hw = q.sh ? q.w / 2 : q.r, hh = q.sh ? q.h / 2 : q.r, pr = q.sh ? (q.rot || 0) * Math.PI / 180 : 0, pc = Math.cos(pr), ps = Math.sin(pr); // extents along the part's own axes
+        var ea = Math.abs(dir[0] * pc + dir[1] * ps) * hw + Math.abs(-dir[0] * ps + dir[1] * pc) * hh, eb = Math.abs(across[0] * pc + across[1] * ps) * hw + Math.abs(-across[0] * ps + across[1] * pc) * hh;
         var pa = q.x * dir[0] + q.y * dir[1], pb = q.x * across[0] + q.y * across[1];
         aMax = Math.max(aMax, pa + ea); bMin = Math.min(bMin, pb - eb); bMax = Math.max(bMax, pb + eb);
       });

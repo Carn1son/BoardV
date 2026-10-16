@@ -73,31 +73,49 @@ var BV = (function () {
       var bottom = /bottom/i.test(cr.LAYER || '');
       comps[c]._ref = ref; comps[c]._bottom = bottom;
     }
-    var noref = 0;
+    var holes = [];
     for (var j = 0; j < pads.length; j++) {
       var pr = pads[j];
-      var ci = parseInt(pr.COMPONENT, 10);
-      if (!(ci >= 0 && ci < comps.length)) continue; // free pads
-      var comp = comps[ci];
-      if (!comp._ref) comp._ref = 'NOREF' + (++noref);
-      var key = comp._ref;
+      var ci = parseInt(pr.COMPONENT, 10), hole = toMil(pr.HOLESIZE, 'mil');
+      if (!(ci >= 0 && ci < comps.length)) { if (hole > 0) holes.push([toMil(pr.X, 'mil'), toMil(pr.Y, 'mil'), hole]); continue; } // free pads: only mounting holes matter
+      var comp = comps[ci], key = ci; // one part per placed component, as in the binary reader
       if (!parts[key]) {
-        parts[key] = { ref: key, bottom: comp._bottom, smd: true, pins: [],
+        parts[key] = { ref: '', bottom: comp._bottom, smd: true, pins: [], rot: num(comp.ROTATION) || 0,
                        value: comp._value || '', footprint: comp.PATTERN || '', desc: comp.SOURCEDESCRIPTION || comp.DESCRIPTION || '' };
         order.push(key);
       }
       var ni = parseInt(pr.NET, 10);
       var net = (ni >= 0 && ni < nets.length) ? nets[ni] : '';
-      var hole = toMil(pr.HOLESIZE, 'mil');
       if (hole > 0) parts[key].smd = false;
-      var sx = toMil(pr.XSIZE || pr.TOPXSIZE, 'mil'), sy = toMil(pr.YSIZE || pr.TOPYSIZE, 'mil');
-      parts[key].pins.push({
-        x: toMil(pr.X, 'mil'), y: toMil(pr.Y, 'mil'), net: cleanNet(net), name: (pr.NAME || '').trim(),
-        r: (isFinite(sx) && isFinite(sy)) ? Math.min(sx, sy) / 2 : NaN
-      });
+      // the real copper: size, angle and shape of the pad on its own layer
+      var bot = /bottom/i.test(pr.LAYER || ''), pre = bot ? 'BOT' : 'TOP';
+      var sx = toMil(pr[pre + 'XSIZE'] || pr.XSIZE, 'mil'), sy = toMil(pr[pre + 'YSIZE'] || pr.YSIZE, 'mil');
+      var shp = String(pr[(bot ? 'BOTLAYER' : 'TOPLAYER') + 'SHAPE'] || pr[pre + 'SHAPE'] || pr.SHAPE || '').toUpperCase();
+      var crp = num(pr[(bot ? 'BOTLAYER' : 'TOPLAYER') + 'CRPCT']), sh;
+      if (/ROUNDEDRECT/.test(shp)) sh = 'rr'; else if (/RECT/.test(shp)) sh = 'r'; else if (/OCT/.test(shp)) sh = 'oct';
+      else if (/ROUND|CIRC/.test(shp)) sh = Math.abs(sx - sy) < 0.01 ? 'c' : 'o'; else sh = null;
+      var pin = { x: toMil(pr.X, 'mil'), y: toMil(pr.Y, 'mil'), net: cleanNet(net), name: (pr.NAME || '').trim(),
+                  r: (isFinite(sx) && isFinite(sy)) ? Math.min(sx, sy) / 2 : NaN, hole: hole > 0 ? hole : 0 };
+      if (sh && sx > 0 && sy > 0) { pin.w = sx; pin.h = sy; pin.rot = num(pr.ROTATION) || 0; pin.sh = sh; pin.cr = isFinite(crp) ? crp / 100 : 0.5; }
+      parts[key].pins.push(pin);
     }
+    // names, as in the binary reader: no designator -> "no designator"; a repeated one stays on the copy wired from the schematic
+    var byName = {}, used = {};
+    function uniq(b) { var r = b; while (used[r]) r += '\u200b'; used[r] = 1; return r; }
+    function wired(p) { return p.pins.filter(function (q) { return q.net && q.net !== 'UNCONNECTED'; }).length; }
+    order.forEach(function (ci) {
+      var p = parts[ci], c = comps[ci], nm = c._ref;
+      p.free = !c.SOURCEUNIQUEID && !wired(p);
+      if (/^comment$/i.test(p.value)) p.value = '';
+      if (!nm) { p.ref = uniq('no designator'); return; }
+      (byName[nm] = byName[nm] || []).push(p);
+    });
+    Object.keys(byName).forEach(function (nm) {
+      byName[nm].slice().sort(function (a, b) { return (a.free - b.free) || (wired(b) - wired(a)); })
+        .forEach(function (p, i) { p.ref = i ? uniq((nm.replace(/\d.*$/, '') || nm) + '?') : uniq(nm); });
+    });
     var outline = board ? asciiOutline(board) : null;
-    return { parts: order.map(function (k) { return parts[k]; }), outline: outline,
+    return { parts: order.map(function (k) { return parts[k]; }), outline: outline, holes: holes,
              info: comps.length + ' компонентов, ' + pads.length + ' падов, ' + nets.length + ' цепей' };
   }
   function asciiOutline(b) {

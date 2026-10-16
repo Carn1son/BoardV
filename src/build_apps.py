@@ -1012,9 +1012,7 @@ jobs:
           done
 '''
 
-PROJECT_README = '''<p align="center"><img src="src/logo.png" width="120" alt="BoardV"></p>
-
-<h1 align="center">BoardV</h1>
+PROJECT_README = '''<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.png"><img src="docs/logo-light.png" width="560" alt="BoardV — .brd для старшеньких"></picture></p>
 
 <p align="center">Просмотр плат Altium на ПК и телефоне: открываете <code>.PcbDoc</code> — и сразу видите детали, цепи, номиналы и BOM.</p>
 

@@ -5,6 +5,7 @@ var I18N = (function () {
   'use strict';
   var EN = {
     // ---- toolbar, panels
+    'Нажатие на площадку: цепь ⟷ компонент': 'Tap on a pad: net ⟷ component', '3D-модели компонентов (STEP)': 'Component 3D models (STEP)',
     'Нижняя сторона (зеркально)': 'Bottom side (mirrored)', 'Верхняя сторона': 'Top side',
     '3D-вид платы': '3D board view', '2D-вид платы': '2D board view', '3D-просмотр платы': '3D board view', 'Шелкография в 3D': 'Silkscreen in 3D', 'Вид платы': 'Board view', '3D-вид': '3D view', '2D-вид': '2D view', 'Перспектива': 'Perspective', 'Закрыть 3D (Esc)': 'Close 3D (Esc)', 'Закрыть 3D': 'Close 3D', 'Загрузка 3D…': 'Loading 3D…', '3D-модели:': '3D models:', 'Не удалось открыть 3D': 'Could not open 3D',
     'Открыть файлы': 'Open files', 'Открыть файл': 'Open file', 'Открыть': 'Open', 'Сторона платы': 'Board side',

@@ -251,7 +251,7 @@ var BV3D = (function () {
     M.parts.forEach(function (p) {
       (p.bodies || []).forEach(function (b) {
         if (b.type !== 1) { if (b.poly && b.poly.length >= 3) placeBox(p, b, altiumColor(b.color)); return; }
-        if (!b.step) return; // no 3D data for this part in the file: bare pads only
+        if (!b.step || opt.models === false) return; // no 3D data for this part in the file (or models switched off): bare pads only
         var key = b.ck || b.id; // same model (by checksum) = read once
         (inst[key] = inst[key] || { list: [], b: b }).list.push({ p: p, m: bodyMatrix(b) });
       });
@@ -339,7 +339,7 @@ var BV3D = (function () {
       req();
     }
     view();
-    return { info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries }; }, highlight: highlight, setBg: function (c) { scene.background = new T.Color(c); req(); },
+    return { models: opt.models !== false, info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries }; }, highlight: highlight, setBg: function (c) { scene.background = new T.Color(c); req(); },
       view: view, render: req, canvas: el, root: root, setAngles: function (th, ph, r) { V.th = th; V.ph = ph; if (r) V.r = span * r; req(); },
       target: function (x, y, z, r) { V.tx = x; V.ty = y; V.tz = z || 0; if (r) V.r = r; req(); },
       close: function () {

@@ -973,11 +973,16 @@ jobs:
         run: |
           EXE=$(find src/win/bin -name BoardV.exe | head -1)
           mkdir -p dist && cp "$EXE" dist/BoardV-portable.exe && cp "$EXE" src/win/BoardV.exe
-          cd src/win && "/c/Program Files (x86)/NSIS/makensis.exe" -V2 -DVERSION=${{ needs.meta.outputs.ver }} -DOUTFILE=BoardV-Setup.exe -DEXE=BoardV.exe installer.nsi && mv BoardV-Setup.exe ../../dist/ && cd ../..
+          MN=$(command -v makensis || true); [ -z "$MN" ] && MN="/c/Program Files (x86)/NSIS/makensis.exe"
+          cd src/win
+          if ! "$MN" -V2 -DVERSION=${{ needs.meta.outputs.ver }} -DOUTFILE=BoardV-Setup.exe -DEXE=BoardV.exe installer.nsi > nsis.log 2>&1; then
+            tail -25 nsis.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1
+          fi
+          mv BoardV-Setup.exe ../../dist/ && cd ../..
           # latest.yml: the feed the earlier Electron build checks, so it updates itself to this one
           SHA=$(openssl dgst -sha512 -binary dist/BoardV-Setup.exe | openssl base64 -A); SIZE=$(stat -c %s dist/BoardV-Setup.exe)
           printf 'version: %s\nfiles:\n  - url: BoardV-Setup.exe\n    sha512: %s\n    size: %s\npath: BoardV-Setup.exe\nsha512: %s\nreleaseDate: %s\n' "${{ needs.meta.outputs.ver }}" "$SHA" "$SIZE" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" > dist/latest.yml
-          ls -la dist
+          echo "::notice::$(ls -la dist | tr '\n' ' ')"
       - uses: actions/upload-artifact@v4
         with:
           name: BoardV-windows

@@ -173,6 +173,13 @@ select.xsrc { display: none !important; }
 .srow .xsel { justify-self: end; }
 html.mobile .xsel { min-height: 38px; }
 .sidesel { display: none !important; }
+.sideseg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel2); flex: 0 0 auto; }
+.sideseg button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; padding: 0 10px; min-height: 34px; cursor: pointer; }
+.sideseg button + button { border-left: 1px solid var(--line); }
+.sideseg button svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.sideseg button[aria-pressed=true] { background: var(--accent); color: #1a1406; }
+html.mobile .sideseg button { padding: 0 7px; min-height: 0; height: 34px; }
+html.mobile .sideseg button span { display: none; } /* the phone shows the pictures only */
 .sidebtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; font-weight: 600; min-width: 92px; justify-content: space-between; }
 .sidebtn svg { width: 16px; height: 16px; opacity: .7; }
 html.mobile .sidebtn { display: inline-flex; align-items: center; gap: 4px; width: auto !important; min-width: 0 !important; padding: 0 8px 0 10px !important; font-weight: 600; }
@@ -478,7 +485,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     <button class="btn primary" id="open" type="button">Открыть файлы</button>
     <input type="file" id="file" multiple hidden>
     <button class="btn" id="bomToggle" type="button" aria-pressed="true" title="Показать или скрыть BOM справа">BOM</button>
-    <button class="btn sidebtn" id="sideBtn" type="button" aria-haspopup="menu" aria-label="Сторона платы"><span id="sideLbl">Верх</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+    <div class="sideseg" id="sideSeg" role="group" aria-label="Сторона платы"><button type="button" data-sd="top" aria-pressed="true" title="Верхняя сторона"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg><span>Верх</span></button><button type="button" data-sd="bottom" aria-pressed="false" title="Нижняя сторона (зеркально)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/></svg><span>Низ</span></button><button type="button" data-sd="both" aria-pressed="false" title="Обе стороны"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/></svg><span>Обе</span></button></div>
     <select class="sidesel" id="sideSel" aria-label="Сторона платы" title="Сторона платы">
       <option value="top">Верх</option><option value="bottom">Низ</option><option value="both">Обе</option>
     </select>
@@ -2413,7 +2420,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     var h = '';
     if (msg) h = '<span><b>' + esc(msg) + '</b></span>';
     else if (M) {
-      h += '<span>Сторона <b>' + ({ top: 'верх', bottom: 'низ (зеркально)', both: 'обе' })[V.side] + '</b></span><span>Поворот <b>' + V.rot * 90 + '°</b></span>';
+      h += '<span>Сторона <b>' + ({ top: 'верх', bottom: 'низ (зеркально)', both: 'обе' })[V.side] + '</b></span><span>Поворот <b>' + ((4 - V.rot) % 4) * 90 + '°</b></span>';
       if (S.part) h += '<span>Деталь <b>' + esc(S.part.ref) + '</b>' + (S.part.value ? ' · ' + esc(S.part.value) : '') + '</span>';
       if (S.net) h += '<span>Цепь <b style="color:var(--ui-sel)">' + esc(S.net) + '</b></span>';
       if (S.group && groupByKey(S.group)) { var g = groupByKey(S.group); h += '<span>Позиция <b style="color:var(--ui-grp)">' + esc(g.value || '—') + (g.footprint ? ' · ' + esc(g.footprint) : '') + ' × ' + g.parts.length + '</b></span>'; }
@@ -2490,22 +2497,14 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       // keep the point under the screen center in place when flipping
       var c = s2w(W / 2, H / 2); V.side = s; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1];
     } else V.side = s;
-    $('sideSel').value = s; $('sideLbl').textContent = ({ top: 'Верх', bottom: 'Низ', both: 'Обе' })[s];
+    $('sideSel').value = s; $('sideSeg').querySelectorAll('[data-sd]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sd === s)); });
     status(); req();
   }
   $('sideSel').onchange = function () { setSide(this.value); this.blur(); };
   // phone: our own small menu instead of the system list
-  $('sideBtn').onclick = function () {
-    if (!$('ctxMenu').hidden && $('ctxMenu').owner === this) { closeRowMenu(); return; } // second tap closes
-    var m = $('ctxMenu'), r = this.getBoundingClientRect(), ic = {
-      top: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg>',
-      bottom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>',
-      both: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>' };
-    m.innerHTML = [['top', 'Верх'], ['bottom', 'Низ (зеркально)'], ['both', 'Обе стороны']].map(function (o) { return '<button type="button" data-side="' + o[0] + '"' + (V.side === o[0] ? ' class="cur"' : '') + '>' + ic[o[0]] + ' ' + o[1] + '</button>'; }).join('');
-    ctxKey = null; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.owner = this; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
-  };
+  $('sideSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-sd]'); if (b) setSide(b.dataset.sd); }); // three buttons instead of a drop-down
   function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
-  function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 1) % 4; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
+  function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 3) % 4; var p = w2s(c[0], c[1]); /* clockwise, as the ⟳ on the button */ V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
   $('rot').onclick = rotate;
   $('fit').onclick = function () { fit(); req(); };
   function runAction(a) {

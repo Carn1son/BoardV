@@ -114,6 +114,28 @@ Function RemoveElectron
   done:
 FunctionEnd
 
+Function .onInit
+  ; an update over the earlier Electron build goes into the folder it was installed to
+  ReadRegStr $0 HKCU "${UNKEY}" "InstallLocation"
+  StrCmp $0 "" 0 found
+  StrCpy $1 0
+  scan:
+    EnumRegKey $2 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall" $1
+    StrCmp $2 "" found
+    ReadRegStr $3 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\$2" "DisplayName"
+    ReadRegStr $4 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\$2" "UninstallString"
+    IntOp $1 $1 + 1
+    StrCmp $3 "${APPNAME}" 0 scan
+    ClearErrors
+    ${WordFind} "$4" "\Uninstall BoardV.exe" "+1{" $5
+    IfErrors scan
+    StrCpy $5 $5 "" 1   ; drop the opening quote
+    IfFileExists "$5\*.*" 0 scan
+    StrCpy $INSTDIR $5
+    Return
+  found:
+FunctionEnd
+
 Section "BoardV"
   Call CloseRunning
   SetOutPath "$INSTDIR"

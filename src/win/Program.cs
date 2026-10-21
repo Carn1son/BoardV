@@ -162,6 +162,19 @@ namespace BoardV
 
     class MainForm : Form
     {
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+        protected override void OnHandleCreated(EventArgs e) // a dark title bar, as BoardV had before
+        {
+            base.OnHandleCreated(e);
+            try
+            {
+                int on = 1; if (DwmSetWindowAttribute(Handle, 20, ref on, 4) != 0) DwmSetWindowAttribute(Handle, 19, ref on, 4); // dark mode (Windows 10 20H1+ / older 10)
+                int cap = 0x001c1d1b, text = 0x00e6e9e8; // Windows 11: caption and text colours (0x00BBGGRR)
+                DwmSetWindowAttribute(Handle, 35, ref cap, 4); DwmSetWindowAttribute(Handle, 36, ref text, 4);
+            }
+            catch { }
+        }
         readonly WebView2 web = new WebView2();
         readonly List<string> pending;
         bool pageReady, quitting;
@@ -203,6 +216,13 @@ namespace BoardV
                 cw.Settings.IsPasswordAutosaveEnabled = false;
                 cw.Settings.IsGeneralAutofillEnabled = false;
                 cw.SetVirtualHostNameToFolderMapping("app.boardv", Path.Combine(Program.AppDir, "www"), CoreWebView2HostResourceAccessKind.Allow);
+                // settings of the earlier Electron build move over once (only into an empty profile)
+                if (Build.AppName == "BoardV")
+                {
+                    var old = Migrate.OldSettings();
+                    if (old.Count > 0)
+                        await cw.AddScriptToExecuteOnDocumentCreatedAsync("(function (o) { try { if (localStorage.getItem('bv-migrated')) return; for (var k in o) if (localStorage.getItem(k) === null) localStorage.setItem(k, o[k]); localStorage.setItem('bv-migrated', '1'); } catch (e) {} })(" + Json.Serialize(old) + ");");
+                }
                 string head = "window.BV_WIN = " + Json.Serialize(new Dictionary<string, object> { { "portable", Build.PortableName }, { "version", Build.Version } }) + ";\n";
                 using (var st = Assembly.GetExecutingAssembly().GetManifestResourceStream("shim.js"))
                 using (var r = new StreamReader(st, Encoding.UTF8)) await cw.AddScriptToExecuteOnDocumentCreatedAsync(head + r.ReadToEnd());

@@ -689,7 +689,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     outlineAlpha: 0.5, outlineW: 1, cornerR: 3, partFill: 0, labelScale: 1, showValues: true, showPinNums: true,
     haloStyle: 'solid', haloAlpha: 1, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
-    selGlow: 1, selBreath: false, selDash: false, selDashSpeed: 0.2, selDim: true,
+    selGlow: 1, selBreath: false, selDash: false, selDashSpeed: 0.2, selDim: true, selOthers: true, selOthersA: 0.3,
     autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true, step3d: true, pickPref: 3, eco: true, noFx: false };
   var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d', 'step3d', 'pickPref', 'eco', 'noFx']; // themes do not touch these
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
@@ -715,14 +715,14 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       ['color', 'refc', 'Обозначения компонентов'], ['color', 'valc', 'Номиналы'], ['range', 'labelScale', 'Размер подписей', 0.6, 1.8, 0.05],
       ['select', 'haloStyle', 'Обводка подписей', [['soft', 'Мягкая'], ['solid', 'Контур'], ['shadow', 'Тень'], ['none', 'Без обводки']]], ['range', 'haloAlpha', 'Плотность обводки подписей', 0, 1, 0.05], ['range', 'haloW', 'Толщина обводки подписей', 0.5, 2.5, 0.1],
       ['check', 'showValues', 'Показывать номиналы'], ['check', 'showPinNums', 'Номера пинов при приближении']]],
-    ['Отображение выбранных компонентов', [['check', 'selDim', 'Затемнять остальные компоненты'], ['color', 'selhere', 'На текущем слое'], ['color', 'selfar', 'На противоположном слое (пунктир)']]],
+    ['Отображение выбранных компонентов', [['check', 'selDim', 'Затемнять остальные компоненты'], ['check', 'selOthers', 'Обводить остальные компоненты'], ['range', 'selOthersA', 'Яркость обводки остальных', 0.05, 1, 0.05], ['color', 'selhere', 'На текущем слое'], ['color', 'selfar', 'На противоположном слое (пунктир)']]],
     ['Цвета контактов', [['color', 'pin', 'Сигнальные'], ['color', 'pwr', 'Питание'], ['color', 'gnd', 'Земля'], ['color', 'nc', 'Не подключённые (обводка)']]],
     ['Отображение цепей', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемненных областей'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1]]],
     ['Настройки управления', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
       ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['range', 'pickPref', 'Нажатие на площадку: цепь ⟷ компонент', 0, 3, 1], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'step3d', '3D-модели компонентов (STEP)'], ['check', 'eco', 'Экономия батареи (рекомендуется)'], ['check', 'noFx', 'Отключить все эффекты (свечение, анимации, градиент)']]]
   ];
   /* where a sub-group starts inside a settings group: a thin line before it, its first setting in bold when it has company */
-  var SUBHEAD = { noFx: 1, board: 1, edge: 1, farAlpha: 1, outline: 1, partfill: 1, refc: 1, haloStyle: 1, showValues: 1, selDim: 1, selhere: 1, sel: 1, netDim: 1, netGlow: 1, zoomSpeed: 1, autoFit: 1, pickPref: 1, enable3d: 1, eco: 1 };
+  var SUBHEAD = { selOthers: 1, noFx: 1, board: 1, edge: 1, farAlpha: 1, outline: 1, partfill: 1, refc: 1, haloStyle: 1, showValues: 1, selDim: 1, selhere: 1, sel: 1, netDim: 1, netGlow: 1, zoomSpeed: 1, autoFit: 1, pickPref: 1, enable3d: 1, eco: 1 };
   var NETS_SECTION = 'Отображение цепей', CTRL_SECTION = 'Настройки управления';
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
@@ -1072,8 +1072,10 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       if (FX.partFill > 0 && !off(p)) { ctx.globalAlpha = FX.partFill; ctx.fillStyle = V.side === 'both' && p.bottom ? C.botpart : C.partfill; framePath(p, 0, 0); ctx.fill(); ctx.globalAlpha = 1; }
       if (SEL && SEL[p.ref]) return; // drawn by the selection pass
       ctx.lineWidth = FX.outlineW;
-      ctx.strokeStyle = off(p) ? C.dim : (V.side === 'both' && p.bottom ? C.botpart : C.outline);
-      ctx.globalAlpha = off(p) ? (selDim && !dim ? 0.3 : 0.7) : hovP ? 1 : FX.outlineAlpha;
+      var quietSel = off(p) && selDim && !dim; /* a component is selected: the others get a faint outline of their own colour, or none */
+      if (quietSel && !FX.selOthers) return;
+      ctx.strokeStyle = quietSel ? (V.side === 'both' && p.bottom ? C.botpart : C.outline) : off(p) ? C.dim : (V.side === 'both' && p.bottom ? C.botpart : C.outline);
+      ctx.globalAlpha = quietSel ? FX.selOthersA : off(p) ? 0.7 : hovP ? 1 : FX.outlineAlpha;
       framePath(p, 0, 0); ctx.stroke();
       ctx.globalAlpha = 1;
     });

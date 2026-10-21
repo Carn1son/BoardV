@@ -154,6 +154,7 @@ var BV3D = (function () {
     var shape = new T.Shape(); M.outline.forEach(function (q, i) { i ? shape.lineTo(q[0] * MIL, q[1] * MIL) : shape.moveTo(q[0] * MIL, q[1] * MIL); });
     // drilled holes go right through the board: through-hole pads and mounting holes
     var drills = (M.holes || []).slice();
+    (M.cutouts || []).forEach(function (h) { drills.push([h[0], h[1], h[2] * 2, 'cut']); }); // board cut-outs: same see-through, bare FR4 wall
     M.parts.forEach(function (p) { p.pins.forEach(function (q) { if (q.hole > 0) drills.push([q.x, q.y, q.hole]); }); });
     drills = drills.filter(function (h) { return h[0] > bx0 && h[0] < bx1 && h[1] > by0 && h[1] < by1; });
     var slab;
@@ -196,10 +197,13 @@ var BV3D = (function () {
       var at = new T.CanvasTexture(ac); at.repeat.set(1 / mmW, 1 / mmH); at.offset.set(-bx0 * MIL / mmW, -by0 * MIL / mmH); // the board's face UVs are millimetres
       slab.material[0].alphaMap = at; slab.material[0].alphaTest = 0.5; slab.material[0].side = T.DoubleSide; slab.material[0].needsUpdate = true;
       var wall = new T.CylinderGeometry(1, 1, THICK, 20, 1, true); wall.rotateX(Math.PI / 2); wall.translate(0, 0, -THICK / 2);
-      var walls = new T.InstancedMesh(wall, new T.MeshStandardMaterial({ color: new T.Color().setHex(0xb8964e, T.SRGBColorSpace), roughness: 0.45, metalness: 0.4, side: T.DoubleSide }), drills.length);
-      var mx = new T.Matrix4();
-      drills.forEach(function (h, i) { var r = h[2] / 2 * MIL; mx.makeScale(r, r, 1); mx.setPosition(h[0] * MIL, h[1] * MIL, 0); walls.setMatrixAt(i, mx); });
-      walls.instanceMatrix.needsUpdate = true; walls.computeBoundingSphere(); walls.raycast = function () {}; root.add(walls);
+      [[drills.filter(function (h) { return !h[3]; }), 0xb8964e, 0.4], [drills.filter(function (h) { return h[3]; }), 0x6e8c3a, 0]].forEach(function (set) {
+        if (!set[0].length) return;
+        var walls = new T.InstancedMesh(wall, new T.MeshStandardMaterial({ color: new T.Color().setHex(set[1], T.SRGBColorSpace), roughness: 0.5, metalness: set[2], side: T.DoubleSide }), set[0].length);
+        var mx = new T.Matrix4();
+        set[0].forEach(function (h, i) { var r = h[2] / 2 * MIL; mx.makeScale(r, r, 1); mx.setPosition(h[0] * MIL, h[1] * MIL, 0); walls.setMatrixAt(i, mx); });
+        walls.instanceMatrix.needsUpdate = true; walls.computeBoundingSphere(); walls.raycast = function () {}; root.add(walls);
+      });
     }
 
     // components: every STEP model is read once and drawn with instancing (one draw call per model colour for all its copies)

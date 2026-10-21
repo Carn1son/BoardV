@@ -571,7 +571,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.22 · 21.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.23 · 21.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -817,7 +817,14 @@ var PCBDOC = (function () {
     try { bodies3d(get, parts); } catch (e) {}
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
-    return { parts: list, board: board, nPads: nPads, holes: holes,
+    var edgeArcs = [], edgeSegs = [];
+    try {
+      var eachRec = function (name, type, fn) { var d = get(name); if (!d) return; var dv = new DataView(d.buffer, d.byteOffset, d.byteLength), p = 0;
+        while (p + 5 <= d.length && d[p] === type) { var len = dv.getUint32(p + 1, true), s = p + 5; if (s + len > d.length) break; var l = d[s]; if (l >= 56 && l <= 72 && dv.getUint16(s + 7, true) === NONE16) fn(l, dv, s); p = s + len; } };
+      eachRec('Arcs6/Data', 1, function (l, dv, s) { edgeArcs.push([l, dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getFloat64(s + 25, true), dv.getFloat64(s + 33, true)]); });
+      eachRec('Tracks6/Data', 4, function (l, dv, s) { edgeSegs.push([l, dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getInt32(s + 25, true) * U]); });
+    } catch (e) {}
+    return { parts: list, board: board, nPads: nPads, holes: holes, edgeArcs: edgeArcs, edgeSegs: edgeSegs,
              info: comps.length + ' компонентов, ' + nPads + ' падов, ' + nets.length + ' цепей' + (withVal ? ', номиналы у ' + withVal : '') };
   }
   function mil(v) { var m = /^(-?[\d.eE+-]+)\s*(mil|mm)?$/.exec(String(v || '').trim()); if (!m) return 0; return +m[1] * (m[2] === 'mm' ? 1 / 0.0254 : 1); }
@@ -900,7 +907,7 @@ var BV = (function () {
     return o;
   }
   function parseAscii(text) {
-    var nets = [], comps = [], pads = [], texts = [], board = null;
+    var nets = [], comps = [], pads = [], texts = [], board = null, edgeArcs = [], edgeSegs = [];
     var lines = text.split(/\r?\n/);
     for (var i = 0; i < lines.length; i++) {
       var L = lines[i];
@@ -911,6 +918,10 @@ var BV = (function () {
       else if (t === 'pad') pads.push(r);
       else if (t === 'board' && !board && 'VX0' in r) board = r;
       else if (t === 'text' && /true/i.test(r.COMMENT || '') && r.COMPONENT != null) texts.push(r);
+      else if ((t === 'arc' || t === 'track') && /^(MECHANICAL\d+|KEEPOUT)$/i.test(r.LAYER || '') && r.COMPONENT == null) {
+        if (t === 'arc') edgeArcs.push([r.LAYER.toUpperCase(), toMil(r['LOCATION.X'], 'mil'), toMil(r['LOCATION.Y'], 'mil'), toMil(r.RADIUS, 'mil'), num(r.STARTANGLE), num(r.ENDANGLE)]);
+        else edgeSegs.push([r.LAYER.toUpperCase(), toMil(r.X1, 'mil'), toMil(r.Y1, 'mil'), toMil(r.X2, 'mil'), toMil(r.Y2, 'mil')]);
+      }
     }
     texts.forEach(function (tr) {
       var ci = parseInt(tr.COMPONENT, 10), v = (tr.TEXT || '').trim();
@@ -965,8 +976,39 @@ var BV = (function () {
         .forEach(function (p, i) { p.ref = i ? uniq((nm.replace(/\d.*$/, '') || nm) + '?') : uniq(nm); });
     });
     var outline = board ? asciiOutline(board) : null;
-    return { parts: order.map(function (k) { return parts[k]; }), outline: outline, holes: holes,
+    var plist = order.map(function (k) { return parts[k]; });
+    return { parts: plist, outline: outline, holes: holes, cutouts: findCutouts(outline, edgeArcs, edgeSegs, plist, holes),
              info: comps.length + ' компонентов, ' + pads.length + ' падов, ' + nets.length + ' цепей' };
+  }
+  /* holes cut out of the board that the board shape itself does not carry: whole circles drawn on the layer that holds
+     the board edge (the mechanical layer whose lines run along the outline), lying fully inside the board and not
+     centred on a component (lens / body circles on the same layer). arcs: [layer, cx, cy, r, sa, ea]; segs: [layer, x1, y1, x2, y2] */
+  function findCutouts(outline, arcs, segs, parts, holes) {
+    if (!outline || outline.length < 4 || !arcs.length) return [];
+    function dEdge(x, y) {
+      var m = Infinity;
+      for (var i = 0; i + 1 < outline.length; i++) {
+        var a = outline[i], b = outline[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy, t = l ? ((x - a[0]) * dx + (y - a[1]) * dy) / l : 0;
+        t = Math.max(0, Math.min(1, t)); m = Math.min(m, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy));
+      }
+      return m;
+    }
+    function inside(x, y) { var c = false; for (var i = 0, j = outline.length - 1; i < outline.length; j = i++) { var a = outline[i], b = outline[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+    var score = {};
+    arcs.forEach(function (a) { [a[4], a[5]].forEach(function (ang) { var t = ang * Math.PI / 180; if (dEdge(a[1] + a[3] * Math.cos(t), a[2] + a[3] * Math.sin(t)) < 3) score[a[0]] = (score[a[0]] || 0) + 1; }); });
+    segs.forEach(function (s) { if (dEdge(s[1], s[2]) < 3 && dEdge(s[3], s[4]) < 3) score[s[0]] = (score[s[0]] || 0) + 2; });
+    var layer = null, best = 3; Object.keys(score).forEach(function (l) { if (score[l] > best) { best = score[l]; layer = l; } });
+    if (layer == null) return [];
+    // circles around a component (lens, holder, body marks) are not holes: anything within 7.5 mm of a component's pins is left alone
+    var boxes = parts.map(function (p) { var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; p.pins.forEach(function (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }); return [x0 - 300, y0 - 300, x1 + 300, y1 + 300]; });
+    var drilled = (holes || []).concat([].concat.apply([], parts.map(function (p) { return p.pins.filter(function (q) { return q.hole > 0; }).map(function (q) { return [q.x, q.y, q.hole]; }); })));
+    return arcs.filter(function (a) {
+      var sw = ((a[5] - a[4]) % 360 + 360) % 360;
+      if (String(a[0]) !== String(layer) || !(sw < 0.01 || sw > 359.99) || a[3] < 39) return false; // whole circles of 1 mm and more
+      if (!inside(a[1], a[2]) || dEdge(a[1], a[2]) < a[3] + 2) return false;
+      if (drilled.some(function (h) { return Math.hypot(h[0] - a[1], h[1] - a[2]) < a[3]; })) return false; // just the drawing of a hole that is already drilled
+      return !boxes.some(function (b) { return a[1] >= b[0] && a[1] <= b[2] && a[2] >= b[1] && a[2] <= b[3]; });
+    }).map(function (a) { return [a[1], a[2], a[3]]; });
   }
   function asciiOutline(b) {
     var v = [];
@@ -1214,9 +1256,10 @@ var BV = (function () {
     });
     outline = outline.map(function (q) { return [q[0] + dx, q[1] + dy]; });
     var holes = (src.pins && src.pins.holes || []).map(function (h) { return [h[0] + dx, h[1] + dy, h[2]]; }); // 3D: drilled holes move too
+    var cutouts = (src.pins && src.pins.cutouts || []).map(function (h) { return [h[0] + dx, h[1] + dy, h[2]]; });
     var nets = {};
     parts.forEach(function (p) { p.pins.forEach(function (q) { nets[q.net] = 1; }); });
-    return { parts: parts, outline: outline, warnings: warnings, holes: holes, w: x1 - x0 + 20, h: y1 - y0 + 20,
+    return { parts: parts, outline: outline, warnings: warnings, holes: holes, cutouts: cutouts, w: x1 - x0 + 20, h: y1 - y0 + 20,
              nPins: parts.reduce(function (s, p) { return s + p.pins.length; }, 0),
              nNets: Object.keys(nets).filter(function (n) { return n !== 'UNCONNECTED'; }).length };
   }
@@ -1407,7 +1450,8 @@ var BV = (function () {
   function parsePcbDoc(u8) {
     var P = typeof PCBDOC !== 'undefined' ? PCBDOC : require('./pcbdoc.js');
     var r = P.parse(u8);
-    return { parts: r.parts, outline: r.board ? asciiOutline(r.board) : null, info: r.info, holes: r.holes };
+    var ol = r.board ? asciiOutline(r.board) : null;
+    return { parts: r.parts, outline: ol, info: r.info, holes: r.holes, cutouts: findCutouts(ol, r.edgeArcs || [], r.edgeSegs || [], r.parts, r.holes) };
   }
 
   /* ---------- writers ---------- */
@@ -2557,7 +2601,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var model = null, used = [], pinNames = true;
     try {
       if (by.json) { model = BV.readJson(by.json[0].text); used.push(by.json[0].name); }
-      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); model.holes = pb.holes; used.push(by.pcbdoc[0].name); }
+      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); model.holes = pb.holes; model.cutouts = pb.cutouts; used.push(by.pcbdoc[0].name); }
       else if (by.bvr) { model = BV.readBvr(by.bvr[0].text); used.push(by.bvr[0].name); }
       else if (FMT.TYPES.some(function (t) { return by[t]; })) { var ft = FMT.TYPES.filter(function (t) { return by[t]; })[0]; model = FMT.read(ft, by[ft][0]); used.push(by[ft][0].name); pinNames = !/^(brd2|cst)$/.test(ft); }
       else if (by.ascpins) { model = FMT.readAsc(items); used = items.filter(function (i) { return /^asc/.test(i.type); }).map(function (i) { return i.name; }); }
@@ -2566,7 +2610,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
         var p = by.ascii ? by.ascii[0] : by.ipc356[0];
         var s = { pins: by.ascii ? BV.parseAscii(p.text) : BV.parseIpc356(p.text) };
         if (by.gerber) try { s.outline = BV.parseGerber(by.gerber[0].text); used.push(by.gerber[0].name); } catch (e) {}
-        var b = BV.build(s); model = BV.finalize(b.parts, b.outline); model.holes = b.holes; used.unshift(p.name);
+        var b = BV.build(s); model = BV.finalize(b.parts, b.outline); model.holes = b.holes; model.cutouts = b.cutouts; used.unshift(p.name);
       }
     } catch (e) { showError('Не удалось открыть файл', e.message); return; }
     if (!model && !meta.length && by.locked) { showError(by.locked[0].error, by.locked[0].detail); return; }
@@ -2654,7 +2698,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     for (var j = 1; j <= 4; j++) { var a = k[j % 4], b = k[(j + 1) % 4]; ctx.arcTo(a[0], a[1], b[0], b[1], r); }
     ctx.closePath();
   }
-  function inFrame(p, mx, my) { var f = partFrame(p), w = s2w(mx, my), m = Math.max(2 / V.k, 6), u = w[0] * f.c + w[1] * f.n, v = -w[0] * f.n + w[1] * f.c; return u >= f.u0 - m && u <= f.u1 + m && v >= f.v0 - m && v <= f.v1 + m; }
+  function inFrame(p, mx, my, slackPx) { var f = partFrame(p), w = s2w(mx, my), m = Math.max(2 / V.k, 6) + (slackPx || 0) / V.k, u = w[0] * f.c + w[1] * f.n, v = -w[0] * f.n + w[1] * f.c; return u >= f.u0 - m && u <= f.u1 + m && v >= f.v0 - m && v <= f.v1 + m; }
   function padExt(q) { // half extents of the pad along the board axes (world units)
     if (q._e) return q._e;
     if (!q.sh) return (q._e = [q.r, q.r]);
@@ -2738,9 +2782,10 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     ctx.beginPath();
     M.outline.forEach(function (q, i) { var s = w2s(q[0], q[1]); bx0 = Math.min(bx0, s[0]); bx1 = Math.max(bx1, s[0]); by0 = Math.min(by0, s[1]); by1 = Math.max(by1, s[1]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); });
     ctx.closePath();
+    (M.cutouts || []).forEach(function (h) { var s = w2s(h[0], h[1]); ctx.moveTo(s[0] + h[2] * V.k, s[1]); ctx.arc(s[0], s[1], h[2] * V.k, 0, Math.PI * 2, true); ctx.closePath(); }); // holes cut out of the board
     ctx.save(); if (FX.boardGlow > 0) { ctx.shadowColor = C.edge; ctx.shadowBlur = FX.boardGlow; }
     if (FX.boardGrad) { var gr = ctx.createLinearGradient(bx0, by0, bx1, by1); gr.addColorStop(0, C.board); gr.addColorStop(1, C.board2); ctx.fillStyle = gr; } else ctx.fillStyle = C.board;
-    ctx.fill(); ctx.restore();
+    ctx.fill('evenodd'); ctx.restore();
     ctx.lineWidth = FX.edgeW; ctx.strokeStyle = C.edge; ctx.stroke();
     var mono = C['f-mono'];
     var far = [], near = [];
@@ -2827,6 +2872,10 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       [[far, 0.6], [near, 1]].forEach(function (pass) {
         pass[0].forEach(function (p) { p.pins.forEach(function (q) { if (q.net === S.net) netPin(q, pass[1]); }); });
       });
+    }
+    if (S.net && S.part && (visible(S.part) || V.side === 'both')) { /* the component the tapped pin belongs to */
+      ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = C.selhere; if (FX.selGlow > 0) { ctx.shadowColor = C.selhere; ctx.shadowBlur = Math.min(10, FX.selGlow); }
+      framePath(S.part, 3, 2); ctx.stroke(); ctx.restore();
     }
     function netPin(q, a) {
       var rr = Math.max(1.6, q.r * V.k);
@@ -2942,17 +2991,21 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   function trim(s, n) { s = String(s); n = Math.max(2, Math.floor(n)); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 
   /* ---------- hit test ---------- */
+  /* a tap picks the component first; a single pin only once it is zoomed in big enough to aim at */
   function hit(mx, my) {
-    var best = null, bd = 6, w = s2w(mx, my);
+    var best = null, minPx = IS_PHONE ? 16 : 10, bd = IS_PHONE ? 4 : 3, w = s2w(mx, my);
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
-      p.pins.forEach(function (q) { var d = padDist(q, w[0], w[1]) * V.k; if (d < bd) { bd = d; best = { part: p, pin: q }; } });
+      p.pins.forEach(function (q) {
+        if ((q.sh ? Math.min(q.w, q.h) : 2 * q.r) * V.k < minPx) return; /* too small on screen: the tap is meant for the component */
+        var d = padDist(q, w[0], w[1]) * V.k; if (d < bd) { bd = d; best = { part: p, pin: q }; }
+      });
     });
     if (best) return best;
-    var area = Infinity, bp = null;
+    var area = Infinity, bp = null, slack = IS_PHONE ? 10 : 4;
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
-      if (inFrame(p, mx, my)) { var f = partFrame(p), a = (f.u1 - f.u0) * (f.v1 - f.v0); if (a < area) { area = a; bp = p; } }
+      if (inFrame(p, mx, my, slack)) { var f = partFrame(p), a = (f.u1 - f.u0) * (f.v1 - f.v0); if (a < area) { area = a; bp = p; } }
     });
     return bp ? { part: bp } : null;
   }

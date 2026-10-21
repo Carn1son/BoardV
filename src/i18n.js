@@ -63,7 +63,7 @@ var I18N = (function () {
     'Вид подложки': 'Board look', 'Отображение компонентов': 'Parts display', 'Обводка компонентов на нижней стороне': 'Bottom-side part outline', 'Толщина обводки': 'Outline width',
     'Заливка корпуса компонента': 'Part body fill', 'Обозначения компонентов': 'Designators', 'Отображение выбранных компонентов': 'Selected parts display',
     'Цвета контактов': 'Pad colours', 'Отображение цепей': 'Nets display', 'Цвет затемненных областей': 'Dimmed areas colour', 'Настройки управления': 'Controls',
-    'Экономия батареи (рекомендуется)': 'Battery saver (recommended)',
+    'Экономия батареи (рекомендуется)': 'Battery saver (recommended)', 'Отключить все эффекты (свечение, анимации, градиент)': 'Turn off all effects (glow, animation, gradient)',
     'Горячие клавиши': 'Hotkeys', 'Клавиши работают в любой раскладке. Нажмите «+», затем нужную клавишу (можно с Ctrl, Alt, Shift). Esc — отмена.': 'Keys work in any keyboard layout. Press «+», then the key (Ctrl, Alt, Shift allowed). Esc cancels.',
     'Нажмите клавишу…': 'Press a key…', 'Клавиши по умолчанию': 'Default keys', 'Убрать': 'Remove', 'снято с': 'removed from',
     'Перевернуть плату (верх ↔ низ)': 'Flip board (top ↔ bottom)', 'Сторона: верх': 'Side: top', 'Сторона: низ': 'Side: bottom', 'Сторона: обе': 'Side: both',

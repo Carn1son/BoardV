@@ -964,8 +964,10 @@ jobs:
       - name: Build the exe
         shell: bash
         run: |
-          IFS=. read -r MA MI < src/VERSION
-          dotnet build src/win/BoardV.csproj -c Release -nologo -p:BvFileVersion=$MA.$((10#$MI)).0
+          IFS=. read -r MA MI < src/VERSION; MI=$(echo "$MI" | tr -dc 0-9)
+          if ! dotnet build src/win/BoardV.csproj -c Release -nologo -p:BvFileVersion=$MA.$((10#$MI)).0 > build.log 2>&1; then
+            grep -iE "error|warn" build.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; tail -5 build.log; exit 1
+          fi
       - name: Installer, portable copy, update feed
         shell: bash
         run: |

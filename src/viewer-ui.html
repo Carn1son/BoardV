@@ -682,9 +682,9 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     outlineAlpha: 0.5, outlineW: 1, cornerR: 3, partFill: 0, labelScale: 1, showValues: true, showPinNums: true,
     haloStyle: 'solid', haloAlpha: 1, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
-    selGlow: 1, selBreath: false, selDash: true, selDashSpeed: 0.2, selDim: true,
-    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true, step3d: true, pickPref: 3 };
-  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d', 'step3d', 'pickPref']; // themes do not touch these
+    selGlow: 1, selBreath: false, selDash: false, selDashSpeed: 0.2, selDim: true,
+    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true, step3d: true, pickPref: 3, eco: true };
+  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d', 'step3d', 'pickPref', 'eco']; // themes do not touch these
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
   var PRESETS = {
     'По умолчанию': { colors: {}, fx: {} },
@@ -715,7 +715,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
       ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
     ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
-      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['range', 'pickPref', 'Нажатие на площадку: цепь ⟷ компонент', 0, 3, 1], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'step3d', '3D-модели компонентов (STEP)']]]
+      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['range', 'pickPref', 'Нажатие на площадку: цепь ⟷ компонент', 0, 3, 1], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'step3d', '3D-модели компонентов (STEP)'], ['check', 'eco', 'Экономия батареи (рекомендуется)']]]
   ];
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
@@ -989,11 +989,40 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   /* ---------- drawing ---------- */
   var cv = $('cv'), ctx = cv.getContext('2d'), raf = 0;
   function req() { if (!raf) raf = requestAnimationFrame(function () { raf = 0; draw(); }); }
+  /* battery saver: animations run at ~20 frames a second and stop 4 s after the last touch (the picture stays) */
+  var animT = 0, lastInput = 0, ECO_IDLE = 4000;
+  function animNext() {
+    if (!FX.eco) { req(); return; }
+    if (performance.now() - lastInput > ECO_IDLE || animT) return;
+    animT = setTimeout(function () { animT = 0; req(); }, 50);
+  }
+  ['pointerdown', 'wheel', 'keydown'].forEach(function (ev) {
+    document.addEventListener(ev, function () { var t = performance.now(), idle = t - lastInput > ECO_IDLE; lastInput = t; if (idle && FX.eco) req(); }, true);
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } clearTimeout(animT); animT = 0; } else req(); });
+  function wantDpr() { var d = window.devicePixelRatio || 1; return FX.eco && IS_PHONE ? Math.min(d, 2) : d; }
+  /* battery saver: parts entirely off screen are skipped; their world box is worked out once */
+  var WB = new WeakMap();
+  function onScreen(p) {
+    var b = WB.get(p);
+    if (!b) {
+      b = [Infinity, Infinity, -Infinity, -Infinity];
+      p.pins.forEach(function (q) { var e = padExt(q), m = Math.max(e[0], e[1]); b[0] = Math.min(b[0], q.x - m); b[1] = Math.min(b[1], q.y - m); b[2] = Math.max(b[2], q.x + m); b[3] = Math.max(b[3], q.y + m); });
+      if (!isFinite(b[0])) b = [p.x || 0, p.y || 0, p.x || 0, p.y || 0];
+      var g = Math.max(b[2] - b[0], b[3] - b[1]) * 0.5 + 40; b = [b[0] - g, b[1] - g, b[2] + g, b[3] + g]; /* room for the outline, frame and labels */
+      WB.set(p, b);
+    }
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]].forEach(function (c) { var s = w2s(c[0], c[1]); x0 = Math.min(x0, s[0]); x1 = Math.max(x1, s[0]); y0 = Math.min(y0, s[1]); y1 = Math.max(y1, s[1]); });
+    return x1 >= -20 && y1 >= -20 && x0 <= W + 20 && y0 <= H + 20;
+  }
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function draw() {
     var animOn = !reduceMotion && ((S.net && (FX.netPulse || FX.netRipple)) || ((S.group || S.part) && !S.net && (FX.selBreath || FX.selDash)));
     if (!$('v3d').hidden) return; // the 3D view covers the board: no 2D frames meanwhile
-    if (animOn) req(); // next frame for glow, marching dashes, net pulse
+    if (animOn) animNext(); // next frame for glow, marching dashes, net pulse
+    if (wantDpr() !== dpr) resize(); /* battery saver switched: canvas resolution follows */
+    var NB = FX.eco && IS_PHONE; /* no blurred glow on a phone in battery saver: blur is the costliest thing a canvas draws */
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = C.canvas; ctx.fillRect(0, 0, W, H);
     if (!M) return;
@@ -1003,13 +1032,13 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     M.outline.forEach(function (q, i) { var s = w2s(q[0], q[1]); bx0 = Math.min(bx0, s[0]); bx1 = Math.max(bx1, s[0]); by0 = Math.min(by0, s[1]); by1 = Math.max(by1, s[1]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); });
     ctx.closePath();
     (M.cutouts || []).forEach(function (h) { var s = w2s(h[0], h[1]); ctx.moveTo(s[0] + h[2] * V.k, s[1]); ctx.arc(s[0], s[1], h[2] * V.k, 0, Math.PI * 2, true); ctx.closePath(); }); // holes cut out of the board
-    ctx.save(); if (FX.boardGlow > 0) { ctx.shadowColor = C.edge; ctx.shadowBlur = FX.boardGlow; }
+    ctx.save(); if (FX.boardGlow > 0 && !NB) { ctx.shadowColor = C.edge; ctx.shadowBlur = FX.boardGlow; }
     if (FX.boardGrad) { var gr = ctx.createLinearGradient(bx0, by0, bx1, by1); gr.addColorStop(0, C.board); gr.addColorStop(1, C.board2); ctx.fillStyle = gr; } else ctx.fillStyle = C.board;
     ctx.fill('evenodd'); ctx.restore();
     ctx.lineWidth = FX.edgeW; ctx.strokeStyle = C.edge; ctx.stroke();
     var mono = C['f-mono'];
     var far = [], near = [];
-    M.parts.forEach(function (p) { (visible(p) ? near : far).push(p); });
+    M.parts.forEach(function (p) { if (FX.eco && !onScreen(p)) return; (visible(p) ? near : far).push(p); });
     var dim = !!S.net && FX.netDim; // a selected net can grey out the rest of the board
     // one selection model: a clicked component and a BOM position are the same kind of highlight
     var SEL = null;
@@ -1024,7 +1053,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     far.forEach(function (p) { p.pins.forEach(function (q) { dot(q, dim || selDim ? C.dim : C.edge, 0, 0, q.net === 'UNCONNECTED'); }); });
     ctx.globalAlpha = 1;
     var now = reduceMotion ? 0 : performance.now();
-    var glow = FX.selBreath && !reduceMotion ? FX.selGlow * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 380))) : FX.selGlow;
+    var glow = NB ? 0 : FX.selBreath && !reduceMotion ? FX.selGlow * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 380))) : FX.selGlow;
     var dashOff = FX.selDash && !reduceMotion ? (now / 45 * FX.selDashSpeed) % 22 : 0;
     near.forEach(function (p) {
       var r = partRect(p), hovP = hover && hover.part === p && !hover.pin;
@@ -1094,13 +1123,13 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       });
     }
     if (S.net && S.part && (visible(S.part) || V.side === 'both')) { /* the component the tapped pin belongs to */
-      ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = C.selhere; if (FX.selGlow > 0) { ctx.shadowColor = C.selhere; ctx.shadowBlur = Math.min(10, FX.selGlow); }
+      ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = C.selhere; if (FX.selGlow > 0 && !NB) { ctx.shadowColor = C.selhere; ctx.shadowBlur = Math.min(10, FX.selGlow); }
       framePath(S.part, 3, 2); ctx.stroke(); ctx.restore();
     }
     function netPin(q, a) {
       var rr = Math.max(1.6, q.r * V.k);
       ctx.save(); ctx.globalAlpha = a;
-      if (FX.netGlow > 0) { ctx.shadowColor = C.sel; ctx.shadowBlur = FX.netGlow * (FX.netPulse ? 0.4 + 0.6 * pulse : 1); }
+      if (FX.netGlow > 0 && !NB) { ctx.shadowColor = C.sel; ctx.shadowBlur = FX.netGlow * (FX.netPulse ? 0.4 + 0.6 * pulse : 1); }
       padPath(q, 0); ctx.fillStyle = C.sel; ctx.fill();
       ctx.shadowBlur = 0;
       if (FX.netPulse) { ctx.lineWidth = 2; ctx.strokeStyle = C.sel; padPath(q, 2.5 + 1.5 * pulse); ctx.stroke(); }
@@ -1152,6 +1181,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     });
     function haloText(t, y, col, size) { // outline in the colour opposite to the text, so it reads on any board and background
       var st = FX.haloStyle || 'shadow', a = FX.haloAlpha == null ? 0.5 : FX.haloAlpha, w = FX.haloW || 1;
+      if (NB && st !== 'none') st = 'solid'; /* a crisp outline instead of a blurred one */
       ctx.save(); ctx.fillStyle = col;
       if (st === 'none' || a <= 0) { ctx.fillText(t, 0, y); ctx.restore(); return; }
       var hc = isLight(col) ? '0,0,0' : '255,255,255';
@@ -1171,7 +1201,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       var rr = Math.max(1.3, q.r * V.k);
       padPath(q, 0);
       if (hollow) { ctx.lineWidth = Math.max(1, Math.min(2, rr * 0.25)); ctx.strokeStyle = col; ctx.stroke(); } // unconnected: outline only
-      else if (glowPx > 0) { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = glowPx; ctx.fillStyle = col; ctx.fill(); ctx.restore(); }
+      else if (glowPx > 0 && !NB) { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = glowPx; ctx.fillStyle = col; ctx.fill(); ctx.restore(); }
       else { ctx.fillStyle = col; ctx.fill(); }
       if (ring) { ctx.lineWidth = 1.5; ctx.strokeStyle = C.refc; padPath(q, 2.5); ctx.stroke(); }
     }
@@ -2445,7 +2475,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
 
   /* ---------- interaction ---------- */
   function resize() {
-    var r = $('stage').getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
+    var r = $('stage').getBoundingClientRect(); dpr = wantDpr();
     var first = !W, w0 = W, h0 = H; W = Math.max(1, r.width); H = Math.max(1, r.height);
     if (!first && (W !== w0 || H !== h0)) { if (M && FX.autoFit) fit(); else { V.cx += (W - w0) / 2; V.cy += (H - h0) / 2; } }
     var pw = Math.round(W * dpr), ph = Math.round(H * dpr);

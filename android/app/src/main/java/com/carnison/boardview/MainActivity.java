@@ -56,6 +56,11 @@ public class MainActivity extends Activity {
     }
     @Override
     protected void onDestroy() { sayBye(); super.onDestroy(); }
+    /** In the background the page draws nothing (timers keep running, so a link to the PC stays alive). */
+    @Override
+    protected void onPause() { super.onPause(); if (web != null) web.onPause(); }
+    @Override
+    protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
     /** Back (button or swipe) first closes what is open inside BoardV - scanner, settings, panels; only then leaves the app. */
     @Override
     public void onBackPressed() {

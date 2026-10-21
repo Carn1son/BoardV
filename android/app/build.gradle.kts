@@ -10,7 +10,7 @@ android {
         applicationId = "com.carnison.boardview"
         minSdk = 24
         targetSdk = 34
-        versionCode = (System.getenv("BV_VCODE") ?: "2100020026").toInt()
+        versionCode = (System.getenv("BV_VCODE") ?: "2100020027").toInt()
         versionName = System.getenv("BV_VER") ?: "21.10.2026"
     }
 

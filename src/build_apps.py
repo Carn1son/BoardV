@@ -950,41 +950,36 @@ jobs:
             BoardV-rustore.apk
 
   windows:
-    name: Windows EXE
+    name: Windows EXE (WebView2)
     needs: meta
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Copy the web app
+      - name: Web app inside the exe
         shell: bash
         run: |
           echo "window.BV_BUILD = { version: '${{ needs.meta.outputs.ver }}', label: '${{ needs.meta.outputs.label }}', day: '${{ needs.meta.outputs.day }}', app: 'windows' };" > www/build-info.js
-          rm -rf electron/www
-          cp -r www electron/www
-          mkdir -p electron/build
-          cp www/icon-512.png electron/build/icon.png
-      - name: Install
-        working-directory: electron
+          printf 'version=%s\napp=BoardV\nsetup=BoardV-Setup.exe\nportable=BoardV-portable.exe\n' "${{ needs.meta.outputs.ver }}" > src/win/build.txt
+          cd www && 7z a -tzip -mx=9 ../src/win/www.zip . > /dev/null
+      - name: Build the exe
         shell: bash
         run: |
-          npm install --save-dev electron@31.7.7 electron-builder@25.1.8
-          npm install --save electron-updater@^6.3.9
-          npm pkg set version=${{ needs.meta.outputs.ver }}
-      - name: Build
-        working-directory: electron
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npx electron-builder --win nsis portable --publish never
+          IFS=. read -r MA MI < src/VERSION
+          dotnet build src/win/BoardV.csproj -c Release -nologo -p:BvFileVersion=$MA.$((10#$MI)).0
+      - name: Installer, portable copy, update feed
+        shell: bash
+        run: |
+          EXE=$(find src/win/bin -name BoardV.exe | head -1)
+          mkdir -p dist && cp "$EXE" dist/BoardV-portable.exe && cp "$EXE" src/win/BoardV.exe
+          cd src/win && "/c/Program Files (x86)/NSIS/makensis.exe" -V2 -DVERSION=${{ needs.meta.outputs.ver }} -DOUTFILE=BoardV-Setup.exe -DEXE=BoardV.exe installer.nsi && mv BoardV-Setup.exe ../../dist/ && cd ../..
+          # latest.yml: the feed the earlier Electron build checks, so it updates itself to this one
+          SHA=$(openssl dgst -sha512 -binary dist/BoardV-Setup.exe | openssl base64 -A); SIZE=$(stat -c %s dist/BoardV-Setup.exe)
+          printf 'version: %s\nfiles:\n  - url: BoardV-Setup.exe\n    sha512: %s\n    size: %s\npath: BoardV-Setup.exe\nsha512: %s\nreleaseDate: %s\n' "${{ needs.meta.outputs.ver }}" "$SHA" "$SIZE" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" > dist/latest.yml
+          ls -la dist
       - uses: actions/upload-artifact@v4
         with:
           name: BoardV-windows
-          path: |
-            electron/dist/*.exe
-            electron/dist/*.blockmap
-            electron/dist/latest.yml
+          path: dist/*
 
   release:
     name: Release (download links, updates)
@@ -1091,7 +1086,7 @@ PROJECT_README = '''<p align="center"><picture><source media="(prefers-color-sch
 src/        исходники вьювера (viewer-ui.html, core.js, pcbdoc.js) и сборка build_apps.py
 www/        готовое веб-приложение, которое показывают обе обёртки
 android/    обёртка WebView (Java): выбор файлов, сохранение настроек, установка обновлений
-electron/   обёртка для Windows: открытие плат двойным кликом, обновления
+src/win/    обёртка для Windows (C# + WebView2): открытие плат двойным кликом, телефон-сканер, обновления
 ```
 '''
 

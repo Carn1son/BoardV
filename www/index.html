@@ -571,7 +571,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.25 · 21.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.26 · 21.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -1974,6 +1974,7 @@ var I18N = (function () {
   'use strict';
   var EN = {
     // ---- toolbar, panels
+    'Нажатие на площадку: цепь ⟷ компонент': 'Tap on a pad: net ⟷ component', '3D-модели компонентов (STEP)': 'Component 3D models (STEP)',
     'Нижняя сторона (зеркально)': 'Bottom side (mirrored)', 'Верхняя сторона': 'Top side',
     '3D-вид платы': '3D board view', '2D-вид платы': '2D board view', '3D-просмотр платы': '3D board view', 'Шелкография в 3D': 'Silkscreen in 3D', 'Вид платы': 'Board view', '3D-вид': '3D view', '2D-вид': '2D view', 'Перспектива': 'Perspective', 'Закрыть 3D (Esc)': 'Close 3D (Esc)', 'Закрыть 3D': 'Close 3D', 'Загрузка 3D…': 'Loading 3D…', '3D-модели:': '3D models:', 'Не удалось открыть 3D': 'Could not open 3D',
     'Открыть файлы': 'Open files', 'Открыть файл': 'Open file', 'Открыть': 'Open', 'Сторона платы': 'Board side',
@@ -2464,11 +2465,11 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   var DEF_FX = { boardGlow: 0, boardGrad: false, edgeW: 1.2, farAlpha: 0.13,
     pinGlow: 0, pwrGlow: 0, gndGlow: 0,
     outlineAlpha: 0.5, outlineW: 1, cornerR: 3, partFill: 0, labelScale: 1, showValues: true, showPinNums: true,
-    haloStyle: 'shadow', haloAlpha: 0.5, haloW: 1,
+    haloStyle: 'solid', haloAlpha: 1, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
     selGlow: 1, selBreath: false, selDash: true, selDashSpeed: 0.2, selDim: true,
-    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true };
-  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d']; // themes do not touch these
+    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true, step3d: true, pickPref: 3 };
+  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d', 'step3d', 'pickPref']; // themes do not touch these
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
   var PRESETS = {
     'По умолчанию': { colors: {}, fx: {} },
@@ -2499,7 +2500,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
       ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
     ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
-      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['check', 'enable3d', '3D-просмотр платы']]]
+      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['range', 'pickPref', 'Нажатие на площадку: цепь ⟷ компонент', 0, 3, 1], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'step3d', '3D-модели компонентов (STEP)']]]
   ];
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
@@ -2547,7 +2548,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     Object.keys(CFG.colors).forEach(function (k) { root.setProperty('--' + k, CFG.colors[k]); });
     root.setProperty('--canvas', CFG.colors[bgKey()]);
     FX = CFG.fx; ruleCache = null; readColors(); if (typeof req === 'function') req();
-    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) V3.setBg(C.canvas); } } // the 3D view follows the theme at once // 3D can be switched off completely
+    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) { if (V3.models !== (FX.step3d !== false)) { V3.close(); V3 = null; open3d(); } else V3.setBg(C.canvas); } } } // the 3D view follows the theme at once // 3D can be switched off completely
     if (save) { CFG.savedAt = new Date().toISOString(); try { localStorage.setItem('bvr-config', JSON.stringify(CFG)); } catch (e) {} }
   }
   function themeFx(themefx, cur) { // a theme sets the look; control options are kept
@@ -2873,7 +2874,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     if (S.net) { // selected net on top; far-side pins a bit fainter
       var pulse = FX.netPulse && !reduceMotion ? 0.5 + 0.5 * Math.sin(now / 260 * FX.netSpeed) : 0;
       var phase = FX.netRipple && !reduceMotion ? (now / 1100 * FX.netSpeed) % 1 : -1;
-      [[far, 0.6], [near, 1]].forEach(function (pass) {
+      [[far, Math.min(1, 0.2 + (FX.farAlpha || 0) * 2.5)], [near, 1]].forEach(function (pass) { // the far side of a lit net follows "far side visibility"
         pass[0].forEach(function (p) { p.pins.forEach(function (q) { if (q.net === S.net) netPin(q, pass[1]); }); });
       });
     }
@@ -2998,7 +2999,8 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
   /* ---------- hit test ---------- */
   /* a tap picks the component first; a single pin only once it is zoomed in big enough to aim at */
   function hit(mx, my) {
-    var best = null, minPx = IS_PHONE ? 16 : 10, bd = IS_PHONE ? 4 : 3, w = s2w(mx, my);
+    var pref = Math.max(0, Math.min(3, Math.round(FX.pickPref == null ? 3 : FX.pickPref))); // 0 = the net at any zoom ... 3 = the component almost always
+    var best = null, minPx = (IS_PHONE ? [0, 10, 22, 56] : [0, 6, 14, 40])[pref], bd = (IS_PHONE ? [6, 5, 4, 3] : [5, 4, 3, 2])[pref], w = s2w(mx, my);
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
       p.pins.forEach(function (q) {
@@ -4395,7 +4397,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     load3d().then(function () {
       if (box.hidden || V3) return;
       try {
-        V3 = BV3D.open(box, M, { bg: C.canvas, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
+        V3 = BV3D.open(box, M, { bg: C.canvas, models: FX.step3d !== false, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
           lost: function () { if (V3) { V3.close(); V3 = null; open3d(); } }, progress: function (d, n) { $('v3dSt').textContent = n && d < n ? '3D-модели:' + ' ' + d + ' / ' + n : ''; } });
         box.insertBefore(V3.canvas, box.firstChild);
         if (S.part) { V3.highlight(S.part); v3dPickInfo(S.part); }

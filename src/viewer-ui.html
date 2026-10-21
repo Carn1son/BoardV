@@ -680,11 +680,11 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   var DEF_FX = { boardGlow: 0, boardGrad: false, edgeW: 1.2, farAlpha: 0.13,
     pinGlow: 0, pwrGlow: 0, gndGlow: 0,
     outlineAlpha: 0.5, outlineW: 1, cornerR: 3, partFill: 0, labelScale: 1, showValues: true, showPinNums: true,
-    haloStyle: 'shadow', haloAlpha: 0.5, haloW: 1,
+    haloStyle: 'solid', haloAlpha: 1, haloW: 1,
     netDim: true, netPulse: false, netSpeed: 1, netGlow: 0, netRipple: false,
     selGlow: 1, selBreath: false, selDash: true, selDashSpeed: 0.2, selDim: true,
-    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true };
-  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d']; // themes do not touch these
+    autoFit: false, wheelInvert: false, zoomSpeed: 1, enable3d: true, step3d: true, pickPref: 3 };
+  var CONTROL_FX = ['autoFit', 'wheelInvert', 'zoomSpeed', 'enable3d', 'step3d', 'pickPref']; // themes do not touch these
   function G_(c) { return Object.assign({}, GRAND, c || {}); }
   var PRESETS = {
     'По умолчанию': { colors: {}, fx: {} },
@@ -715,7 +715,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
       ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
     ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
-      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['check', 'enable3d', '3D-просмотр платы']]]
+      ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['range', 'pickPref', 'Нажатие на площадку: цепь ⟷ компонент', 0, 3, 1], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'step3d', '3D-модели компонентов (STEP)']]]
   ];
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
@@ -763,7 +763,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     Object.keys(CFG.colors).forEach(function (k) { root.setProperty('--' + k, CFG.colors[k]); });
     root.setProperty('--canvas', CFG.colors[bgKey()]);
     FX = CFG.fx; ruleCache = null; readColors(); if (typeof req === 'function') req();
-    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) V3.setBg(C.canvas); } } // the 3D view follows the theme at once // 3D can be switched off completely
+    if (typeof vswSync === 'function') { if (!FX.enable3d) close3d(); else { vswSync(); if (V3) { if (V3.models !== (FX.step3d !== false)) { V3.close(); V3 = null; open3d(); } else V3.setBg(C.canvas); } } } // the 3D view follows the theme at once // 3D can be switched off completely
     if (save) { CFG.savedAt = new Date().toISOString(); try { localStorage.setItem('bvr-config', JSON.stringify(CFG)); } catch (e) {} }
   }
   function themeFx(themefx, cur) { // a theme sets the look; control options are kept
@@ -1089,7 +1089,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     if (S.net) { // selected net on top; far-side pins a bit fainter
       var pulse = FX.netPulse && !reduceMotion ? 0.5 + 0.5 * Math.sin(now / 260 * FX.netSpeed) : 0;
       var phase = FX.netRipple && !reduceMotion ? (now / 1100 * FX.netSpeed) % 1 : -1;
-      [[far, 0.6], [near, 1]].forEach(function (pass) {
+      [[far, Math.min(1, 0.2 + (FX.farAlpha || 0) * 2.5)], [near, 1]].forEach(function (pass) { // the far side of a lit net follows "far side visibility"
         pass[0].forEach(function (p) { p.pins.forEach(function (q) { if (q.net === S.net) netPin(q, pass[1]); }); });
       });
     }
@@ -1214,7 +1214,8 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   /* ---------- hit test ---------- */
   /* a tap picks the component first; a single pin only once it is zoomed in big enough to aim at */
   function hit(mx, my) {
-    var best = null, minPx = IS_PHONE ? 16 : 10, bd = IS_PHONE ? 4 : 3, w = s2w(mx, my);
+    var pref = Math.max(0, Math.min(3, Math.round(FX.pickPref == null ? 3 : FX.pickPref))); // 0 = the net at any zoom ... 3 = the component almost always
+    var best = null, minPx = (IS_PHONE ? [0, 10, 22, 56] : [0, 6, 14, 40])[pref], bd = (IS_PHONE ? [6, 5, 4, 3] : [5, 4, 3, 2])[pref], w = s2w(mx, my);
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
       p.pins.forEach(function (q) {
@@ -2611,7 +2612,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     load3d().then(function () {
       if (box.hidden || V3) return;
       try {
-        V3 = BV3D.open(box, M, { bg: C.canvas, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
+        V3 = BV3D.open(box, M, { bg: C.canvas, models: FX.step3d !== false, pick: function (p) { if (p) selectPart(p); else clearSel(); if (V3) V3.highlight(p); v3dPickInfo(p); },
           lost: function () { if (V3) { V3.close(); V3 = null; open3d(); } }, progress: function (d, n) { $('v3dSt').textContent = n && d < n ? '3D-модели:' + ' ' + d + ' / ' + n : ''; } });
         box.insertBefore(V3.canvas, box.firstChild);
         if (S.part) { V3.highlight(S.part); v3dPickInfo(S.part); }

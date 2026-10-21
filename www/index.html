@@ -67,6 +67,10 @@ body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font
 .setbody legend { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; padding: 0 4px; }
 .srow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; }
 .srow span { min-width: 0; }
+.srow.subh > span { font-weight: 650; color: var(--fg); }
+.ssep { height: 1px; background: var(--line); margin: 4px 0; opacity: .8; }
+.subt { font-weight: 650; }
+.subt small { font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
 .srow output { font-family: var(--f-mono); font-size: 11px; color: var(--muted); margin-left: 4px; }
 .srow input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
 .srow input[type=color] { width: 44px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; }
@@ -571,7 +575,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.28 · 21.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.29 · 21.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -2029,6 +2033,10 @@ var I18N = (function () {
     'Имя цепи или маска:': 'Net name or mask:', 'любые символы': 'any characters', 'один. Например': 'one. For example', 'Нижнее правило главнее.': 'Lower rules win.',
     '+ Добавить правило': '+ Add rule', 'Маска цепи': 'Net mask', 'Цвет': 'Colour', 'Удалить правило': 'Delete rule', 'Сбросить группу': 'Reset group',
     'Вернуть значения этой группы из темы': 'Restore this group from the theme',
+    'Вид подложки': 'Board look', 'Отображение компонентов': 'Parts display', 'Обводка компонентов на нижней стороне': 'Bottom-side part outline', 'Толщина обводки': 'Outline width',
+    'Заливка корпуса компонента': 'Part body fill', 'Обозначения компонентов': 'Designators', 'Отображение выбранных компонентов': 'Selected parts display',
+    'Цвета контактов': 'Pad colours', 'Отображение цепей': 'Nets display', 'Цвет затемненных областей': 'Dimmed areas colour', 'Настройки управления': 'Controls',
+    'Экономия батареи (рекомендуется)': 'Battery saver (recommended)',
     'Горячие клавиши': 'Hotkeys', 'Клавиши работают в любой раскладке. Нажмите «+», затем нужную клавишу (можно с Ctrl, Alt, Shift). Esc — отмена.': 'Keys work in any keyboard layout. Press «+», then the key (Ctrl, Alt, Shift allowed). Esc cancels.',
     'Нажмите клавишу…': 'Press a key…', 'Клавиши по умолчанию': 'Default keys', 'Убрать': 'Remove', 'снято с': 'removed from',
     'Перевернуть плату (верх ↔ низ)': 'Flip board (top ↔ bottom)', 'Сторона: верх': 'Side: top', 'Сторона: низ': 'Side: bottom', 'Сторона: обе': 'Side: both',
@@ -2487,21 +2495,21 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       fx: { boardGlow: 18, boardGrad: true, pinGlow: 4, pwrGlow: 8, selGlow: 22, cornerR: 5, outlineAlpha: 0.8, partFill: 0.06 } }
   };
   var SCHEMA = [
-    ['Область: фон и подложка', [['color', 'canvas', 'Фон окна'], ['color', 'board', 'Подложка платы'], ['check', 'boardGrad', 'Градиент подложки'], ['color', 'board2', 'Второй цвет градиента'],
-      ['color', 'edge', 'Контур платы'], ['range', 'edgeW', 'Толщина контура', 0.5, 4, 0.1], ['range', 'boardGlow', 'Свечение контура', 0, 40, 1], ['range', 'farAlpha', 'Видимость обратной стороны', 0, 0.6, 0.01]]],
-    ['Контакты', [
-      ['color', 'pin', 'Сигнальные'], ['color', 'pwr', 'Питание'], ['color', 'gnd', 'Земля'], ['color', 'nc', 'Не подключённые (обводка)'],
-      ['range', 'pinGlow', 'Свечение сигнальных', 0, 20, 1], ['range', 'pwrGlow', 'Свечение питания', 0, 20, 1], ['range', 'gndGlow', 'Свечение земли', 0, 20, 1]]],
-    ['Компоненты', [['color', 'outline', 'Обводка компонента'], ['color', 'botpart', 'Обводка нижних (режим «Обе»)'], ['range', 'outlineW', 'Толщина обводки компонента', 0.5, 4, 0.1],
-      ['range', 'cornerR', 'Скругление углов', 0, 12, 0.5], ['range', 'outlineAlpha', 'Яркость обводки', 0.1, 1, 0.05], ['color', 'partfill', 'Заливка корпуса'], ['range', 'partFill', 'Плотность заливки', 0, 0.6, 0.01],
-      ['color', 'refc', 'Обозначения (R1, U2…)'], ['color', 'valc', 'Номиналы'], ['range', 'labelScale', 'Размер подписей', 0.6, 1.8, 0.05], ['select', 'haloStyle', 'Обводка подписей', [['soft', 'Мягкая'], ['solid', 'Контур'], ['shadow', 'Тень'], ['none', 'Без обводки']]], ['range', 'haloAlpha', 'Плотность обводки подписей', 0, 1, 0.05], ['range', 'haloW', 'Толщина обводки подписей', 0.5, 2.5, 0.1], ['check', 'showValues', 'Показывать номиналы'], ['check', 'showPinNums', 'Номера пинов при приближении']]],
-    ['Выделение компонентов (ЛКМ и BOM)', [['check', 'selDim', 'Затемнять остальные компоненты'], ['color', 'selhere', 'На текущем слое'], ['color', 'selfar', 'На противоположном слое (пунктир)'], ['range', 'selGlow', 'Свечение', 0, 40, 1],
-      ['check', 'selBreath', '«Дыхание» свечения'], ['check', 'selDash', 'Бегущий пунктир'], ['range', 'selDashSpeed', 'Скорость пунктира', 0.2, 4, 0.1]]],
-    ['Выбранная цепь', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемнения'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1],
-      ['check', 'netPulse', 'Пульсация'], ['range', 'netSpeed', 'Скорость пульсации', 0.2, 3, 0.1], ['check', 'netRipple', 'Расходящиеся кольца']]],
-    ['Управление', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
+    ['Вид подложки', [['color', 'board', 'Подложка платы'], ['color', 'edge', 'Контур платы'], ['range', 'farAlpha', 'Видимость обратной стороны', 0, 0.6, 0.01]]],
+    ['Отображение компонентов', [['color', 'outline', 'Обводка компонента'], ['color', 'botpart', 'Обводка компонентов на нижней стороне'], ['range', 'outlineW', 'Толщина обводки', 0.5, 4, 0.1], ['range', 'outlineAlpha', 'Яркость обводки', 0.1, 1, 0.05],
+      ['color', 'partfill', 'Заливка корпуса компонента'],
+      ['color', 'refc', 'Обозначения компонентов'], ['color', 'valc', 'Номиналы'], ['range', 'labelScale', 'Размер подписей', 0.6, 1.8, 0.05],
+      ['select', 'haloStyle', 'Обводка подписей', [['soft', 'Мягкая'], ['solid', 'Контур'], ['shadow', 'Тень'], ['none', 'Без обводки']]], ['range', 'haloAlpha', 'Плотность обводки подписей', 0, 1, 0.05], ['range', 'haloW', 'Толщина обводки подписей', 0.5, 2.5, 0.1],
+      ['check', 'showValues', 'Показывать номиналы'], ['check', 'showPinNums', 'Номера пинов при приближении']]],
+    ['Отображение выбранных компонентов', [['check', 'selDim', 'Затемнять остальные компоненты'], ['color', 'selhere', 'На текущем слое'], ['color', 'selfar', 'На противоположном слое (пунктир)']]],
+    ['Цвета контактов', [['color', 'pin', 'Сигнальные'], ['color', 'pwr', 'Питание'], ['color', 'gnd', 'Земля'], ['color', 'nc', 'Не подключённые (обводка)']]],
+    ['Отображение цепей', [['color', 'sel', 'Цвет цепи'], ['check', 'netDim', 'Затемнять остальное'], ['color', 'dim', 'Цвет затемненных областей'], ['range', 'netGlow', 'Свечение цепи', 0, 40, 1]]],
+    ['Настройки управления', [['range', 'zoomSpeed', 'Скорость масштаба колесом', 0.3, 3, 0.1], ['check', 'wheelInvert', 'Обратное направление колеса'],
       ['check', 'autoFit', 'Вписывать плату при изменении размеров панелей'], ['range', 'pickPref', 'Нажатие на площадку: цепь ⟷ компонент', 0, 3, 1], ['check', 'enable3d', '3D-просмотр платы'], ['check', 'step3d', '3D-модели компонентов (STEP)'], ['check', 'eco', 'Экономия батареи (рекомендуется)']]]
   ];
+  /* where a sub-group starts inside a settings group: a thin line before it, its first setting in bold when it has company */
+  var SUBHEAD = { board: 1, edge: 1, farAlpha: 1, outline: 1, partfill: 1, refc: 1, haloStyle: 1, showValues: 1, selDim: 1, selhere: 1, sel: 1, netDim: 1, netGlow: 1, zoomSpeed: 1, autoFit: 1, pickPref: 1, enable3d: 1, eco: 1 };
+  var NETS_SECTION = 'Отображение цепей', CTRL_SECTION = 'Настройки управления';
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
     ['rotate', 'Поворот на 90°'], ['fit', 'Вписать плату'], ['clear', 'Сбросить выбор / закрыть настройки'], ['zoomIn', 'Приблизить'], ['zoomOut', 'Отдалить'],
@@ -2528,6 +2536,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var OLD_ANIM = { bomBreath: 1, bomGlow: 1, partGlow: 1, selBreath: 1, selGlow: 1, netPulse: 1, netRipple: 1, netGlow: 1 };
     var oldFormat = !(src && src.v >= 2), beforeV3 = !(src && src.v >= 3);
     if (src && src.fx) Object.keys(src.fx).forEach(function (k) { if (oldFormat && OLD_ANIM[k]) return; if (beforeV3 && k === 'pinShape' && src.fx[k] !== 'circle') return; put(c.fx, DEF_FX, k, src.fx[k]); });
+    ['selBreath', 'selDash', 'netPulse', 'netRipple'].forEach(function (k) { c.fx[k] = false; }); /* these animations have no switch in the menu any more */
     if (src && typeof src.preset === 'string') c.preset = src.preset;
     c.base = src && typeof src.base === 'string' && PRESETS[src.base] ? src.base : (c.preset && PRESETS[c.preset] ? c.preset : 'По умолчанию');
     if (src && Array.isArray(src.nets)) c.nets = src.nets.filter(function (r) { return r && typeof r.p === 'string' && r.p.trim() && /^#[0-9a-f]{6}$/i.test(r.c); }).map(function (r) { return { p: r.p.trim(), c: r.c }; });
@@ -2823,6 +2832,9 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     ctx.lineWidth = FX.edgeW; ctx.strokeStyle = C.edge; ctx.stroke();
     var mono = C['f-mono'];
     var far = [], near = [];
+    /* the fill density has no slider any more: a body fill colour the user picked (other than the theme's) shows at a light density */
+    var baseFill = ((PRESETS[CFG.base] || {}).colors || {}).partfill || DEF_COLORS.partfill;
+    var partFillA = FX.partFill > 0 ? FX.partFill : (CFG.colors.partfill && CFG.colors.partfill.toLowerCase() !== baseFill.toLowerCase() ? 0.15 : 0);
     M.parts.forEach(function (p) { if (FX.eco && !onScreen(p)) return; (visible(p) ? near : far).push(p); });
     var dim = !!S.net && FX.netDim; // a selected net can grey out the rest of the board
     // one selection model: a clicked component and a BOM position are the same kind of highlight
@@ -2843,7 +2855,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     near.forEach(function (p) {
       var r = partRect(p), hovP = hover && hover.part === p && !hover.pin;
       if (r[2] - r[0] < 1.5 && r[3] - r[1] < 1.5) return;
-      if (FX.partFill > 0 && !off(p)) { ctx.globalAlpha = FX.partFill; ctx.fillStyle = V.side === 'both' && p.bottom ? C.botpart : C.partfill; framePath(p, 0, 0); ctx.fill(); ctx.globalAlpha = 1; }
+      if (partFillA > 0 && !off(p)) { ctx.globalAlpha = partFillA; ctx.fillStyle = V.side === 'both' && p.bottom ? C.botpart : C.partfill; framePath(p, 0, 0); ctx.fill(); ctx.globalAlpha = 1; }
       if (SEL && SEL[p.ref]) return; // drawn by the selection pass
       ctx.lineWidth = FX.outlineW;
       ctx.strokeStyle = off(p) ? C.dim : (V.side === 'both' && p.bottom ? C.botpart : C.outline);
@@ -3446,26 +3458,29 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     function group(id, title, inner, count) {
       return '<details class="grp" data-g="' + id + '"' + (GROUPS_OPEN[id] ? ' open' : '') + '><summary>' + esc(title) + (count ? '<small>' + count + '</small>' : '') + '</summary><div class="gbody">' + inner + '</div></details>';
     }
-    SCHEMA.forEach(function (sec, si) {
-      var g = '';
-      sec[1].forEach(function (it) {
-        if (IS_PHONE && (it[1] === 'zoomSpeed' || it[1] === 'wheelInvert')) return; // a phone has no mouse wheel
-        var t = it[0], k = it[1], id = 'cfg-' + k;
-        if (t === 'color') { var ck = k === 'canvas' ? bgKey() : k, lbl = k === 'canvas' ? it[2] + ' (' + (bgKey() === 'canvasDay' ? 'День' : 'Ночь') + ')' : it[2];
-          g += '<label class="srow" for="' + id + '"><span>' + esc(lbl) + '</span><input type="color" id="' + id + '" data-color="' + ck + '" value="' + CFG.colors[ck] + '"></label>'; }
-        else if (t === 'range') g += '<label class="srow" for="' + id + '"><span>' + esc(it[2]) + ' <output id="' + id + '-o">' + fmt(CFG.fx[k]) + '</output></span><input type="range" id="' + id + '" data-fx="' + k + '" min="' + it[3] + '" max="' + it[4] + '" step="' + it[5] + '" value="' + CFG.fx[k] + '"></label>';
-        else if (t === 'select') g += '<label class="srow" for="' + id + '"><span>' + esc(it[2]) + '</span><select id="' + id + '" data-fxs="' + k + '">' + it[3].map(function (o) { return '<option value="' + o[0] + '"' + (CFG.fx[k] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
-        else g += '<label class="srow chk" for="' + id + '"><input type="checkbox" id="' + id + '" data-fxb="' + k + '"' + (CFG.fx[k] ? ' checked' : '') + '><span>' + esc(it[2]) + '</span></label>';
-      });
-      if (!(IS_PHONE && sec[0] === 'Управление')) g += '<div class="btnrow"><button type="button" class="btn sm" data-grp-reset="' + si + '" title="Вернуть значения этой группы из темы «' + esc(CFG.base || 'По умолчанию') + '»">Сброс</button></div>';
-      h += group('s' + si, sec[0], g);
-    });
     var r = '<div class="note">Имя цепи или маска: <code>*</code> — любые символы, <code>?</code> — один. Например <code>*3V3*</code>, <code>USB_*</code>, <code>I2C_SDA</code>. Нижнее правило главнее.</div><div class="rules" id="rules">';
     CFG.nets.forEach(function (rl, i) {
       r += '<div class="rule"><input type="text" value="' + esc(rl.p) + '" data-rule-p="' + i + '" aria-label="Маска цепи" spellcheck="false"><input type="color" value="' + rl.c + '" data-rule-c="' + i + '" aria-label="Цвет"><button type="button" class="btn sm" data-rule-del="' + i + '" aria-label="Удалить правило">✕</button></div>';
     });
     r += '</div><button type="button" class="btn sm" id="ruleAdd">+ Добавить правило</button>';
-    h += group('nets', 'Свои цвета цепей', r, CFG.nets.length || '');
+    SCHEMA.forEach(function (sec, si) {
+      var rows = [];
+      sec[1].forEach(function (it) {
+        if (IS_PHONE && (it[1] === 'zoomSpeed' || it[1] === 'wheelInvert')) return; // a phone has no mouse wheel
+        var t = it[0], k = it[1], id = 'cfg-' + k, g = '';
+        if (t === 'color') { var ck = k === 'canvas' ? bgKey() : k, lbl = k === 'canvas' ? it[2] + ' (' + (bgKey() === 'canvasDay' ? 'День' : 'Ночь') + ')' : it[2];
+          g += '<label class="srow" for="' + id + '"><span>' + esc(lbl) + '</span><input type="color" id="' + id + '" data-color="' + ck + '" value="' + CFG.colors[ck] + '"></label>'; }
+        else if (t === 'range') g += '<label class="srow" for="' + id + '"><span>' + esc(it[2]) + ' <output id="' + id + '-o">' + fmt(CFG.fx[k]) + '</output></span><input type="range" id="' + id + '" data-fx="' + k + '" min="' + it[3] + '" max="' + it[4] + '" step="' + it[5] + '" value="' + CFG.fx[k] + '"></label>';
+        else if (t === 'select') g += '<label class="srow" for="' + id + '"><span>' + esc(it[2]) + '</span><select id="' + id + '" data-fxs="' + k + '">' + it[3].map(function (o) { return '<option value="' + o[0] + '"' + (CFG.fx[k] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
+        else g += '<label class="srow chk" for="' + id + '"><input type="checkbox" id="' + id + '" data-fxb="' + k + '"' + (CFG.fx[k] ? ' checked' : '') + '><span>' + esc(it[2]) + '</span></label>';
+        if (!rows.length || SUBHEAD[k]) rows.push([]);
+        rows[rows.length - 1].push(g);
+      });
+      var g = rows.map(function (sub) { if (sub.length > 1 && rows.length > 1) sub[0] = sub[0].replace('class="srow', 'class="srow subh'); return sub.join(''); }).join('<div class="ssep"></div>');
+      if (sec[0] === NETS_SECTION) g += '<div class="ssep"></div><div class="subt">' + esc('Свои цвета цепей') + (CFG.nets.length ? ' <small>' + CFG.nets.length + '</small>' : '') + '</div>' + r;
+      if (!(IS_PHONE && sec[0] === CTRL_SECTION)) g += '<div class="btnrow"><button type="button" class="btn sm" data-grp-reset="' + si + '" title="Вернуть значения этой группы из темы «' + esc(CFG.base || 'По умолчанию') + '»">Сброс</button></div>';
+      h += group('s' + si, sec[0], g);
+    });
     var k = '<div class="note">Клавиши работают в любой раскладке. Нажмите «+», затем нужную клавишу (можно с Ctrl, Alt, Shift). Esc — отмена.</div>';
     ACTIONS.forEach(function (a) {
       k += '<div class="hk"><span>' + esc(a[1]) + '</span><div class="hkkeys">' + (CFG.keys[a[0]] || []).map(function (c) {

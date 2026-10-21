@@ -1,5 +1,5 @@
 // BoardV service worker: the app works offline; when online, fresh files win.
-const CACHE = 'boardview-21102026-ef22fc6c';
+const CACHE = 'boardview-21102026-8d9f46c2';
 const SHELL = ['./', './index.html', './BoardV-config.js', './build-info.js', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon-256.png'];
 self.addEventListener('install', (e) => {

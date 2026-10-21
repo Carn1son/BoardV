@@ -189,8 +189,14 @@ var BV3D = (function () {
       drills.forEach(function (h) { ag.beginPath(); ag.arc((h[0] - bx0) * MIL * ka, (by1 - h[1]) * MIL * ka, h[2] / 2 * MIL * ka, 0, Math.PI * 2); ag.fill(); });
       var at = new T.CanvasTexture(ac); at.repeat.set(1 / mmW, 1 / mmH); at.offset.set(-bx0 * MIL / mmW, -by0 * MIL / mmH); // the board's face UVs are millimetres
       slab.material[0].alphaMap = at; slab.material[0].alphaTest = 0.5; slab.material[0].side = T.DoubleSide; slab.material[0].needsUpdate = true;
-      var wall = new T.CylinderGeometry(1, 1, THICK, 20, 1, true); wall.rotateX(Math.PI / 2); wall.translate(0, 0, -THICK / 2);
-      [[drills.filter(function (h) { return !h[3]; }), 0xb8964e, 0.4], [drills.filter(function (h) { return h[3]; }), 0x6e8c3a, 0]].forEach(function (set) {
+      function wallGeo(seg) { var g = new T.CylinderGeometry(1, 1, THICK, seg, 1, true); g.rotateX(Math.PI / 2); g.translate(0, 0, -THICK / 2); return g; }
+      var wall = wallGeo(32);
+      // board cut-outs are big: each gets a smooth wall of its own (a segment every ~0.25 mm, 64..256)
+      drills.filter(function (h) { return h[3]; }).forEach(function (h) {
+        var r = h[2] / 2 * MIL, m = new T.Mesh(wallGeo(Math.max(64, Math.min(256, Math.round(r * 2 * Math.PI / 0.25)))), new T.MeshStandardMaterial({ color: new T.Color().setHex(0x6e8c3a, T.SRGBColorSpace), roughness: 0.7, side: T.DoubleSide }));
+        m.scale.set(r, r, 1); m.position.set(h[0] * MIL, h[1] * MIL, 0); m.raycast = function () {}; root.add(m);
+      });
+      [[drills.filter(function (h) { return !h[3]; }), 0xb8964e, 0.4]].forEach(function (set) {
         if (!set[0].length) return;
         var walls = new T.InstancedMesh(wall, new T.MeshStandardMaterial({ color: new T.Color().setHex(set[1], T.SRGBColorSpace), roughness: 0.5, metalness: set[2], side: T.DoubleSide }), set[0].length);
         var mx = new T.Matrix4();

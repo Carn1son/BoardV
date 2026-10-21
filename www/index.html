@@ -188,6 +188,13 @@ select.xsrc { display: none !important; }
 .srow .xsel { justify-self: end; }
 html.mobile .xsel { min-height: 38px; }
 .sidesel { display: none !important; }
+.sideseg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel2); flex: 0 0 auto; }
+.sideseg button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; padding: 0 10px; min-height: 34px; cursor: pointer; }
+.sideseg button + button { border-left: 1px solid var(--line); }
+.sideseg button svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.sideseg button[aria-pressed=true] { background: var(--accent); color: #1a1406; }
+html.mobile .sideseg button { padding: 0 7px; min-height: 0; height: 34px; }
+html.mobile .sideseg button span { display: none; } /* the phone shows the pictures only */
 .sidebtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; font-weight: 600; min-width: 92px; justify-content: space-between; }
 .sidebtn svg { width: 16px; height: 16px; opacity: .7; }
 html.mobile .sidebtn { display: inline-flex; align-items: center; gap: 4px; width: auto !important; min-width: 0 !important; padding: 0 8px 0 10px !important; font-weight: 600; }
@@ -493,7 +500,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     <button class="btn primary" id="open" type="button">Открыть файлы</button>
     <input type="file" id="file" multiple hidden>
     <button class="btn" id="bomToggle" type="button" aria-pressed="true" title="Показать или скрыть BOM справа">BOM</button>
-    <button class="btn sidebtn" id="sideBtn" type="button" aria-haspopup="menu" aria-label="Сторона платы"><span id="sideLbl">Верх</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+    <div class="sideseg" id="sideSeg" role="group" aria-label="Сторона платы"><button type="button" data-sd="top" aria-pressed="true" title="Верхняя сторона"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg><span>Верх</span></button><button type="button" data-sd="bottom" aria-pressed="false" title="Нижняя сторона (зеркально)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/></svg><span>Низ</span></button><button type="button" data-sd="both" aria-pressed="false" title="Обе стороны"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".45"/></svg><span>Обе</span></button></div>
     <select class="sidesel" id="sideSel" aria-label="Сторона платы" title="Сторона платы">
       <option value="top">Верх</option><option value="bottom">Низ</option><option value="both">Обе</option>
     </select>
@@ -564,7 +571,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
             <button class="btn sm" id="cfgReset" type="button" title="Вернуть все настройки по умолчанию">Сбросить всё</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,.js,application/json,text/javascript" hidden>
-          <div class="verrow"><div class="note" id="verLine">Версия V1.21 · 18.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
+          <div class="verrow"><div class="note" id="verLine">Версия V1.22 · 21.10.2026</div><button type="button" class="btn sm secret" id="secretBtn" hidden></button></div>
           <div class="links">
             <a class="lk gh" href="https://github.com/Carn1son/BoardV/releases/latest" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span><b>GitHub</b><small>Последние версии BoardV</small></span><i aria-hidden="true">↗</i></a>
             <a class="lk tg" href="https://t.me/carnison" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2aabee"/><path fill="#fff" d="M5.4 11.8l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-3 5.4-4.9c.2-.2 0-.3-.3-.1l-6.7 4.2-2.9-.9c-.6-.2-.6-.6.1-.9z"/></svg><span><b>@carnison</b><small>Telegram — вопросы и идеи</small></span><i aria-hidden="true">↗</i></a>
@@ -1921,6 +1928,7 @@ var I18N = (function () {
   'use strict';
   var EN = {
     // ---- toolbar, panels
+    'Нижняя сторона (зеркально)': 'Bottom side (mirrored)', 'Верхняя сторона': 'Top side',
     '3D-вид платы': '3D board view', '2D-вид платы': '2D board view', '3D-просмотр платы': '3D board view', 'Шелкография в 3D': 'Silkscreen in 3D', 'Вид платы': 'Board view', '3D-вид': '3D view', '2D-вид': '2D view', 'Перспектива': 'Perspective', 'Закрыть 3D (Esc)': 'Close 3D (Esc)', 'Закрыть 3D': 'Close 3D', 'Загрузка 3D…': 'Loading 3D…', '3D-модели:': '3D models:', 'Не удалось открыть 3D': 'Could not open 3D',
     'Открыть файлы': 'Open files', 'Открыть файл': 'Open file', 'Открыть': 'Open', 'Сторона платы': 'Board side',
     'Верх': 'Top', 'Низ': 'Bottom', 'Обе': 'Both', 'Повернуть на 90° (R)': 'Rotate 90° (R)', 'Вписать плату': 'Fit board',
@@ -4150,7 +4158,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
     var h = '';
     if (msg) h = '<span><b>' + esc(msg) + '</b></span>';
     else if (M) {
-      h += '<span>Сторона <b>' + ({ top: 'верх', bottom: 'низ (зеркально)', both: 'обе' })[V.side] + '</b></span><span>Поворот <b>' + V.rot * 90 + '°</b></span>';
+      h += '<span>Сторона <b>' + ({ top: 'верх', bottom: 'низ (зеркально)', both: 'обе' })[V.side] + '</b></span><span>Поворот <b>' + ((4 - V.rot) % 4) * 90 + '°</b></span>';
       if (S.part) h += '<span>Деталь <b>' + esc(S.part.ref) + '</b>' + (S.part.value ? ' · ' + esc(S.part.value) : '') + '</span>';
       if (S.net) h += '<span>Цепь <b style="color:var(--ui-sel)">' + esc(S.net) + '</b></span>';
       if (S.group && groupByKey(S.group)) { var g = groupByKey(S.group); h += '<span>Позиция <b style="color:var(--ui-grp)">' + esc(g.value || '—') + (g.footprint ? ' · ' + esc(g.footprint) : '') + ' × ' + g.parts.length + '</b></span>'; }
@@ -4227,22 +4235,14 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       // keep the point under the screen center in place when flipping
       var c = s2w(W / 2, H / 2); V.side = s; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1];
     } else V.side = s;
-    $('sideSel').value = s; $('sideLbl').textContent = ({ top: 'Верх', bottom: 'Низ', both: 'Обе' })[s];
+    $('sideSel').value = s; $('sideSeg').querySelectorAll('[data-sd]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sd === s)); });
     status(); req();
   }
   $('sideSel').onchange = function () { setSide(this.value); this.blur(); };
   // phone: our own small menu instead of the system list
-  $('sideBtn').onclick = function () {
-    if (!$('ctxMenu').hidden && $('ctxMenu').owner === this) { closeRowMenu(); return; } // second tap closes
-    var m = $('ctxMenu'), r = this.getBoundingClientRect(), ic = {
-      top: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg>',
-      bottom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>',
-      both: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/><rect x="4" y="13" width="16" height="6" rx="1.5" fill="currentColor" fill-opacity=".35"/></svg>' };
-    m.innerHTML = [['top', 'Верх'], ['bottom', 'Низ (зеркально)'], ['both', 'Обе стороны']].map(function (o) { return '<button type="button" data-side="' + o[0] + '"' + (V.side === o[0] ? ' class="cur"' : '') + '>' + ic[o[0]] + ' ' + o[1] + '</button>'; }).join('');
-    ctxKey = null; m.classList.remove('xmenu'); m.style.minWidth = ''; m.xsel = null; m.owner = this; m.hidden = false; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
-  };
+  $('sideSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-sd]'); if (b) setSide(b.dataset.sd); }); // three buttons instead of a drop-down
   function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
-  function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 1) % 4; var p = w2s(c[0], c[1]); V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
+  function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 3) % 4; var p = w2s(c[0], c[1]); /* clockwise, as the ⟳ on the button */ V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
   $('rot').onclick = rotate;
   $('fit').onclick = function () { fit(); req(); };
   function runAction(a) {

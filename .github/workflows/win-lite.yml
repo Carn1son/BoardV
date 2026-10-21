@@ -36,11 +36,20 @@ jobs:
       - name: Installer
         shell: bash
         run: |
-          EXE=$(ls src/win/bin/Release/net48/BoardV.exe 2>/dev/null || find src/win/bin -name BoardV.exe | head -1)
-          ls -la "$EXE"
+          set -o pipefail
+          EXE=$(find src/win/bin -name BoardV.exe | head -1)
+          echo "::notice::exe at $EXE ($(stat -c %s "$EXE") bytes)"
           cp "$EXE" BoardV-Lite.exe
-          "/c/Program Files (x86)/NSIS/makensis.exe" -V2 -DVERSION=${{ steps.v.outputs.ver }} "-DAPPNAME=BoardV Lite" -DOUTFILE=$(pwd -W)/BoardV-Lite-Setup.exe -DEXE=$(pwd -W)/BoardV-Lite.exe src/win/installer.nsi
-          ls -la BoardV-Lite*.exe
+          MN=$(command -v makensis || true); [ -z "$MN" ] && [ -f "/c/Program Files (x86)/NSIS/makensis.exe" ] && MN="/c/Program Files (x86)/NSIS/makensis.exe"
+          if [ -z "$MN" ]; then choco install nsis -y --no-progress > /dev/null; MN="/c/Program Files (x86)/NSIS/makensis.exe"; fi
+          echo "::notice::makensis: $MN"
+          cp BoardV-Lite.exe src/win/BoardV-Lite.exe
+          cd src/win
+          if ! "$MN" -V2 -DVERSION=${{ steps.v.outputs.ver }} "-DAPPNAME=BoardV Lite" -DOUTFILE=BoardV-Lite-Setup.exe -DEXE=BoardV-Lite.exe installer.nsi > nsis.log 2>&1; then
+            tail -25 nsis.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1
+          fi
+          mv BoardV-Lite-Setup.exe ../../ && cd ../.. && ls -la BoardV-Lite*.exe
+          echo "::notice::sizes $(stat -c '%n %s' BoardV-Lite*.exe | tr '\n' ' ')"
       - uses: actions/upload-artifact@v4
         with:
           name: BoardV-Lite

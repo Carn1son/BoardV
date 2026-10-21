@@ -50,7 +50,7 @@ var BV = (function () {
     return o;
   }
   function parseAscii(text) {
-    var nets = [], comps = [], pads = [], texts = [], board = null;
+    var nets = [], comps = [], pads = [], texts = [], board = null, edgeArcs = [], edgeSegs = [];
     var lines = text.split(/\r?\n/);
     for (var i = 0; i < lines.length; i++) {
       var L = lines[i];
@@ -61,6 +61,10 @@ var BV = (function () {
       else if (t === 'pad') pads.push(r);
       else if (t === 'board' && !board && 'VX0' in r) board = r;
       else if (t === 'text' && /true/i.test(r.COMMENT || '') && r.COMPONENT != null) texts.push(r);
+      else if ((t === 'arc' || t === 'track') && /^(MECHANICAL\d+|KEEPOUT)$/i.test(r.LAYER || '') && r.COMPONENT == null) {
+        if (t === 'arc') edgeArcs.push([r.LAYER.toUpperCase(), toMil(r['LOCATION.X'], 'mil'), toMil(r['LOCATION.Y'], 'mil'), toMil(r.RADIUS, 'mil'), num(r.STARTANGLE), num(r.ENDANGLE)]);
+        else edgeSegs.push([r.LAYER.toUpperCase(), toMil(r.X1, 'mil'), toMil(r.Y1, 'mil'), toMil(r.X2, 'mil'), toMil(r.Y2, 'mil')]);
+      }
     }
     texts.forEach(function (tr) {
       var ci = parseInt(tr.COMPONENT, 10), v = (tr.TEXT || '').trim();
@@ -115,8 +119,39 @@ var BV = (function () {
         .forEach(function (p, i) { p.ref = i ? uniq((nm.replace(/\d.*$/, '') || nm) + '?') : uniq(nm); });
     });
     var outline = board ? asciiOutline(board) : null;
-    return { parts: order.map(function (k) { return parts[k]; }), outline: outline, holes: holes,
+    var plist = order.map(function (k) { return parts[k]; });
+    return { parts: plist, outline: outline, holes: holes, cutouts: findCutouts(outline, edgeArcs, edgeSegs, plist, holes),
              info: comps.length + ' компонентов, ' + pads.length + ' падов, ' + nets.length + ' цепей' };
+  }
+  /* holes cut out of the board that the board shape itself does not carry: whole circles drawn on the layer that holds
+     the board edge (the mechanical layer whose lines run along the outline), lying fully inside the board and not
+     centred on a component (lens / body circles on the same layer). arcs: [layer, cx, cy, r, sa, ea]; segs: [layer, x1, y1, x2, y2] */
+  function findCutouts(outline, arcs, segs, parts, holes) {
+    if (!outline || outline.length < 4 || !arcs.length) return [];
+    function dEdge(x, y) {
+      var m = Infinity;
+      for (var i = 0; i + 1 < outline.length; i++) {
+        var a = outline[i], b = outline[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy, t = l ? ((x - a[0]) * dx + (y - a[1]) * dy) / l : 0;
+        t = Math.max(0, Math.min(1, t)); m = Math.min(m, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy));
+      }
+      return m;
+    }
+    function inside(x, y) { var c = false; for (var i = 0, j = outline.length - 1; i < outline.length; j = i++) { var a = outline[i], b = outline[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+    var score = {};
+    arcs.forEach(function (a) { [a[4], a[5]].forEach(function (ang) { var t = ang * Math.PI / 180; if (dEdge(a[1] + a[3] * Math.cos(t), a[2] + a[3] * Math.sin(t)) < 3) score[a[0]] = (score[a[0]] || 0) + 1; }); });
+    segs.forEach(function (s) { if (dEdge(s[1], s[2]) < 3 && dEdge(s[3], s[4]) < 3) score[s[0]] = (score[s[0]] || 0) + 2; });
+    var layer = null, best = 3; Object.keys(score).forEach(function (l) { if (score[l] > best) { best = score[l]; layer = l; } });
+    if (layer == null) return [];
+    // circles around a component (lens, holder, body marks) are not holes: anything within 7.5 mm of a component's pins is left alone
+    var boxes = parts.map(function (p) { var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; p.pins.forEach(function (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }); return [x0 - 300, y0 - 300, x1 + 300, y1 + 300]; });
+    var drilled = (holes || []).concat([].concat.apply([], parts.map(function (p) { return p.pins.filter(function (q) { return q.hole > 0; }).map(function (q) { return [q.x, q.y, q.hole]; }); })));
+    return arcs.filter(function (a) {
+      var sw = ((a[5] - a[4]) % 360 + 360) % 360;
+      if (String(a[0]) !== String(layer) || !(sw < 0.01 || sw > 359.99) || a[3] < 39) return false; // whole circles of 1 mm and more
+      if (!inside(a[1], a[2]) || dEdge(a[1], a[2]) < a[3] + 2) return false;
+      if (drilled.some(function (h) { return Math.hypot(h[0] - a[1], h[1] - a[2]) < a[3]; })) return false; // just the drawing of a hole that is already drilled
+      return !boxes.some(function (b) { return a[1] >= b[0] && a[1] <= b[2] && a[2] >= b[1] && a[2] <= b[3]; });
+    }).map(function (a) { return [a[1], a[2], a[3]]; });
   }
   function asciiOutline(b) {
     var v = [];
@@ -364,9 +399,10 @@ var BV = (function () {
     });
     outline = outline.map(function (q) { return [q[0] + dx, q[1] + dy]; });
     var holes = (src.pins && src.pins.holes || []).map(function (h) { return [h[0] + dx, h[1] + dy, h[2]]; }); // 3D: drilled holes move too
+    var cutouts = (src.pins && src.pins.cutouts || []).map(function (h) { return [h[0] + dx, h[1] + dy, h[2]]; });
     var nets = {};
     parts.forEach(function (p) { p.pins.forEach(function (q) { nets[q.net] = 1; }); });
-    return { parts: parts, outline: outline, warnings: warnings, holes: holes, w: x1 - x0 + 20, h: y1 - y0 + 20,
+    return { parts: parts, outline: outline, warnings: warnings, holes: holes, cutouts: cutouts, w: x1 - x0 + 20, h: y1 - y0 + 20,
              nPins: parts.reduce(function (s, p) { return s + p.pins.length; }, 0),
              nNets: Object.keys(nets).filter(function (n) { return n !== 'UNCONNECTED'; }).length };
   }
@@ -557,7 +593,8 @@ var BV = (function () {
   function parsePcbDoc(u8) {
     var P = typeof PCBDOC !== 'undefined' ? PCBDOC : require('./pcbdoc.js');
     var r = P.parse(u8);
-    return { parts: r.parts, outline: r.board ? asciiOutline(r.board) : null, info: r.info, holes: r.holes };
+    var ol = r.board ? asciiOutline(r.board) : null;
+    return { parts: r.parts, outline: ol, info: r.info, holes: r.holes, cutouts: findCutouts(ol, r.edgeArcs || [], r.edgeSegs || [], r.parts, r.holes) };
   }
 
   /* ---------- writers ---------- */

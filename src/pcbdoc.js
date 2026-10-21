@@ -188,7 +188,14 @@ var PCBDOC = (function () {
     try { bodies3d(get, parts); } catch (e) {}
     var list = order.map(function (k) { return parts[k]; });
     var withVal = list.filter(function (p) { return p.value; }).length;
-    return { parts: list, board: board, nPads: nPads, holes: holes,
+    var edgeArcs = [], edgeSegs = [];
+    try {
+      var eachRec = function (name, type, fn) { var d = get(name); if (!d) return; var dv = new DataView(d.buffer, d.byteOffset, d.byteLength), p = 0;
+        while (p + 5 <= d.length && d[p] === type) { var len = dv.getUint32(p + 1, true), s = p + 5; if (s + len > d.length) break; var l = d[s]; if (l >= 56 && l <= 72 && dv.getUint16(s + 7, true) === NONE16) fn(l, dv, s); p = s + len; } };
+      eachRec('Arcs6/Data', 1, function (l, dv, s) { edgeArcs.push([l, dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getFloat64(s + 25, true), dv.getFloat64(s + 33, true)]); });
+      eachRec('Tracks6/Data', 4, function (l, dv, s) { edgeSegs.push([l, dv.getInt32(s + 13, true) * U, dv.getInt32(s + 17, true) * U, dv.getInt32(s + 21, true) * U, dv.getInt32(s + 25, true) * U]); });
+    } catch (e) {}
+    return { parts: list, board: board, nPads: nPads, holes: holes, edgeArcs: edgeArcs, edgeSegs: edgeSegs,
              info: comps.length + ' компонентов, ' + nPads + ' падов, ' + nets.length + ' цепей' + (withVal ? ', номиналы у ' + withVal : '') };
   }
   function mil(v) { var m = /^(-?[\d.eE+-]+)\s*(mil|mm)?$/.exec(String(v || '').trim()); if (!m) return 0; return +m[1] * (m[2] === 'mm' ? 1 / 0.0254 : 1); }

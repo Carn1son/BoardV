@@ -819,7 +819,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     var model = null, used = [], pinNames = true;
     try {
       if (by.json) { model = BV.readJson(by.json[0].text); used.push(by.json[0].name); }
-      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); model.holes = pb.holes; used.push(by.pcbdoc[0].name); }
+      else if (by.pcbdoc) { var pb = BV.build({ pins: BV.parsePcbDoc(by.pcbdoc[0].bin) }); model = BV.finalize(pb.parts, pb.outline); model.holes = pb.holes; model.cutouts = pb.cutouts; used.push(by.pcbdoc[0].name); }
       else if (by.bvr) { model = BV.readBvr(by.bvr[0].text); used.push(by.bvr[0].name); }
       else if (FMT.TYPES.some(function (t) { return by[t]; })) { var ft = FMT.TYPES.filter(function (t) { return by[t]; })[0]; model = FMT.read(ft, by[ft][0]); used.push(by[ft][0].name); pinNames = !/^(brd2|cst)$/.test(ft); }
       else if (by.ascpins) { model = FMT.readAsc(items); used = items.filter(function (i) { return /^asc/.test(i.type); }).map(function (i) { return i.name; }); }
@@ -828,7 +828,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
         var p = by.ascii ? by.ascii[0] : by.ipc356[0];
         var s = { pins: by.ascii ? BV.parseAscii(p.text) : BV.parseIpc356(p.text) };
         if (by.gerber) try { s.outline = BV.parseGerber(by.gerber[0].text); used.push(by.gerber[0].name); } catch (e) {}
-        var b = BV.build(s); model = BV.finalize(b.parts, b.outline); model.holes = b.holes; used.unshift(p.name);
+        var b = BV.build(s); model = BV.finalize(b.parts, b.outline); model.holes = b.holes; model.cutouts = b.cutouts; used.unshift(p.name);
       }
     } catch (e) { showError('Не удалось открыть файл', e.message); return; }
     if (!model && !meta.length && by.locked) { showError(by.locked[0].error, by.locked[0].detail); return; }
@@ -916,7 +916,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     for (var j = 1; j <= 4; j++) { var a = k[j % 4], b = k[(j + 1) % 4]; ctx.arcTo(a[0], a[1], b[0], b[1], r); }
     ctx.closePath();
   }
-  function inFrame(p, mx, my) { var f = partFrame(p), w = s2w(mx, my), m = Math.max(2 / V.k, 6), u = w[0] * f.c + w[1] * f.n, v = -w[0] * f.n + w[1] * f.c; return u >= f.u0 - m && u <= f.u1 + m && v >= f.v0 - m && v <= f.v1 + m; }
+  function inFrame(p, mx, my, slackPx) { var f = partFrame(p), w = s2w(mx, my), m = Math.max(2 / V.k, 6) + (slackPx || 0) / V.k, u = w[0] * f.c + w[1] * f.n, v = -w[0] * f.n + w[1] * f.c; return u >= f.u0 - m && u <= f.u1 + m && v >= f.v0 - m && v <= f.v1 + m; }
   function padExt(q) { // half extents of the pad along the board axes (world units)
     if (q._e) return q._e;
     if (!q.sh) return (q._e = [q.r, q.r]);
@@ -1000,9 +1000,10 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     ctx.beginPath();
     M.outline.forEach(function (q, i) { var s = w2s(q[0], q[1]); bx0 = Math.min(bx0, s[0]); bx1 = Math.max(bx1, s[0]); by0 = Math.min(by0, s[1]); by1 = Math.max(by1, s[1]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); });
     ctx.closePath();
+    (M.cutouts || []).forEach(function (h) { var s = w2s(h[0], h[1]); ctx.moveTo(s[0] + h[2] * V.k, s[1]); ctx.arc(s[0], s[1], h[2] * V.k, 0, Math.PI * 2, true); ctx.closePath(); }); // holes cut out of the board
     ctx.save(); if (FX.boardGlow > 0) { ctx.shadowColor = C.edge; ctx.shadowBlur = FX.boardGlow; }
     if (FX.boardGrad) { var gr = ctx.createLinearGradient(bx0, by0, bx1, by1); gr.addColorStop(0, C.board); gr.addColorStop(1, C.board2); ctx.fillStyle = gr; } else ctx.fillStyle = C.board;
-    ctx.fill(); ctx.restore();
+    ctx.fill('evenodd'); ctx.restore();
     ctx.lineWidth = FX.edgeW; ctx.strokeStyle = C.edge; ctx.stroke();
     var mono = C['f-mono'];
     var far = [], near = [];
@@ -1089,6 +1090,10 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       [[far, 0.6], [near, 1]].forEach(function (pass) {
         pass[0].forEach(function (p) { p.pins.forEach(function (q) { if (q.net === S.net) netPin(q, pass[1]); }); });
       });
+    }
+    if (S.net && S.part && (visible(S.part) || V.side === 'both')) { /* the component the tapped pin belongs to */
+      ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = C.selhere; if (FX.selGlow > 0) { ctx.shadowColor = C.selhere; ctx.shadowBlur = Math.min(10, FX.selGlow); }
+      framePath(S.part, 3, 2); ctx.stroke(); ctx.restore();
     }
     function netPin(q, a) {
       var rr = Math.max(1.6, q.r * V.k);
@@ -1204,17 +1209,21 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   function trim(s, n) { s = String(s); n = Math.max(2, Math.floor(n)); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 
   /* ---------- hit test ---------- */
+  /* a tap picks the component first; a single pin only once it is zoomed in big enough to aim at */
   function hit(mx, my) {
-    var best = null, bd = 6, w = s2w(mx, my);
+    var best = null, minPx = IS_PHONE ? 16 : 10, bd = IS_PHONE ? 4 : 3, w = s2w(mx, my);
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
-      p.pins.forEach(function (q) { var d = padDist(q, w[0], w[1]) * V.k; if (d < bd) { bd = d; best = { part: p, pin: q }; } });
+      p.pins.forEach(function (q) {
+        if ((q.sh ? Math.min(q.w, q.h) : 2 * q.r) * V.k < minPx) return; /* too small on screen: the tap is meant for the component */
+        var d = padDist(q, w[0], w[1]) * V.k; if (d < bd) { bd = d; best = { part: p, pin: q }; }
+      });
     });
     if (best) return best;
-    var area = Infinity, bp = null;
+    var area = Infinity, bp = null, slack = IS_PHONE ? 10 : 4;
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
-      if (inFrame(p, mx, my)) { var f = partFrame(p), a = (f.u1 - f.u0) * (f.v1 - f.v0); if (a < area) { area = a; bp = p; } }
+      if (inFrame(p, mx, my, slack)) { var f = partFrame(p), a = (f.u1 - f.u0) * (f.v1 - f.v0); if (a < area) { area = a; bp = p; } }
     });
     return bp ? { part: bp } : null;
   }

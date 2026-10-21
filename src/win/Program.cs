@@ -80,7 +80,7 @@ namespace BoardV
             catch (Exception e) { MessageBox.Show("Не удалось подготовить BoardV: " + e.Message, "BoardV", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
 
             string wv = null;
-            try { wv = CoreWebView2Environment.GetAvailableBrowserVersionString(); } catch { }
+            try { CoreWebView2Environment.SetLoaderDllFolderPath(AppDir); wv = CoreWebView2Environment.GetAvailableBrowserVersionString(); } catch { } // the loader dll was unpacked next to the web app
             if (string.IsNullOrEmpty(wv))
             {
                 if (MessageBox.Show("Для BoardV нужен компонент Microsoft Edge WebView2 (обычно он уже есть в Windows 10 и 11).\n\nОткрыть страницу загрузки?",
@@ -192,7 +192,6 @@ namespace BoardV
         {
             try
             {
-                CoreWebView2Environment.SetLoaderDllFolderPath(Program.AppDir);
                 var env = await CoreWebView2Environment.CreateAsync(null, Path.Combine(Program.Home, "WebView2"), new CoreWebView2EnvironmentOptions("--disable-features=msSmartScreenProtection"));
                 await web.EnsureCoreWebView2Async(env);
                 var cw = web.CoreWebView2;

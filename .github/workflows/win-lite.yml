@@ -54,3 +54,11 @@ jobs:
         with:
           name: BoardV-Lite
           path: BoardV-Lite*.exe
+      - name: Test release (pre-release, the normal "latest" stays as it is)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete lite-test --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          printf '%s\n' "Тестовая сборка BoardV для Windows на WebView2 (${{ steps.v.outputs.label }})." "" "- BoardV-Lite-Setup.exe — установка (ставится отдельно, рядом с обычным BoardV)" "- BoardV-Lite.exe — без установки" > notes.md
+          gh release create lite-test BoardV-Lite-Setup.exe BoardV-Lite.exe --repo "$GITHUB_REPOSITORY" --prerelease --title "BoardV Lite — тест ${{ steps.v.outputs.label }}" --notes-file notes.md --target "$GITHUB_SHA"

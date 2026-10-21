@@ -974,6 +974,7 @@ jobs:
           EXE=$(find src/win/bin -name BoardV.exe | head -1)
           mkdir -p dist && cp "$EXE" dist/BoardV-portable.exe && cp "$EXE" src/win/BoardV.exe
           MN=$(command -v makensis || true); [ -z "$MN" ] && MN="/c/Program Files (x86)/NSIS/makensis.exe"
+          [ -f "$MN" ] || command -v makensis > /dev/null || choco install nsis -y --no-progress > /dev/null
           cd src/win
           if ! "$MN" -V2 -DVERSION=${{ needs.meta.outputs.ver }} -DOUTFILE=BoardV-Setup.exe -DEXE=BoardV.exe installer.nsi > nsis.log 2>&1; then
             tail -25 nsis.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1

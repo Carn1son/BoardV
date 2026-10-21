@@ -68,6 +68,9 @@ body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font
 .srow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; }
 .srow span { min-width: 0; }
 .srow.subh > span { font-weight: 650; color: var(--fg); }
+.grpreset { justify-content: flex-end; }
+.grpreset .btn.ico { width: 32px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.grpreset .btn.ico svg { width: 16px; height: 16px; }
 .ssep { height: 1px; background: var(--line); margin: 4px 0; opacity: .8; }
 .subt { font-weight: 650; }
 .subt small { font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
@@ -3478,7 +3481,7 @@ var BVDM=(()=>{var tt=Object.defineProperty;var Gt=Object.getOwnPropertyDescript
       });
       var g = rows.map(function (sub) { if (sub.length > 1 && rows.length > 1) sub[0] = sub[0].replace('class="srow', 'class="srow subh'); return sub.join(''); }).join('<div class="ssep"></div>');
       if (sec[0] === NETS_SECTION) g += '<div class="ssep"></div><div class="subt">' + esc('Свои цвета цепей') + (CFG.nets.length ? ' <small>' + CFG.nets.length + '</small>' : '') + '</div>' + r;
-      if (!(IS_PHONE && sec[0] === CTRL_SECTION)) g += '<div class="btnrow"><button type="button" class="btn sm" data-grp-reset="' + si + '" title="Вернуть значения этой группы из темы «' + esc(CFG.base || 'По умолчанию') + '»">Сброс</button></div>';
+      if (!(IS_PHONE && sec[0] === CTRL_SECTION)) g += '<div class="btnrow grpreset"><button type="button" class="btn sm ico" data-grp-reset="' + si + '" title="Вернуть значения этой группы из темы «' + esc(CFG.base || 'По умолчанию') + '»" aria-label="Сбросить группу"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button></div>';
       h += group('s' + si, sec[0], g);
     });
     var k = '<div class="note">Клавиши работают в любой раскладке. Нажмите «+», затем нужную клавишу (можно с Ctrl, Alt, Shift). Esc — отмена.</div>';

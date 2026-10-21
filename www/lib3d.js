@@ -174,8 +174,11 @@ var BV3D = (function () {
       function X(x) { return (x * MIL - bx0 * MIL) * k; } function Y(y) { return (by1 * MIL - y * MIL) * k; }
       g.fillStyle = opt.copper || '#e2bd66';
       M.parts.forEach(function (p) {
-        if (!!p.bottom !== bottom && p.smd) return;
         p.pins.forEach(function (q) {
+          // a pad is on the component's side; only a drilled pad goes through to both sides (formats without drill data: by the part)
+          var both = q.hole != null ? q.hole > 0 : !p.smd;
+          if (!both && !!p.bottom !== bottom) return;
+          if (q.hole > 0 && (q.w || 0) <= q.hole + 0.5 && (q.h || 0) <= q.hole + 0.5) return; // bare hole without copper
           g.save(); g.translate(X(q.x), Y(q.y)); g.rotate(-deg(q.rot));
           var w = (q.w || q.r * 2) * MIL * k, h = (q.h || q.r * 2) * MIL * k, r = q.sh === 'c' || q.sh === 'o' ? Math.min(w, h) / 2 : q.sh === 'rr' ? Math.min(w, h) / 2 * (q.cr == null ? 0.5 : q.cr) : q.sh ? 0 : Math.min(w, h) / 4;
           g.beginPath(); if (g.roundRect) g.roundRect(-w / 2, -h / 2, w, h, r); else g.rect(-w / 2, -h / 2, w, h); g.fill(); g.restore();

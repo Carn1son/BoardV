@@ -164,9 +164,10 @@ var PCBDOC = (function () {
         if (s5[1] >= 596 && padData[s5[0] + 532 + li] === 9) { sh = 'rr'; cr = padData[s5[0] + 564 + li] / 100; }
         else sh = Math.abs(w - h) < 0.01 ? 'c' : 'o';
       }
-      if (!(w > 0 && h > 0)) { w = h = Math.max(4, Math.min(sx, sy)); }
+      var npth = false;
+      if (!(w > 0 && h > 0)) { if (hole > 0) { w = h = hole; sh = 'c'; npth = true; } else w = h = Math.max(4, Math.min(sx, sy)); } // a bare hole: drawn as the hole itself
       parts[key].pins.push({ x: x, y: y, name: name.trim(), net: nn ? nn.trim().replace(/\s+/g, '_') : 'UNCONNECTED', r: Math.max(2, Math.min(w, h) / 2),
-                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr, hole: hole > 0 ? hole : 0 });
+                             w: w, h: h, rot: isFinite(rot) ? rot : 0, sh: sh, cr: cr, hole: hole > 0 ? hole : 0, npth: npth || undefined });
     }
     // names: a footprint placed without a designator is "no designator"; a repeated designator stays on the copy that is wired from the schematic,
     // the other copies get the letters only: "IC?", "T?"; same-looking names differ by invisible zero-width marks; footprints that are not from the schematic (no link, no nets) are kept out of the BOM

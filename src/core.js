@@ -101,6 +101,7 @@ var BV = (function () {
       var pin = { x: toMil(pr.X, 'mil'), y: toMil(pr.Y, 'mil'), net: cleanNet(net), name: (pr.NAME || '').trim(),
                   r: (isFinite(sx) && isFinite(sy)) ? Math.min(sx, sy) / 2 : NaN, hole: hole > 0 ? hole : 0 };
       if (sh && sx > 0 && sy > 0) { pin.w = sx; pin.h = sy; pin.rot = num(pr.ROTATION) || 0; pin.sh = sh; pin.cr = isFinite(crp) ? crp / 100 : 0.5; }
+      else if (hole > 0) { pin.w = pin.h = hole; pin.rot = 0; pin.sh = 'c'; pin.r = hole / 2; pin.npth = true; } // a bare hole without copper
       parts[key].pins.push(pin);
     }
     // names, as in the binary reader: no designator -> "no designator"; a repeated one stays on the copy wired from the schematic

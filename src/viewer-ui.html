@@ -931,7 +931,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   }
   /* pin-1 key: only on ICs, transformers and LEDs. Pins on two sides (or one row) get a bar in the middle of the key end, anything else a dot by pin 1 */
   function keyKind(p) {
-    var ref = String(p.ref || '').toUpperCase(), txt = (p.value + ' ' + p.footprint + ' ' + p.desc).toUpperCase(), n = p.pins.length;
+    var ref = String(p.ref || '').toUpperCase(), txt = (p.value + ' ' + p.footprint + ' ' + p.desc).toUpperCase(), n = p.pins.filter(function (q) { return !(q.hole > 0 && (q.w || 0) <= q.hole + 0.5 && (q.h || 0) <= q.hole + 0.5); }).length;
     if (n < 2) return null;
     if (/^(LED|HL|VL)\d/.test(ref) || (/^V?D\d/.test(ref) && /LED|СВЕТОДИОД/.test(txt)) || (/^DS\d/.test(ref) && n <= 4)) return 'led'; // DS with a few pins: an indicator LED
     if (/^(T|TR|TV|TX|XFMR)\d/.test(ref)) return 'xf';
@@ -942,7 +942,9 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     if (p._key !== undefined) return p._key;
     p._key = null;
     var kind = keyKind(p); if (!kind) return null;
-    var pins = p.pins, p1 = null;
+    // only pads with copper count: fixing pegs and bare holes (a lens holder, a mounting hole) say nothing about pin 1
+    var pins = p.pins.filter(function (q) { return !(q.hole > 0 && (q.w || 0) <= q.hole + 0.5 && (q.h || 0) <= q.hole + 0.5); }), p1 = null;
+    if (pins.length < 2) return null;
     function by(re) { for (var i = 0; i < pins.length; i++) if (re.test(String(pins[i].name).trim())) return pins[i]; return null; }
     if (kind === 'led') p1 = by(/^(K|C|CATHODE|KATHODE|-)$/i);
     p1 = p1 || by(/^0*1$/) || by(/^A0*1$/i) || pins.slice().sort(function (a, b) { return natCmp(a.name, b.name); })[0];
@@ -1133,14 +1135,14 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       ctx.restore();
       if (quiet) return;
       p.pins.forEach(function (q) {
-        if (q.net !== 'UNCONNECTED') return;
+        if (q.net !== 'UNCONNECTED' || q.npth) return;
         var rr = q.r * V.k; if (rr < 7) return;
         var s = w2s(q.x, q.y), f = Math.min(12, rr * 0.62);
         ctx.font = '600 ' + f + 'px ' + mono; ctx.fillStyle = pOff ? C.dim : C.nc;
         if (ctx.measureText('N/C').width <= rr * 1.8) ctx.fillText('N/C', s[0], s[1]);
       });
       if (FX.showPinNums && src.pinNames) p.pins.forEach(function (q) {
-        if (q.net === 'UNCONNECTED') return;
+        if (q.net === 'UNCONNECTED' || q.npth) return;
         var rr = q.r * V.k; if (rr < 9) return; // far away: no text at all
         var f = Math.min(13, rr * 0.75), t = trim(q.name, 4);
         ctx.font = '600 ' + f + 'px ' + mono; if (ctx.measureText(t).width > rr * 1.7) return; // does not fit the pad: skip
@@ -1165,6 +1167,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       ctx.restore();
     }
     function dot(q, col, ring, glowPx, hollow) {
+      if (q.npth) { padPath(q, 0); ctx.fillStyle = C.canvas; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = C.edge; ctx.stroke(); return; } // a bare hole
       var rr = Math.max(1.3, q.r * V.k);
       padPath(q, 0);
       if (hollow) { ctx.lineWidth = Math.max(1, Math.min(2, rr * 0.25)); ctx.strokeStyle = col; ctx.stroke(); } // unconnected: outline only
@@ -1215,7 +1218,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     M.parts.forEach(function (p) {
       if (!visible(p)) return;
       p.pins.forEach(function (q) {
-        if ((q.sh ? Math.min(q.w, q.h) : 2 * q.r) * V.k < minPx) return; /* too small on screen: the tap is meant for the component */
+        if (q.npth || (q.sh ? Math.min(q.w, q.h) : 2 * q.r) * V.k < minPx) return; /* a bare hole, or too small on screen: the tap is meant for the component */
         var d = padDist(q, w[0], w[1]) * V.k; if (d < bd) { bd = d; best = { part: p, pin: q }; }
       });
     });
@@ -1270,7 +1273,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       h += '<div class="chips"><span class="chip ' + (p.bottom ? 'b' : 't') + '">' + (p.bottom ? 'низ' : 'верх') + '</span><span class="chip">' + (p.smd ? 'SMD' : 'выводной') + '</span><span class="chip">' + p.pins.length + ' пин.</span></div>';
       if (p.footprint || p.desc) h += '<dl class="kv">' + (p.footprint ? '<dt>Корпус</dt><dd>' + esc(p.footprint) + '</dd>' : '') + (p.desc ? '<dt>Описание</dt><dd>' + esc(p.desc) + '</dd>' : '') + '</dl>';
       h += '<table class="pins"><tbody>';
-      p.pins.slice().sort(function (a, b) { return natCmp(a.name, b.name); }).forEach(function (q) {
+      p.pins.filter(function (q) { return !q.npth; }).sort(function (a, b) { return natCmp(a.name, b.name); }).forEach(function (q) {
         h += '<tr><td>' + esc(q.name) + '</td><td><button type="button" class="netlink ' + netCls(q.net) + '" data-net="' + esc(q.net) + '">' + esc(q.net === 'UNCONNECTED' ? 'N/C' : q.net) + '</button></td></tr>';
       });
       h += '</tbody></table>';

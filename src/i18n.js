@@ -9,7 +9,7 @@ var I18N = (function () {
     'Нижняя сторона (зеркально)': 'Bottom side (mirrored)', 'Верхняя сторона': 'Top side',
     '3D-вид платы': '3D board view', '2D-вид платы': '2D board view', '3D-просмотр платы': '3D board view', 'Шелкография в 3D': 'Silkscreen in 3D', 'Вид платы': 'Board view', '3D-вид': '3D view', '2D-вид': '2D view', 'Перспектива': 'Perspective', 'Закрыть 3D (Esc)': 'Close 3D (Esc)', 'Закрыть 3D': 'Close 3D', 'Загрузка 3D…': 'Loading 3D…', '3D-модели:': '3D models:', 'Не удалось открыть 3D': 'Could not open 3D',
     'Открыть файлы': 'Open files', 'Открыть файл': 'Open file', 'Открыть': 'Open', 'Сторона платы': 'Board side',
-    'Верх': 'Top', 'Низ': 'Bottom', 'Обе': 'Both', 'Повернуть на 90° (R)': 'Rotate 90° (R)', 'Вписать плату': 'Fit board',
+    'Верх': 'Top', 'Низ': 'Bottom', 'Обе': 'Both', 'Повернуть на 90° (R)': 'Rotate 90° (R)', 'Повернуть по часовой (R)': 'Rotate clockwise (R)', 'Повернуть против часовой (Shift+R)': 'Rotate counter-clockwise (Shift+R)', 'Поворот по часовой': 'Rotate clockwise', 'Поворот против часовой': 'Rotate counter-clockwise', 'Вписать плату': 'Fit board',
     'Показать или скрыть BOM справа': 'Show or hide the BOM on the right', 'Настройки': 'Settings', 'Закрыть настройки': 'Close settings',
     'Закрыть (Esc)': 'Close (Esc)', 'Закрыть BOM': 'Close BOM', 'Закрыть': 'Close', 'Оформление': 'Appearance',
     'Сейчас Ночь. Нажмите, чтобы включить День': 'Night mode. Click for Day', 'Сейчас День. Нажмите, чтобы включить Ночь': 'Day mode. Click for Night',

@@ -184,8 +184,11 @@ html.mobile .xsel { min-height: 38px; }
 .sideseg button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; padding: 0 10px; min-height: 34px; cursor: pointer; }
 .sideseg button + button { border-left: 1px solid var(--line); }
 .sideseg button svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.rotseg button { color: var(--fg); }
+.rotseg button:active { background: var(--accent); color: #1a1406; }
 .sideseg button[aria-pressed=true] { background: var(--accent); color: #1a1406; }
 html.mobile .sideseg button { padding: 0 7px; min-height: 0; height: 34px; }
+html.mobile .rotseg button { width: 30px; padding: 0; justify-content: center; font-size: 17px; }
 html.mobile .sideseg button span { display: none; } /* the phone shows the pictures only */
 .sidebtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; font-weight: 600; min-width: 92px; justify-content: space-between; }
 .sidebtn svg { width: 16px; height: 16px; opacity: .7; }
@@ -432,14 +435,16 @@ html.mobile .top { gap: 4px; padding-inline: 8px; }
 html.mobile .top > * { flex: none; }
 html.mobile #uiBtn { margin-left: auto; }
 html.mobile .sidesel { padding: 0 20px 0 8px; }
-html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico { width: 38px; min-width: 38px; padding: 0; }
-html.mobile .top .iconbtn { width: 36px; }
+html.mobile .btn.ico, html.mobile .mbtn, html.mobile #open.ico { width: 36px; min-width: 36px; padding: 0; }
+html.mobile .top .iconbtn { width: 34px; }
 @media (max-width: 400px) {
   html.mobile .top { gap: 2px; padding-inline: 6px; }
-  html.mobile .btn.ico, html.mobile .mbtn, html.mobile #rot, html.mobile #open.ico { width: 35px; min-width: 35px; }
-  html.mobile .top .iconbtn { width: 33px; }
+  html.mobile .btn.ico, html.mobile .mbtn, html.mobile #open.ico { width: 33px; min-width: 33px; }
+  html.mobile .top .iconbtn { width: 31px; }
   html.mobile .top .iconbtn svg { width: 20px; height: 20px; }
   html.mobile .sidesel { padding: 0 16px 0 6px; background-position: right 3px center; }
+  html.mobile .sideseg button { padding: 0 5px; }
+  html.mobile .rotseg button { width: 28px; padding: 0; }
 }
 /* ---------- colour picker (replaces the system dialog) ---------- */
 input[type=color] { -webkit-appearance: none; appearance: none; }
@@ -496,7 +501,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     <select class="sidesel" id="sideSel" aria-label="Сторона платы" title="Сторона платы">
       <option value="top">Верх</option><option value="bottom">Низ</option><option value="both">Обе</option>
     </select>
-    <button class="btn" id="rot" type="button" title="Повернуть на 90° (R)">⟳ 90°</button>
+    <div class="sideseg rotseg" role="group" aria-label="Поворот платы"><button id="rotL" type="button" title="Повернуть против часовой (Shift+R)" aria-label="Повернуть против часовой">⟲ 90°</button><button id="rot" type="button" title="Повернуть по часовой (R)" aria-label="Повернуть по часовой">⟳ 90°</button></div>
     <button class="btn ico" id="fit" type="button" title="Вписать плату" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
     <button class="btn mbtn" id="mfit" type="button" aria-label="Вписать плату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></button>
     <div class="fileName" id="fileName"></div>
@@ -648,7 +653,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   }
   setUi(UI);
   $('uiBtn').onclick = function () { setUi(UI === 'dark' ? 'light' : 'dark'); };
-  if (IS_PHONE) { document.documentElement.classList.add('mobile'); $('open').classList.add('ico'); $('open').setAttribute('aria-label', 'Открыть файл'); $('open').innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h4l2 2.2h7A2.5 2.5 0 0 1 21 8.7v8.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>'; $('rot').textContent = '⟳'; $('emptyN').textContent = 'Нажми, чтобы выбрать файл'; }
+  if (IS_PHONE) { document.documentElement.classList.add('mobile'); $('open').classList.add('ico'); $('open').setAttribute('aria-label', 'Открыть файл'); $('open').innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h4l2 2.2h7A2.5 2.5 0 0 1 21 8.7v8.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>'; $('rot').textContent = '⟳'; $('rotL').textContent = '⟲'; $('emptyN').textContent = 'Нажми, чтобы выбрать файл'; }
   // where we run: Android app (WebView), Windows app (Electron), installed PWA, or a plain page/file
   var APP_MODE = /BoardviewAndroid/.test(navigator.userAgent) ? 'android' : window.bvDesktop ? 'desktop'
     : (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ? 'pwa' : 'page';
@@ -726,10 +731,10 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   var NETS_SECTION = 'Отображение цепей', CTRL_SECTION = 'Настройки управления';
   /* ---------- hotkeys: stored as physical key codes, so they work in any keyboard layout ---------- */
   var ACTIONS = [['search', 'Поиск'], ['flip', 'Перевернуть плату (верх ↔ низ)'], ['top', 'Сторона: верх'], ['bottom', 'Сторона: низ'], ['both', 'Сторона: обе'], ['cycle', 'Следующий слой (верх → низ → обе)'],
-    ['rotate', 'Поворот на 90°'], ['fit', 'Вписать плату'], ['clear', 'Сбросить выбор / закрыть настройки'], ['zoomIn', 'Приблизить'], ['zoomOut', 'Отдалить'],
+    ['rotate', 'Поворот по часовой'], ['rotateL', 'Поворот против часовой'], ['fit', 'Вписать плату'], ['clear', 'Сбросить выбор / закрыть настройки'], ['zoomIn', 'Приблизить'], ['zoomOut', 'Отдалить'],
     ['bom', 'Показать / скрыть BOM'], ['settings', 'Открыть / закрыть настройки'], ['ui', 'Оформление: День / Ночь'], ['values', 'Номиналы на плате вкл/выкл'],
     ['pinNums', 'Номера пинов вкл/выкл'], ['open', 'Открыть файл'], ['view3d', '3D-вид платы'], ['view2d', '2D-вид платы']];
-  var DEF_KEYS = { view3d: ['Digit3', 'Numpad3'], view2d: ['Digit2', 'Numpad2'], search: ['Ctrl+KeyF'], flip: ['Space'], top: [], bottom: [], both: ['KeyB'], cycle: ['KeyL'], rotate: ['KeyR'], fit: ['KeyF'], clear: ['Escape'],
+  var DEF_KEYS = { view3d: ['Digit3', 'Numpad3'], view2d: ['Digit2', 'Numpad2'], search: ['Ctrl+KeyF'], flip: ['Space'], top: [], bottom: [], both: ['KeyB'], cycle: ['KeyL'], rotate: ['KeyR'], rotateL: ['Shift+KeyR'], fit: ['KeyF'], clear: ['Escape'],
     zoomIn: ['Equal', 'NumpadAdd'], zoomOut: ['Minus', 'NumpadSubtract'], bom: [], settings: [], ui: [], values: [], pinNums: [], open: ['Ctrl+KeyO'] };
   var KEYNAME = { Space: 'Пробел', Escape: 'Esc', Slash: '/', Backslash: '\\', Period: '.', Comma: ',', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']',
     Minus: '-', Equal: '=', Backquote: '`', Enter: 'Enter', Tab: 'Tab', Backspace: '⌫', Delete: 'Del', Insert: 'Ins', Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn',
@@ -1346,7 +1351,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
       if (!IS_PHONE) { // a phone has no keyboard; only the keys people need most
         h += '<div class="keys">';
         ACTIONS.forEach(function (a) {
-          if (['search', 'flip', 'cycle', 'rotate', 'fit', 'clear', 'view3d', 'view2d'].indexOf(a[0]) < 0 || (/^view/.test(a[0]) && !FX.enable3d)) return;
+          if (['search', 'flip', 'cycle', 'rotate', 'rotateL', 'fit', 'clear', 'view3d', 'view2d'].indexOf(a[0]) < 0 || (/^view/.test(a[0]) && !FX.enable3d)) return;
           var ks = CFG.keys[a[0]] || []; if (ks.length) h += '<kbd>' + esc(keyLabel(ks[0])) + '</kbd><span>' + esc(a[1]) + '</span>';
         });
         h += '</div>';
@@ -2563,15 +2568,16 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
   // phone: our own small menu instead of the system list
   $('sideSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-sd]'); if (b) setSide(b.dataset.sd); }); // three buttons instead of a drop-down
   function cycleSide() { setSide({ top: 'bottom', bottom: 'both', both: 'top' }[V.side]); }
-  function rotate() { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + 3) % 4; var p = w2s(c[0], c[1]); /* clockwise, as the ⟳ on the button */ V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
-  $('rot').onclick = rotate;
+  function rotate(ccw) { if (!M) return; var c = s2w(W / 2, H / 2); V.rot = (V.rot + (ccw === true ? 1 : 3)) % 4; var p = w2s(c[0], c[1]); /* clockwise, as the ⟳ on the button */ V.cx += W / 2 - p[0]; V.cy += H / 2 - p[1]; status(); req(); }
+  $('rot').onclick = function () { rotate(false); }; $('rotL').onclick = function () { rotate(true); };
   $('fit').onclick = function () { fit(); req(); };
   function runAction(a) {
     if (a === 'search') { if (IS_PHONE) openSheet('info'); $('q').focus(); $('q').select(); }
     else if (a === 'flip') setSide(V.side === 'top' ? 'bottom' : 'top');
     else if (a === 'top' || a === 'bottom' || a === 'both') setSide(a);
     else if (a === 'cycle') cycleSide();
-    else if (a === 'rotate') rotate();
+    else if (a === 'rotate') rotate(false);
+    else if (a === 'rotateL') rotate(true);
     else if (a === 'fit') { fit(); req(); }
     else if (a === 'clear') { if (SETOPEN && !IS_PHONE) setSettings(false); else clearSel(); }
     else if (a === 'zoomIn') zoomAt(W / 2, H / 2, 1.4);

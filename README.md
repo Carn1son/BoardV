@@ -4,8 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV.apk"><b>Android APK</b></a> ·
-  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV-Setup.exe"><b>Windows Installer</b></a> ·
-  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV-portable.exe"><b>Windows Portable</b></a>
+  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV-Setup.exe"><b>Windows Installer</b></a>
 </p>
 
 ## Features
@@ -46,7 +45,7 @@
 
 ## Installation
 - **Android:** install `BoardV.apk`
-- **Windows:** run `BoardV-Setup.exe` or `BoardV-portable.exe`
+- **Windows:** install `BoardV-Setup.exe`
 
 ## Build
 Every push to `main` builds the APK and Windows executables with GitHub Actions and publishes them to [Releases](https://github.com/Carn1son/BoardV/releases).

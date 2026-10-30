@@ -1850,7 +1850,7 @@ button:focus:not(:focus-visible), select:focus:not(:focus-visible), summary:focu
     if (APP_MODE === 'android') {
       if (!window.BoardVUpdater.canInstall()) { updSet('perm'); return; }
       updSet('downloading', { pct: 0 }); window.BoardVUpdater.install(UPD_PAGE + '/download/BoardV.apk');
-    } else if (UPD.mode === 'portable') { window.open(UPD_PAGE + '/download/' + ((window.bvDesktop && window.bvDesktop.portableName) || 'BoardV-portable.exe')); }
+    } else if (UPD.mode === 'portable') { window.open(UPD_PAGE + '/download/' + 'BoardV-Setup.exe'); }
     else { updSet('downloading', { pct: 0 }); window.bvDesktop.update.download(); }
   }
   window.bvUpdateEvent = function (type, arg) { // from the Android app

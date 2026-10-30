@@ -37,7 +37,7 @@ namespace BoardV
         public static string Version { get { return Get("version", "0.0.0"); } }
         public static string AppName { get { return Get("app", "BoardV"); } }          // "BoardV" or "BoardV Lite" while it is tested
         public static string SetupName { get { return Get("setup", "BoardV-Setup.exe"); } }
-        public static string PortableName { get { return Get("portable", "BoardV-portable.exe"); } }
+        public static string PortableName { get { return Get("portable", "BoardV-Setup.exe"); } }
     }
 
     static class Program

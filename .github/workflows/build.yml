@@ -91,7 +91,7 @@ jobs:
         shell: bash
         run: |
           echo "window.BV_BUILD = { version: '${{ needs.meta.outputs.ver }}', label: '${{ needs.meta.outputs.label }}', day: '${{ needs.meta.outputs.day }}', app: 'windows' };" > www/build-info.js
-          printf 'version=%s\napp=BoardV\nsetup=BoardV-Setup.exe\nportable=BoardV-portable.exe\n' "${{ needs.meta.outputs.ver }}" > src/win/build.txt
+          printf 'version=%s\napp=BoardV\nsetup=BoardV-Setup.exe\nportable=BoardV-Setup.exe\n' "${{ needs.meta.outputs.ver }}" > src/win/build.txt
           cd www && 7z a -tzip -mx=9 ../src/win/www.zip . > /dev/null
       - name: Build the exe
         shell: bash
@@ -100,11 +100,11 @@ jobs:
           if ! dotnet build src/win/BoardV.csproj -c Release -nologo -p:BvFileVersion=$MA.$((10#$MI)).0 > build.log 2>&1; then
             grep -iE "error|warn" build.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; tail -5 build.log; exit 1
           fi
-      - name: Installer, portable copy, update feed
+      - name: Installer, update feed
         shell: bash
         run: |
           EXE=$(find src/win/bin -name BoardV.exe | head -1)
-          mkdir -p dist && cp "$EXE" dist/BoardV-portable.exe && cp "$EXE" src/win/BoardV.exe
+          mkdir -p dist && cp "$EXE" src/win/BoardV.exe
           MN=$(command -v makensis || true); [ -z "$MN" ] && MN="/c/Program Files (x86)/NSIS/makensis.exe"
           [ -f "$MN" ] || command -v makensis > /dev/null || choco install nsis -y --no-progress > /dev/null
           cd src/win
@@ -141,7 +141,8 @@ jobs:
           set -e
           ls -R dl
           BASE="https://github.com/$GITHUB_REPOSITORY/releases/latest/download"
-          printf '%s\n' "BoardV $LABEL от $DAY." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "- Windows, без установки: $BASE/BoardV-portable.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
+          printf '%s\n' "BoardV $LABEL от $DAY." "" "Всегда последняя версия:" "- Android: $BASE/BoardV.apk" "- Windows, установщик: $BASE/BoardV-Setup.exe" "" "Приложения сами проверяют обновления: Настройки → Обновления." > notes.md
+          gh release delete "v$VER" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true  # same version rebuilt: replace it
           gh release create "v$VER" dl/BoardV-android/BoardV.apk dl/BoardV-android/BoardV-rustore.apk dl/BoardV-windows/* --repo "$GITHUB_REPOSITORY" --title "BoardV $LABEL — $DAY" --notes-file notes.md --latest
       - name: Keep only the newest release
         env:

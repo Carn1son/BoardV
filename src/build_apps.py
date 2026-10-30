@@ -1029,77 +1029,79 @@ jobs:
           done
 '''
 
-PROJECT_README = '''<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.png"><img src="docs/logo-light.png" width="560" alt="BoardV — .brd для старшеньких"></picture></p>
+PROJECT_README = '''<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.png"><img src="docs/logo-light.png" width="560" alt="BoardV"></picture></p>
 
-<p align="center">Просмотр плат Altium на ПК и телефоне: открываете <code>.PcbDoc</code> — и сразу видите детали, цепи, номиналы и BOM.</p>
+<p align="center">PCB viewer for Android and Windows. Open an Altium <code>.PcbDoc</code> and see parts, nets, values and the BOM.</p>
 
 <p align="center">
-  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV.apk"><b>Android (APK)</b></a> ·
-  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV-Setup.exe"><b>Windows — установщик</b></a> ·
-  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV-portable.exe"><b>Windows — без установки</b></a>
+  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV.apk"><b>Android</b></a> ·
+  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV-Setup.exe"><b>Windows installer</b></a> ·
+  <a href="https://github.com/Carn1son/BoardV/releases/latest/download/BoardV-portable.exe"><b>Windows portable</b></a>
 </p>
 
-## Что умеет
+## Features
 
-### Форматы
-- **Altium .PcbDoc** открывается напрямую, без экспорта.
-- Boardview и CAD: `.brd` (Test_Link, в том числе зашифрованные, BRD2, Eagle), `.bdv`, `.bvr`, `.asc`, `.cad` (GenCAD и ###Panel), `.cst`, KiCad `.kicad_pcb`, а также `.zip` с платой внутри.
-- Если в файле нет номиналов, можно добавить **BOM или файл расстановки (CSV)**: перетащите его вместе с платой.
-- Для закрытых форматов (Allegro `.brd`, ASUS `.fz`, XZZ `.pcb`, `.cae`) программа объясняет, что именно экспортировать, чтобы файл открылся.
+### Formats
+- Altium `.PcbDoc`, opened directly
+- `.brd`: Test_Link, encrypted, BRD2, Eagle
+- `.bdv`, `.bvr`, `.asc`, `.cad`, `.cst`
+- KiCad `.kicad_pcb`
+- `.zip` archives with a board inside
+- BOM or placement CSV to add part values
 
-### Плата и цепи
-- Верх, низ (зеркально) или обе стороны, поворот, переворот платы. Скруглённые края платы и компоненты, повёрнутые на любой угол, рисуются точно.
-- Площадки рисуются **по-настоящему**: форма (прямоугольник, круг, овал, скруглённый прямоугольник, восьмиугольник), размер и поворот берутся из файла платы (.PcbDoc, KiCad, Eagle).
-- **Ключ** у микросхем, трансформаторов и светодиодов: черта посередине стороны первого вывода, если выводы с двух сторон, или точка у первого вывода, если выводы с трёх-четырёх сторон.
-- При выделении компонента остальные приглушаются, но их обозначения остаются читаемыми.
-- Клик по пину подсвечивает **всю цепь** со свечением. Питание и земля окрашены отдельно, компоненты на противоположном слое показаны бегущим пунктиром.
-- **Свои цвета цепей**: правила по имени или маске (например `VCC*`, `*GND*`).
-- Поиск по деталям, цепям и номиналам.
-- Карточка детали: позиционное обозначение, номинал, корпус, пины и их цепи. Рядом с номиналом и именем цепи есть кнопки **копирования** и **поиска даташита** (Google, `"название" filetype:pdf`).
-- Любой текст в карточке и списках копируется правой кнопкой мыши или долгим нажатием на телефоне.
+### Board view
+- Top, bottom and both sides
+- Rotation in both directions and board flip
+- Real pad shapes, sizes and angles
+- Pin 1 markers
+- Board outline, cutouts and mounting holes
 
-### 3D-просмотр
-- Объёмный вид платы: на ПК клавиша **3** (обратно — **2**), на телефоне переключатель 2D / 3D над платой.
-- Из Altium .PcbDoc берутся **настоящие 3D-модели** (вшитые STEP) и тела компонентов, с их цветами. Нажатие на компонент выделяет его и показывает в карточке.
-- Если в файле нет 3D-моделей (boardview-форматы, KiCad, Eagle), показываются плата и голые площадки.
-- На плате видны сквозные и крепёжные отверстия.
-- 3D можно полностью отключить в настройках (*Управление → 3D-просмотр платы*).
+### Nets and parts
+- Tap a pin to highlight its net
+- Separate colours for power and ground
+- Custom net colours by name or mask
+- Search by part, net and value
+- Part card with pins, nets, package and value
+- Copy and datasheet search buttons
+
+### 3D view
+- Embedded STEP models from `.PcbDoc`
+- Board, pads and holes for other formats
+- Key `3` for 3D, `2` for 2D
 
 ### BOM
-- Панель BOM справа: клик по позиции показывает все места установки сверху и снизу платы.
-- Копирование BOM в CSV для Excel или Google Таблиц.
-- **Выгрузка BOM в .xlsx** с отметками проверки: найденные позиции зелёные, частично совпавшие жёлтые, с фактическим наименованием.
+- Grouped list with part placement on the board
+- Copy as CSV
+- Export to `.xlsx` with check marks
 
-### Телефон как сканер компонентов (по локальной сети)
-- На ПК нажмите кнопку с телефоном («Подключить телефон-сканер») и отсканируйте QR-код в BoardV на телефоне.
-- Телефон читает QR, DataMatrix и штрихкоды с катушек и лент. Партномер очищается от лишних символов и расшифровывается: для конденсаторов и резисторов Murata, Samsung, Yageo, TDK, Taiyo Yuden, Walsin, KOA, Vishay, Panasonic и других определяются номинал, напряжение, допуск и корпус.
-- Компьютер сверяет результат со своим BOM и сразу отвечает телефону: **подходит**, **подходит частично** (номинал совпадает, но отличается, например, напряжение или корпус) или **нет в BOM**. Найденные позиции отмечаются в BOM на ПК, ошибочную отметку можно снять.
-- Связь идёт напрямую по Wi-Fi, без интернета и сторонних серверов. Данные **зашифрованы**, код подключения одноразовый, каждое подключение подтверждается на компьютере.
-- Статус всегда виден: «Телефон подключён» (зелёный) или «Телефон отсоединён» (красный) с кнопками «Подключить снова» и «Закрыть». Если телефон на время пропал, он переподключится сам, когда BoardV снова откроется в той же сети.
-- Если компьютер завершил связь, телефон закрывает сканер и показывает «Связь с ПК разорвана», если связь потеряна - обмен закрывается.
-- Если не подключается: телефон и ПК должны быть в одной (не гостевой) Wi-Fi сети, VPN на телефоне выключен или разрешает локальную сеть, BoardV разрешён в брандмауэре Windows для частной сети.
+### Phone scanner
+- Scan reel and tape labels with the phone
+- QR, DataMatrix and barcodes
+- Part numbers decoded for common capacitor and resistor makers
+- Match result shown on the phone and marked in the PC BOM
+- Local Wi-Fi link, encrypted, confirmed on the PC
 
-### Оформление и управление
-- Темы, режимы **День / Ночь**, настройка цветов, подписей, заливки, обводки и выделения. Каждую группу можно вернуть к значениям темы кнопкой «Сброс».
-- Интерфейс на русском и английском.
-- Горячие клавиши работают в любой раскладке и переназначаются. На ПК настраиваются скорость и инверсия колёсика.
-- На телефоне: жесты, нижняя панель-шторка, кнопка «Назад» закрывает открытые окна и сканер, а не приложение.
-- Настройки выгружаются в файл и загружаются на другом устройстве.
-- Приложения сами проверяют обновления (можно отключить «Проверять при запуске») и ставят их после подтверждения.
+### Interface
+- Themes, day and night modes
+- Colour and label settings
+- Battery saver
+- Remappable hotkeys
+- Russian and English
+- Settings export and import
+- Built-in updates
 
-## Установка
-- **Android:** скачайте `BoardV.apk`, откройте и разрешите установку. Следующие версии ставятся поверх, из самого приложения: *Настройки → Обновления*.
-- **Windows:** `BoardV-Setup.exe` — обычная установка, `.PcbDoc` открываются двойным кликом, обновления из программы. `BoardV-portable.exe` — запуск без установки.
-  Windows может показать «Неизвестный издатель» — *Подробнее → Выполнить в любом случае* (программа не подписана платным сертификатом).
+## Install
+- **Android:** download `BoardV.apk` and install it. Updates are installed from the app.
+- **Windows:** run `BoardV-Setup.exe`, or use `BoardV-portable.exe` without installing. Windows 10 or 11 is required.
 
-## Сборка
-Каждый push в `main` собирает APK и `.exe` в GitHub Actions и публикует их в [Releases](https://github.com/Carn1son/BoardV/releases).
+## Build
+Every push to `main` builds the APK and the Windows app in GitHub Actions and publishes them in [Releases](https://github.com/Carn1son/BoardV/releases).
 
 ```
-src/        исходники вьювера (viewer-ui.html, core.js, pcbdoc.js) и сборка build_apps.py
-www/        готовое веб-приложение, которое показывают обе обёртки
-android/    обёртка WebView (Java): выбор файлов, сохранение настроек, установка обновлений
-src/win/    обёртка для Windows (C# + WebView2): открытие плат двойным кликом, телефон-сканер, обновления
+src/       viewer source and build script
+src/win/   Windows app, C# and WebView2
+android/   Android app
+www/       built web app used by both
 ```
 '''
 
